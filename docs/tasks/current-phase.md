@@ -34,6 +34,7 @@ After all six sub-tasks land, before declaring Phase 0 done:
 - [ ] Add **Next.js Devtools MCP** to project `.mcp.json`; bump Tier 1 MCP table in `CLAUDE.md` from 4 → 5.
 - [ ] Update `docs/setup/mcp-servers.md` with the Devtools MCP install command.
 - [ ] Verify `claude mcp list` shows all 5 Tier 1 MCPs connected from a fresh session.
+- [x] **Palette refinement to match Kintree** (per [ADR 0008](../adrs/0008-design-system.md)) — `src/app/globals.css` migrated to two-tone (cream `--background` + paper `--card`) and seeded the 5 TONES CSS vars. *(landed in the same commit as ADR 0008)*
 
 See [`../adrs/0007-nextjs-16-and-async-idioms.md`](../adrs/0007-nextjs-16-and-async-idioms.md) for why we baseline on Next.js 16 and which v16 idioms get adopted now vs. deferred.
 

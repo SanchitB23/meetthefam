@@ -50,20 +50,21 @@
 }
 
 :root {
-  --background: oklch(0.967 0.012 85);
-  --foreground: oklch(0.22 0.005 60);
-  --card: oklch(0.985 0.008 85);
+  /* Two-tone heirloom page surfaces — see ADR 0008 + Kintree prototype */
+  --background: oklch(0.945 0.014 80);    /* cream  ≈ #F5EFE3 */
+  --foreground: oklch(0.22 0.005 60);     /* warm charcoal */
+  --card: oklch(0.99 0.008 85);           /* paper  ≈ #FFFCF5 */
   --card-foreground: oklch(0.22 0.005 60);
-  --popover: oklch(0.985 0.008 85);
+  --popover: oklch(0.99 0.008 85);
   --popover-foreground: oklch(0.22 0.005 60);
-  --primary: oklch(0.36 0.04 155);
-  --primary-foreground: oklch(0.967 0.012 85);
+  --primary: oklch(0.36 0.04 155);        /* forest ≈ #2D4A3E */
+  --primary-foreground: oklch(0.99 0.008 85);
   --secondary: oklch(0.92 0.015 75);
   --secondary-foreground: oklch(0.36 0.04 155);
   --muted: oklch(0.93 0.012 80);
-  --muted-foreground: oklch(0.45 0.015 70);
-  --accent: oklch(0.65 0.10 40);
-  --accent-foreground: oklch(0.985 0.008 85);
+  --muted-foreground: oklch(0.42 0.018 70); /* warm gray ≈ #6B6358 */
+  --accent: oklch(0.65 0.10 40);          /* terracotta ≈ #C77B5C */
+  --accent-foreground: oklch(0.99 0.008 85);
   --destructive: oklch(0.55 0.18 25);
   --border: oklch(0.88 0.012 80);
   --input: oklch(0.88 0.012 80);
@@ -77,11 +78,28 @@
   --sidebar: oklch(0.95 0.014 82);
   --sidebar-foreground: oklch(0.22 0.005 60);
   --sidebar-primary: oklch(0.36 0.04 155);
-  --sidebar-primary-foreground: oklch(0.967 0.012 85);
+  --sidebar-primary-foreground: oklch(0.99 0.008 85);
   --sidebar-accent: oklch(0.92 0.015 75);
   --sidebar-accent-foreground: oklch(0.36 0.04 155);
   --sidebar-border: oklch(0.88 0.012 80);
   --sidebar-ring: oklch(0.36 0.04 155);
+
+  /* 5 avatar tones — see docs/ux/avatars-and-tones.md */
+  --tone-sage-bg:     oklch(0.92 0.025 130);
+  --tone-sage-ring:   oklch(0.74 0.045 135);
+  --tone-sage-ink:    oklch(0.36 0.030 150);
+  --tone-rose-bg:     oklch(0.89 0.025 55);
+  --tone-rose-ring:   oklch(0.70 0.070 45);
+  --tone-rose-ink:    oklch(0.41 0.080 40);
+  --tone-indigo-bg:   oklch(0.89 0.015 265);
+  --tone-indigo-ring: oklch(0.62 0.035 265);
+  --tone-indigo-ink:  oklch(0.32 0.060 275);
+  --tone-amber-bg:    oklch(0.91 0.040 85);
+  --tone-amber-ring:  oklch(0.72 0.085 80);
+  --tone-amber-ink:   oklch(0.40 0.070 75);
+  --tone-green-bg:    oklch(0.87 0.030 140);
+  --tone-green-ring:  oklch(0.62 0.060 140);
+  --tone-green-ink:   oklch(0.36 0.040 155);
 }
 
 .dark {

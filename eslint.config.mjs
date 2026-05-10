@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored design references — see docs/ux/inspiration/README.md.
+    // Not maintained by us; not subject to repo lint rules.
+    "docs/ux/inspiration/**",
   ]),
 ]);
 

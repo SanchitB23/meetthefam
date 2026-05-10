@@ -66,13 +66,16 @@ people (
   father_id    uuid references people,
   mother_id    uuid references people,
   spouse_id    uuid references people,   -- bidirectionally synced in app code
+  tone         text not null check (tone in ('sage','rose','indigo','amber','green')),
   created_at   timestamptz default now(),
   updated_at   timestamptz default now(),
   created_by   uuid references auth.users
 )
 ```
 
-19 columns. `father_id` / `mother_id` / `spouse_id` are **self-FKs** to `people` — they point to other rows in the same table. Children are not stored explicitly; they're computed at query time as `WHERE father_id = X OR mother_id = X`.
+20 columns. `father_id` / `mother_id` / `spouse_id` are **self-FKs** to `people` — they point to other rows in the same table. Children are not stored explicitly; they're computed at query time as `WHERE father_id = X OR mother_id = X`.
+
+`tone` is the avatar-tint key — see [`../ux/avatars-and-tones.md`](../ux/avatars-and-tones.md). Auto-assigned by a `BEFORE INSERT` trigger using `hash(full_name) % 5` against the fixed tone order; the user can override via the person-edit form. Locked to a 5-value enum so the UI can map directly to the 5 CSS-variable sets without a fallback path.
 
 ## Why FKs on `people` instead of a join table
 

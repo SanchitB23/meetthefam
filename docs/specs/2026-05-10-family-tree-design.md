@@ -234,7 +234,7 @@ We do **not** need it for: schema, auth, RLS, server actions, the family-chart w
 | Build step | Primary tool | Notes |
 |---|---|---|
 | Scaffold Next.js + Supabase + Tailwind | Claude Code | One session; CLI can run `npx create-next-app`, write env files, run migrations |
-| Initial visual direction (3-5 mockups, pick one) | Claude Design | Run `frontend-design` skill on the tree-view + landing screens; pick a style |
+| Initial visual direction (3-5 mockups, pick one) | ~~Claude Design~~ **Resolved out-of-band** | **Locked in via [ADR 0008](../adrs/0008-design-system.md)** — heirloom-journal direction anchored on the [Kintree prototype](../ux/inspiration/kintree/). The `frontend-design` skill use-case shifts to *executing* those tokens at Phase 8, not exploring style. |
 | Auth (login / signup / callback) | Claude Code | Custom form, magic-link flow |
 | Dashboard (tree list) | Claude Code, polished by Claude Design | Function first, polish after |
 | Tree CRUD + member CRUD | Claude Code | Pure backend + form work |
