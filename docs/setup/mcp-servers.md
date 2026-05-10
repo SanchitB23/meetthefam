@@ -1,41 +1,83 @@
 # MCP server setup
 
-The project's [.mcp.json](../../.mcp.json) declares four Tier 1 MCP servers that Claude Code sessions in this repo should have available. None of the tokens are committed — all are referenced via `${env:VAR_NAME}` and live in `.env.local` (gitignored).
+The project's [.mcp.json](../../.mcp.json) declares **two** Tier 1 MCP servers (supabase + context7) that Claude Code sessions in this repo should have available. The two **user-scope** MCPs (`github-meetthefam`, `vercel`) live in `~/.claude/settings.json` instead — see below for why.
 
-## The three project-scope MCPs
+No tokens are committed — project-scope tokens are referenced via `${env:VAR_NAME}` and live in `.env.local` (gitignored, loaded by direnv); user-scope tokens are stored as literals in `~/.claude/settings.json` (private to the machine).
 
-| Name | Package | Token env var | Purpose |
+## The two project-scope MCPs
+
+| Name | Type / Source | Token env var | Purpose |
 |---|---|---|---|
-| `supabase` | `@supabase/mcp-server-supabase@latest` | `SUPABASE_ACCESS_TOKEN` | SQL queries, schema, migrations, RLS |
-| `context7` | `@upstash/context7-mcp@latest` | *(none)* | Live docs for Next.js, Supabase, family-chart, Tailwind, shadcn |
-| `github` | `@modelcontextprotocol/server-github` | `GITHUB_PERSONAL_ACCESS_TOKEN` | Branches, PRs, issues, repo metadata |
+| `supabase` | stdio — `@supabase/mcp-server-supabase@latest` | `SUPABASE_ACCESS_TOKEN` | SQL queries, schema, migrations, RLS |
+| `context7` | stdio — `@upstash/context7-mcp@latest` | *(none)* | Live docs for Next.js, Supabase, family-chart, Tailwind, shadcn |
 
-> **Verify package names before first run.** MCP server packages occasionally rename or split — confirm the current package on the registry / vendor docs the first time you set this up.
+These two use stdio servers with `${env:VAR}` interpolation in their `env` block. Claude Code reliably resolves env-var references in stdio configs, so the PAT stays in `.env.local` (gitignored, loaded by direnv) and `.mcp.json` itself is safe to commit.
 
-## Vercel MCP — kept at user scope, not in `.mcp.json`
+> **Verify package names before first run.** MCP package names occasionally rename or split — confirm the current package on the registry / vendor docs the first time you set this up.
 
-The author's `~/.claude/settings.json` already includes the Vercel MCP at user scope, so the project deliberately does **not** duplicate it at project scope. If you're cloning this repo on a fresh machine and you want Vercel MCP available, add it at user scope:
+## GitHub and Vercel MCPs — kept at user scope
+
+Both `github-meetthefam` and `vercel` are configured at **user scope** in `~/.claude/settings.json` — *not* in this project's `.mcp.json`.
+
+### Why user scope
+
+- **GitHub MCP** uses GitHub's official remote HTTP server at `https://api.githubcopilot.com/mcp`, authenticated via a `Bearer` header. Claude Code does not interpolate `${env:VAR}` inside `headers.Authorization` (only inside stdio `env` blocks). The header therefore needs a **literal PAT** — which we don't want in a committed file. User-scope `~/.claude/settings.json` is private to the machine.
+- **Vercel MCP** was already user-scope before this project existed; no reason to duplicate.
+- The deprecated `@modelcontextprotocol/server-github` stdio npm package would work with `${env:VAR}`, but it does not expose tools to modern Claude Code sessions (so isn't a real workaround).
+
+### Why the custom name `github-meetthefam`
+
+User-scope MCPs load in *every* claude session. The PAT we mint is fine-grained-scoped to only `SanchitB23/meetthefam`, so any call from an unrelated session would 404. Naming the server `github-meetthefam` instead of generic `github` keeps that limit visible on every `claude mcp list` line — and prevents collision if you ever need a separate, broader-scoped GitHub MCP later.
+
+### Fresh-machine GitHub MCP install
 
 ```bash
-claude mcp add --scope user vercel -e VERCEL_ACCESS_TOKEN=$VERCEL_TOKEN -- npx -y <vercel-mcp-package>
+# 1) Mint a fine-grained PAT scoped only to this repo
+#    https://github.com/settings/personal-access-tokens
+#    Permissions: Administration / Contents / Issues / Pull requests R/W, Metadata R
+
+# 2) Install at user scope (literal PAT goes to ~/.claude/settings.json — never any repo)
+claude mcp add-json --scope user github-meetthefam "$(cat <<'EOF'
+{
+  "type": "http",
+  "url": "https://api.githubcopilot.com/mcp",
+  "headers": {
+    "Authorization": "Bearer YOUR_GITHUB_PAT"
+  }
+}
+EOF
+)"
+
+# 3) Verify
+claude mcp list | grep -i meetthefam
+# Expect: github-meetthefam: https://api.githubcopilot.com/mcp (HTTP) - ✓ Connected
+
+# 4) Use it from chat
+#    "use github-meetthefam to list any open issues in this repo"
 ```
 
-Confirm the current Vercel MCP package name from Vercel's docs at the time of install.
+### Fresh-machine Vercel MCP install
 
-## Getting the tokens
+Confirm the current Vercel MCP package on Vercel's docs at install time, then:
+
+```bash
+claude mcp add --scope user vercel -e VERCEL_ACCESS_TOKEN=YOUR_VERCEL_TOKEN -- npx -y <vercel-mcp-package>
+```
+
+## Getting tokens for the project-scope MCPs
 
 | Token | Where to mint |
 |---|---|
-| `SUPABASE_ACCESS_TOKEN` | https://supabase.com/dashboard/account/tokens |
-| `GITHUB_PERSONAL_ACCESS_TOKEN` | https://github.com/settings/personal-access-tokens — fine-grained; for the existing personal account; permissions: Administration / Contents / Issues / Pull requests R/W, Metadata R |
+| `SUPABASE_ACCESS_TOKEN` | https://supabase.com/dashboard/account/tokens — populated in Phase 0 |
 
-Place each into `.env.local` (gitignored):
+Place into `.env.local` (gitignored):
 
 ```
 # .env.local
 SUPABASE_ACCESS_TOKEN=sbp_xxxxxxxxxxxxxxxxxxxxxxxx
-GITHUB_PERSONAL_ACCESS_TOKEN=github_pat_xxxxxxxxxxxxxxxxxxxxxxxx
 ```
+
+(The GitHub PAT is **not** in `.env.local` — it's in `~/.claude/settings.json` because GitHub MCP is user-scope.)
 
 ## Making env vars visible to Claude Code (already wired in this repo)
 
@@ -62,6 +104,12 @@ direnv allow                              # authorize the .envrc
 
 - **Manual `set -a; source .env.local; set +a`** before `claude` — works but you have to remember.
 - **Per-MCP literal value in `.mcp.json`** — only acceptable if you also gitignore `.mcp.json`. Don't do this here.
+
+## Workspace trust
+
+Project-scope MCPs declared in `.mcp.json` need explicit **workspace trust** approval before their tools register into a Claude Code session. The trust dialog appears at session startup; if it never appears for you, run `claude mcp reset-project-choices` and restart `claude`.
+
+`claude mcp list` and `/doctor` both **bypass** the trust dialog — they spawn servers for health checks and report ✓ Connected even when the session lacks tool registration. So a green status from those is necessary but not sufficient — you have to actually *use* a tool to confirm.
 
 ## Adding / removing servers later
 
