@@ -2,6 +2,8 @@
 
 > Conventions for any Claude Code session in this repo. Loaded automatically.
 
+@AGENTS.md
+
 ## Project context
 
 **meetthefam** is a multi-tenant family-tree SaaS. Anyone can sign up, build a private family tree (50–200 people), invite editors, share a read-only link with relatives. Mobile-first, lightweight "meet-the-family" scope — names + photos + bios + simple parent / child / spouse relationships, no genealogy power-features.
