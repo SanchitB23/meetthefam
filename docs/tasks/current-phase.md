@@ -1,6 +1,4 @@
-# Current phase: −1 — Project AI infrastructure
-
-> Living checklist. Claude updates as work progresses; users review at any time.
+# Current phase: −1 — Project AI infrastructure (✅ done, awaiting fresh-session ship-gate verification)
 
 ## Goal
 
@@ -8,25 +6,39 @@ Set up everything Claude Code needs to be productive on this codebase before any
 
 **Ship gate**: from a fresh terminal in `/Users/sqb6461/Workspace/SelfProjects/meetthefam`, opening Claude Code:
 - Auto-loads `CLAUDE.md`
-- Has Tier 1 MCPs available (Supabase, Context7, GitHub, Vercel)
-- Has access to the three project subagents
+- Has Tier 1 MCPs available — `supabase`, `context7`, `github` from `.mcp.json` + `vercel` from user scope
+- Has access to the three project subagents (`supabase-engineer`, `frontend-engineer`, `test-engineer`)
 - Can answer "what's in the people table?" by reading `docs/architecture/data-model.md` without loading the full spec.
 
 ## Checklist
 
 - [x] Confirmation gate 1 — work directory name (`meetthefam`)
-- [x] Confirmation gate 2 — GitHub repo name + visibility (`meetthefam`, private)
+- [x] Confirmation gate 2 — GitHub repo name + visibility (`SanchitB23/meetthefam`, private)
 - [x] Confirmation gate 3 — SSH alias verification (`github-personal` exists in `~/.ssh/config`)
-- [x] Memory: save "always ask before commit" feedback memory
-- [x] Mini-task 1 — repo skeleton: work dir + `git init` + `.gitignore` + `.env.local.example` + placeholder `README.md` (committed: `0ffeebc`)
-- [ ] Mini-task 2 — knowledge base: `CLAUDE.md` + `docs/` tree (specs, architecture, ux, adrs, current-phase)
-- [ ] Mini-task 3 — project subagents: `.claude/agents/{supabase-engineer,frontend-engineer,test-engineer}.md`
-- [ ] Mini-task 4 — `.mcp.json` with Tier 1 MCP server definitions
-- [ ] Mini-task 5 — GitHub setup: install GitHub MCP via `claude mcp add`, create GitHub repo, set remote with `github-personal` alias, push initial commits
-- [ ] Phase −1 ship-gate verification — confirm all four ship-gate items pass
+- [x] Memory: "always ask before commit"
+- [x] Memory: "strict work/personal GitHub separation"
+- [x] **Mini-task 1** — repo skeleton: work dir + `git init` + `.gitignore` + `.env.local.example` + placeholder `README.md`. Commit `0ffeebc`.
+- [x] **Mini-task 2** — knowledge base: `CLAUDE.md` + `docs/` tree (specs, architecture, ux, adrs, current-phase, README). Commit `8dd64eb`.
+- [x] **Mini-task 3 + 4** — project subagents (3) + initial `.mcp.json` (Tier 1) + `docs/setup/mcp-servers.md`. Commit `0765c5f`.
+- [x] **Mini-task 5** — GitHub setup:
+  - [x] 5a — repo created on personal account (`SanchitB23/meetthefam`, private, web UI)
+  - [x] 5b — SSH remote with `github-personal` alias
+  - [x] 5c — pushed 3 commits to `origin/main`
+  - [x] 5d — `direnv` installed (v2.37.1) + `~/.zshrc` hook + `.envrc` + `.env.local` with PAT + `direnv allow` ✅
+  - [x] 5e — dropped redundant `vercel` from project `.mcp.json` (kept at user scope) + doc/CLAUDE.md cleanup
+- [ ] Phase −1 ship-gate verification — open a **fresh `claude` session** in this dir, confirm CLAUDE.md auto-loads, `claude mcp list` shows the 3 project MCPs as connected, and the agents are visible. **User runs this.**
+- [ ] PAT rotation reminder — once ship gate passes, revoke the chat-pasted PAT and mint a tighter fine-grained PAT scoped only to this repo. Update `.env.local`.
 
 ## What's next
 
-After Phase −1: **Phase 0 — Foundation.** Next.js 15 + Tailwind + shadcn/ui scaffolded; local Supabase stack running with all tables + RLS migrated; QA Supabase project + Vercel deployment from the `qa` branch; logged-in placeholder page proves auth + DB are wired end-to-end.
+After Phase −1 ship gate passes: **Phase 0 — Foundation.**
 
-See [`docs/specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → "v0.1" for full Phase 0 details.
+- `npx create-next-app@latest` with App Router + TypeScript + Tailwind
+- Add shadcn/ui
+- Initialize Supabase locally (`supabase init` then `supabase start`)
+- Author the first migration containing `profiles`, `trees`, `tree_members`, `people` tables + RLS policies
+- Create QA Supabase project on the hosted free tier; link Vercel deployment to the `qa` branch
+- "Logged-in placeholder" page proves auth + DB are wired end-to-end
+- Production Supabase project deferred until v0.1 ship
+
+See [`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → "v0.1" → Phase 0 row for the full Phase 0 ship gate.

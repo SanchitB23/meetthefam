@@ -66,12 +66,14 @@ Definitions live in [`.claude/agents/`](.claude/agents/).
 
 If a session has them available, prefer them over shelling out:
 
-| MCP | Use for |
-|---|---|
-| **Supabase MCP** | SQL queries, schema inspection, migrations, RLS policies |
-| **Context7 MCP** | Live docs for Next.js 15, Supabase, family-chart, Tailwind, shadcn/ui, react-hook-form |
-| **GitHub MCP** | Branches, PRs, issues, repo metadata |
-| **Vercel MCP** | Deployments, env vars, domains |
+| MCP | Scope | Use for |
+|---|---|---|
+| **Supabase MCP** | Project (`.mcp.json`) | SQL queries, schema inspection, migrations, RLS policies |
+| **Context7 MCP** | Project (`.mcp.json`) | Live docs for Next.js 15, Supabase, family-chart, Tailwind, shadcn/ui, react-hook-form |
+| **GitHub MCP** | Project (`.mcp.json`, project-specific PAT) | Branches, PRs, issues, repo metadata |
+| **Vercel MCP** | **User scope** (already configured in this user's `~/.claude/settings.json`) | Deployments, env vars, domains |
+
+Vercel is intentionally **not** in the project's `.mcp.json` — the user already has Vercel MCP at user scope, so duplicating at project scope would just waste a connection. See [`docs/setup/mcp-servers.md`](docs/setup/mcp-servers.md) for the full setup.
 
 If MCPs aren't available, fall back to shell + file edits.
 
