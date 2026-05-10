@@ -26,8 +26,8 @@ Set up everything Claude Code needs to be productive on this codebase before any
   - [x] 5c — pushed 3 commits to `origin/main`
   - [x] 5d — `direnv` installed (v2.37.1) + `~/.zshrc` hook + `.envrc` + `.env.local` with PAT + `direnv allow` ✅
   - [x] 5e — dropped redundant `vercel` from project `.mcp.json` (kept at user scope) + doc/CLAUDE.md cleanup
-- [ ] Phase −1 ship-gate verification — open a **fresh `claude` session** in this dir, confirm CLAUDE.md auto-loads, `claude mcp list` shows the 3 project MCPs as connected, and the agents are visible. **User runs this.**
-- [ ] PAT rotation reminder — once ship gate passes, revoke the chat-pasted PAT and mint a tighter fine-grained PAT scoped only to this repo. Update `.env.local`.
+- [x] Phase −1 ship-gate verification — fresh `claude` session in the repo: CLAUDE.md auto-loads, `claude mcp list` shows `supabase`, `context7`, `github` connected, agents visible, schema doc readable. `/doctor` flags `env:SUPABASE_ACCESS_TOKEN` and `env:GITHUB_PERSONAL_ACCESS_TOKEN` warnings — both confirmed cosmetic (Supabase token populates in Phase 0; GitHub PAT verified valid via direct API call returning `SanchitB23` + private-repo permissions).
+- ~~PAT rotation~~ — not needed; the existing fine-grained PAT is already scoped only to `SanchitB23/meetthefam`.
 
 ## What's next
 
