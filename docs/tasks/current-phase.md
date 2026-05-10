@@ -29,8 +29,8 @@ Per-sub-task TODOs (Next.js 16 idioms, MCP additions, image config) live in [`ph
 
 After all six sub-tasks land, before declaring Phase 0 done:
 
-- [ ] Drop `--turbopack` flag from `package.json` scripts (Next.js 16 makes it default — flag is a no-op).
-- [ ] Add `engines.node` to `package.json` (≥24.15.0, matching `.nvmrc`).
+- [x] Drop `--turbopack` flag from `package.json` scripts (Next.js 16 makes it default — flag is a no-op). *(never added — sub-task 1 scaffold shipped without it, commit `34d1aa4`)*
+- [x] Add `engines.node` to `package.json` (≥24.15.0, matching `.nvmrc`). *(landed in sub-task 1, commit `34d1aa4`)*
 - [ ] Add **Next.js Devtools MCP** to project `.mcp.json`; bump Tier 1 MCP table in `CLAUDE.md` from 4 → 5.
 - [ ] Update `docs/setup/mcp-servers.md` with the Devtools MCP install command.
 - [ ] Verify `claude mcp list` shows all 5 Tier 1 MCPs connected from a fresh session.
