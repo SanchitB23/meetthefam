@@ -6,7 +6,7 @@
 
 **meetthefam** is a multi-tenant family-tree SaaS. Anyone can sign up, build a private family tree (50–200 people), invite editors, share a read-only link with relatives. Mobile-first, lightweight "meet-the-family" scope — names + photos + bios + simple parent / child / spouse relationships, no genealogy power-features.
 
-Stack: Next.js 15 (App Router) on Vercel, Supabase (Postgres + Auth + Storage + Row-Level Security), Tailwind + shadcn/ui, [donatso/family-chart](https://github.com/donatso/family-chart) (D3, MIT) for tree rendering. **No separate backend** — all server logic in Next.js Server Actions and Route Handlers.
+Stack: Next.js 16 (App Router, Turbopack default) on Vercel, Supabase (Postgres + Auth + Storage + Row-Level Security), Tailwind v4 + shadcn/ui, [donatso/family-chart](https://github.com/donatso/family-chart) (D3, MIT) for tree rendering. **No separate backend** — all server logic in Next.js Server Actions and Route Handlers. See [`docs/adrs/0007-nextjs-16-and-async-idioms.md`](docs/adrs/0007-nextjs-16-and-async-idioms.md) for the Next.js 16 idioms we follow (async `params` / `cookies()`, `proxy.ts`, `updateTag()`, `refresh()`).
 
 ## Where to look first
 
@@ -69,7 +69,7 @@ If a session has them available, prefer them over shelling out:
 | MCP | Scope | Use for |
 |---|---|---|
 | **Supabase MCP** | Project (`.mcp.json`, `${env:SUPABASE_ACCESS_TOKEN}`) | SQL queries, schema inspection, migrations, RLS policies |
-| **Context7 MCP** | Project (`.mcp.json`, no auth) | Live docs for Next.js 15, Supabase, family-chart, Tailwind, shadcn/ui, react-hook-form |
+| **Context7 MCP** | Project (`.mcp.json`, no auth) | Live docs for Next.js 16, Supabase, family-chart, Tailwind v4, shadcn/ui, react-hook-form |
 | **`github-meetthefam`** | **User scope** (`~/.claude/settings.json`, HTTP at `https://api.githubcopilot.com/mcp` with literal PAT) | Branches, PRs, issues, repo metadata. **Name suffix is intentional** — the PAT is fine-grained-scoped to only `SanchitB23/meetthefam`, so any other call would 404. The custom name reminds you of that limit on every `claude mcp list` line. |
 | **Vercel MCP** | **User scope** (already configured) | Deployments, env vars, domains |
 

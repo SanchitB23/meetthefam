@@ -17,7 +17,8 @@ docs/
 
 | If you're working on… | Read first |
 |---|---|
-| Anything | [`tasks/current-phase.md`](tasks/current-phase.md) — know what phase we're in |
+| Anything | [`tasks/current-phase.md`](tasks/current-phase.md) — know what phase we're in. Cross-check [`tasks/phase-backlog.md`](tasks/phase-backlog.md) for phase-specific TODOs (Next.js 16 idioms, View Transitions, Devtools MCP). |
+| Next.js 16 conventions (async params, `proxy.ts`, `updateTag()`, `refresh()`) | [`adrs/0007-nextjs-16-and-async-idioms.md`](adrs/0007-nextjs-16-and-async-idioms.md) |
 | The DB schema, migrations, RLS | [`architecture/data-model.md`](architecture/data-model.md) + [`architecture/auth-and-rls.md`](architecture/auth-and-rls.md) |
 | Auth flows | [`architecture/auth-and-rls.md`](architecture/auth-and-rls.md) |
 | Photo upload | [`architecture/photo-upload.md`](architecture/photo-upload.md) |

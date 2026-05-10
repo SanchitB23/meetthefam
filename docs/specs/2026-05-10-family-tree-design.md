@@ -20,7 +20,7 @@ Driving constraints:
 ## Architecture (locked)
 
 ```
-[Vercel: Next.js 15 App Router]
+[Vercel: Next.js 16 App Router]
         │
         ├── React Server Components + Server Actions
         ├── Route Handlers for share-link / auth callbacks
@@ -263,7 +263,7 @@ MCPs (Model Context Protocol servers) plug specialized tools into Claude Code so
 | MCP | Why for this project | Setup |
 |---|---|---|
 | **Supabase MCP** | Run SQL, inspect schema, manage migrations and RLS policies, debug auth — without leaving the terminal | Official from `supabase-community` — needs a Supabase personal access token |
-| **Context7** | Pulls live docs for Next.js 15, Supabase, family-chart, Tailwind, shadcn/ui, react-hook-form. Cuts API-spec hallucinations dramatically | `@upstash/context7-mcp`; no auth needed |
+| **Context7** | Pulls live docs for Next.js 16, Supabase, family-chart, Tailwind, shadcn/ui, react-hook-form. Cuts API-spec hallucinations dramatically | `@upstash/context7-mcp`; no auth needed |
 | **GitHub MCP** | Branches, PRs, issues, repo operations from inside the Claude Code session | Official Anthropic — needs a GitHub fine-grained personal access token |
 | **Vercel MCP** | List / manage deployments, env vars, custom domains without flipping to the dashboard | Official Vercel MCP — needs a Vercel access token |
 
@@ -372,7 +372,7 @@ Goal: a clean repo where Claude Code sessions auto-load full project context —
 
 | # | Phase | Days | Driver tool | Done when |
 |---|---|---|---|---|
-| 0 | Foundation | 1–2 | Claude Code | Next.js 15 + Tailwind + shadcn/ui app scaffolded inside the Phase −1 repo; **local Supabase stack** (`supabase start`) running with all tables + RLS policies migrated; **QA Supabase project** created on the hosted free tier and pointed at by a Vercel deployment from the `qa` branch (production project deferred until v0.1 ship); a "logged-in placeholder" page proves auth + DB are wired end-to-end. |
+| 0 | Foundation | 1–2 | Claude Code | Next.js 16 + Tailwind v4 + shadcn/ui app scaffolded inside the Phase −1 repo; **local Supabase stack** (`supabase start`) running with all tables + RLS policies migrated; **QA Supabase project** created on the hosted free tier and pointed at by a Vercel deployment from the `qa` branch (production project deferred until v0.1 ship); a "logged-in placeholder" page proves auth + DB are wired end-to-end. |
 | 1 | Auth | 2–3 | Claude Code | Magic-link + Google OAuth login; sessions persist; `/dashboard` is protected. |
 | 2 | Tree CRUD + dashboard | 3–5 | Claude Code | Logged-in user can create / rename / delete trees; sees a list of their trees on `/dashboard`. |
 | 3 | People CRUD + linking | 4–7 | Claude Code | Add / edit / delete people; set spouse / parents / add child; bidirectional spouse sync works; cycle detection works. **No visualization yet** — verify via DB rows. |

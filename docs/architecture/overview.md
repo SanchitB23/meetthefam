@@ -3,7 +3,7 @@
 ## System shape
 
 ```
-[Vercel: Next.js 15 App Router]
+[Vercel: Next.js 16 App Router]
         │
         ├── React Server Components            (read paths)
         ├── Server Actions                     (write paths)
@@ -43,7 +43,7 @@ The 256-bit random `share_token` is the credential — no auth check beyond "doe
 
 | Layer | Choice | Rationale |
 |---|---|---|
-| Framework | Next.js 15 App Router | Server Components + Server Actions remove the need for a separate backend |
+| Framework | Next.js 16 App Router (Turbopack default) | Server Components + Server Actions remove the need for a separate backend. See [`../adrs/0007-nextjs-16-and-async-idioms.md`](../adrs/0007-nextjs-16-and-async-idioms.md) |
 | Hosting | Vercel | Tight Next.js integration, free Hobby tier |
 | DB | Supabase Postgres | Relational shape fits tree data; RLS for multi-tenancy |
 | Auth | Supabase Auth | Magic link + Google OAuth out of the box |
@@ -53,6 +53,22 @@ The 256-bit random `share_token` is the credential — no auth check beyond "doe
 | Tree visualization | family-chart (D3, MIT) | Best mobile UX for focus-person navigation |
 | Tests | Vitest + Playwright | Vitest for server / RLS, Playwright for E2E |
 
+## Next.js 16 idioms we follow
+
+Captured from the [Next.js 16 release notes](https://nextjs.org/blog/next-16) and the [v16 upgrade guide](https://nextjs.org/docs/app/guides/upgrading/version-16). Full rationale + adopt/defer table in [`../adrs/0007-nextjs-16-and-async-idioms.md`](../adrs/0007-nextjs-16-and-async-idioms.md).
+
+| Idiom | Where it shows up |
+|---|---|
+| **Async `params` / `searchParams`** — `await props.params` in pages and `generateMetadata` | `/tree/[id]/page.tsx`, `/share/[token]/route.ts`, `/dashboard/page.tsx` |
+| **Async `cookies()` / `headers()`** from `next/headers` — must be `await`ed | Every server-side Supabase client created with `@supabase/ssr` |
+| **`proxy.ts`** (not `middleware.ts`) for the auth boundary — runs on Node runtime | The auth gate landing in Phase 1 — see [`auth-and-rls.md`](auth-and-rls.md) |
+| **`updateTag(tag)`** in Server Actions — read-your-writes after mutations | Add / edit / delete person, link spouse, add child, rename tree |
+| **`refresh()`** in Server Actions — refresh uncached data without touching the cache | After photo upload, after toggling share-link on/off |
+| **`revalidateTag(tag, profile)`** with explicit `cacheLife` profile | If we ever introduce SWR-style cached reads of public share trees (deferred to v1.0) |
+| **`PageProps<'/route/[param]'>`** type helper for type-safe params | All route components |
+
+**Deferred until post-v0.1:** Cache Components (`"use cache"` + `cacheComponents: true`), React Compiler (`reactCompiler: true`), and View Transitions for tree navigation. Tracked in [`../tasks/phase-backlog.md`](../tasks/phase-backlog.md).
+
 ## Cross-references
 
 - DB schema details → [`data-model.md`](data-model.md)
@@ -60,3 +76,5 @@ The 256-bit random `share_token` is the credential — no auth check beyond "doe
 - Photo upload pipeline → [`photo-upload.md`](photo-upload.md)
 - Share link mechanics → [`share-link.md`](share-link.md)
 - Pages / routes → [`../ux/pages-and-routes.md`](../ux/pages-and-routes.md)
+- Next.js 16 conventions → [`../adrs/0007-nextjs-16-and-async-idioms.md`](../adrs/0007-nextjs-16-and-async-idioms.md)
+- Per-phase backlog (Next.js 16 idioms, View Transitions, Devtools MCP) → [`../tasks/phase-backlog.md`](../tasks/phase-backlog.md)

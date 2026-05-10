@@ -20,8 +20,13 @@ User picks an image
   Server Action updates people.photo_url
        │
        ▼
-  revalidatePath('/tree/[id]')   →   client re-renders with new avatar
+  refresh()   (Next.js 16, Server Actions only)
+       │   refreshes the uncached avatar without touching cached tree shells
+       ▼
+  client re-renders with new avatar
 ```
+
+> **Why `refresh()` and not `revalidatePath()`:** in Next.js 16, `refresh()` (new, Server-Actions-only) refreshes uncached dynamic data without invalidating the page's cached shell. For a single-avatar mutation we don't need to re-render the whole tree page. If the avatar's `<img src>` *is* cached (e.g. the URL is tag-keyed), pair `refresh()` with `updateTag('person:<id>')` for read-your-writes semantics. See [`../adrs/0007-nextjs-16-and-async-idioms.md`](../adrs/0007-nextjs-16-and-async-idioms.md).
 
 ## Client-side resize
 
@@ -67,3 +72,22 @@ For 100 active trees averaging 50 people with photos = 5,000 photos. Comfortably
 The `photos` bucket is public-read. A photo URL is `https://<project>.supabase.co/storage/v1/object/public/photos/trees/<tree_id>/people/<person_id>/avatar.jpg`.
 
 The path itself is unguessable (UUIDs both for tree and person), so we accept that anyone with the URL can view the photo — same security model as Slack's image links.
+
+## `next/image` config (Next.js 16)
+
+Photo `<img>` tags use `next/image` for automatic resizing + WebP. Next.js 16 changed several `images.*` defaults — set them explicitly in `next.config.ts` so behavior is predictable across upgrades:
+
+```ts
+// next.config.ts (Phase 5)
+const nextConfig = {
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: '*.supabase.co', pathname: '/storage/v1/object/public/photos/**' },
+    ],
+    qualities: [75],            // explicit (default is now [75], not [1..100])
+    minimumCacheTTL: 14400,     // 4h — matches the v16 default but pinned for clarity
+  },
+}
+```
+
+We do **not** need `images.localPatterns` — all photos live on Supabase, never in `/public`.

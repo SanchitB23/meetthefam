@@ -9,8 +9,32 @@
 ## Session management
 
 - Supabase session lives in a secure `httpOnly` cookie, set by `@supabase/ssr`.
-- Server Components and Server Actions read the session via `createServerClient(...)` from `@supabase/ssr` — pattern documented in the Supabase Next.js guide (use Context7 MCP to fetch the current version's snippet).
+- Server Components and Server Actions read the session via `createServerClient(...)` from `@supabase/ssr`. **In Next.js 16 `cookies()` and `headers()` from `next/headers` are async** — every server-side Supabase client must `await` them when wiring the cookie adapter. Use Context7 MCP for the current snippet.
 - Client Components that need the session use `createBrowserClient(...)`.
+
+## Auth boundary — `proxy.ts`, not `middleware.ts`
+
+Phase 1 introduces the auth gate that protects `/dashboard`, `/tree/*`, etc. **Use `proxy.ts` at the repo root, not `middleware.ts`.** Reasons:
+
+- Next.js 16 deprecated `middleware.ts` in favor of `proxy.ts` to make the network boundary explicit.
+- `proxy.ts` runs on the Node.js runtime — required for `@supabase/ssr` (Edge runtime can't reach our Supabase URL with full functionality).
+- The exported function is `proxy`, not `middleware`. Same `NextRequest` / `NextResponse` API.
+
+```ts
+// proxy.ts
+import { NextResponse, type NextRequest } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
+
+export async function proxy(request: NextRequest) {
+  // ...refresh session, redirect unauthenticated traffic to /login
+}
+
+export const config = {
+  matcher: ['/((?!_next|.*\\..*|share).*)'],  // skip /share/[token] — auth not required there
+}
+```
+
+See [`../adrs/0007-nextjs-16-and-async-idioms.md`](../adrs/0007-nextjs-16-and-async-idioms.md) for the broader rationale.
 
 ## Auth UI
 
