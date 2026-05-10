@@ -16,8 +16,8 @@ Land the working app skeleton — Next.js 16 + Tailwind + shadcn/ui + local Supa
 
 One Claude session per sub-task, per CLAUDE.md ("One Claude session per logical task").
 
-- [ ] **Sub-task 1** — Next.js 16 scaffold: `pnpm create next-app@latest .` with App Router + TS + Tailwind v4 + ESLint + `src/`; Node pinned to 24.15.0 via `.nvmrc`; `pnpm typecheck`/`pnpm lint`/`pnpm dev` all pass. *(in progress)*
-- [ ] **Sub-task 2** — shadcn/ui init: `pnpm dlx shadcn@latest init` with project-matching theme; verify `pnpm dlx shadcn@latest add button` works.
+- [x] **Sub-task 1** — Next.js 16 scaffold: `pnpm create next-app@latest .` with App Router + TS + Tailwind v4 + ESLint + `src/`; Node pinned to 24.15.0 via `.nvmrc`; `pnpm typecheck`/`pnpm lint`/`pnpm dev` all pass. *(commit `34d1aa4`)*
+- [x] **Sub-task 2** — shadcn/ui init: `pnpm dlx shadcn@latest init --defaults` (`base-nova` preset on Base UI); custom heirloom-journal OKLCH palette + Cormorant Garamond / Manrope fonts; `pnpm dlx shadcn@latest add button` verified. *(commit `0dd1ae6`)*
 - [ ] **Sub-task 3** — Local Supabase stack: `supabase init` + `supabase start` (Docker required).
 - [ ] **Sub-task 4** — First migration via the **`supabase-engineer`** subagent: `profiles`, `trees`, `tree_members`, `people` + RLS policies per [`../architecture/data-model.md`](../architecture/data-model.md) and [`../architecture/auth-and-rls.md`](../architecture/auth-and-rls.md).
 - [ ] **Sub-task 5** — QA Supabase project on the hosted free tier; Vercel deployment off the `qa` branch. (Production project deferred until v0.1 ship — see [`../adrs/0005-three-environments.md`](../adrs/0005-three-environments.md).)

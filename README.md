@@ -16,7 +16,7 @@ A multi-tenant family tree web app. Sign up, build a family tree, invite editors
 
 - Next.js 16 (App Router, Turbopack default) on Vercel — see [`docs/adrs/0007-nextjs-16-and-async-idioms.md`](docs/adrs/0007-nextjs-16-and-async-idioms.md)
 - Supabase (Postgres + Auth + Storage + Row-Level Security)
-- Tailwind + shadcn/ui
+- Tailwind v4 + shadcn/ui (`base-nova` preset on Base UI primitives)
 - [donatso/family-chart](https://github.com/donatso/family-chart) for tree rendering
 - Vitest (RLS + server-action tests) + Playwright (E2E happy paths)
 

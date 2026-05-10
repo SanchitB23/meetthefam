@@ -9,7 +9,7 @@ No tokens are committed — project-scope tokens are referenced via `${env:VAR_N
 | Name | Type / Source | Token env var | Purpose |
 |---|---|---|---|
 | `supabase` | stdio — `@supabase/mcp-server-supabase@latest` | `SUPABASE_ACCESS_TOKEN` | SQL queries, schema, migrations, RLS |
-| `context7` | stdio — `@upstash/context7-mcp@latest` | *(none)* | Live docs for Next.js, Supabase, family-chart, Tailwind, shadcn |
+| `context7` | stdio — `@upstash/context7-mcp@latest` | *(none)* | Live docs for Next.js, Supabase, family-chart, Tailwind, shadcn, **Base UI**, **Lucide 1.x** |
 
 These two use stdio servers with `${env:VAR}` interpolation in their `env` block. Claude Code reliably resolves env-var references in stdio configs, so the PAT stays in `.env.local` (gitignored, loaded by direnv) and `.mcp.json` itself is safe to commit.
 

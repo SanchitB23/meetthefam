@@ -48,7 +48,7 @@ The 256-bit random `share_token` is the credential — no auth check beyond "doe
 | DB | Supabase Postgres | Relational shape fits tree data; RLS for multi-tenancy |
 | Auth | Supabase Auth | Magic link + Google OAuth out of the box |
 | Object storage | Supabase Storage | Single vendor, signed-URL-free public reads |
-| UI components | shadcn/ui on Tailwind | Customizable, no vendor SDK |
+| UI components | shadcn/ui (`base-nova` / Base UI) on Tailwind v4 | Customizable, no vendor SDK; Base UI primitives (not Radix) per shadcn 3.x default |
 | Form library | react-hook-form | Industry standard for this scope |
 | Tree visualization | family-chart (D3, MIT) | Best mobile UX for focus-person navigation |
 | Tests | Vitest + Playwright | Vitest for server / RLS, Playwright for E2E |

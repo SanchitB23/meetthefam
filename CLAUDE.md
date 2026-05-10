@@ -52,6 +52,12 @@ Definitions live in [`.claude/agents/`](.claude/agents/).
 - Run relevant tests (`pnpm test`) when the change touches a tested area.
 - Components: prefer Server Components; use `'use client'` only for components that need state, effects, or browser APIs.
 
+### UI primitives
+
+- **shadcn/ui is on the `base-nova` preset (shadcn 3.x default), which builds on [Base UI](https://base-ui.com/) (`@base-ui/react`) — *not* Radix.** When pulling component code, docs, or examples, search for "shadcn base-nova" / "@base-ui/react". Older guides referencing `@radix-ui/react-*` imports are out of date for this repo. Verify via Context7 (`/shadcn-ui/ui` at version `shadcn_3.5.0` or later) before importing primitives.
+- **Lucide is on `lucide-react@1.x`** (the recent 0.x → 1.0 jump). Some icon names changed in the 1.0 cleanup. Always verify icon names via Context7 (`/lucide-icons/lucide`) or the live shadcn registry before importing — don't trust 0.x examples in training data.
+- **Theme tokens live in `src/app/globals.css`** — the heirloom-journal palette (cream `--background`, forest-green `--primary`, terracotta `--accent`, charcoal `--foreground`) in OKLCH. Don't hard-code hex; reference tokens via Tailwind utilities (`bg-primary`, `text-foreground`, `border-border`, etc.). Fonts: Cormorant Garamond (`--font-serif`, headings) + Manrope (`--font-sans`, body) wired through `next/font` in `src/app/layout.tsx`. Dark-mode tokens are placeholder shadcn defaults — proper dark-mode tuning is deferred to Phase 8 polish.
+
 ### Files
 
 - Never write secrets in committed files. Tokens live in `.env.local` (gitignored).
