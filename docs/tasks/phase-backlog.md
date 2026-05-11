@@ -8,6 +8,7 @@ For Next.js 16 idiom rationale, see [`../adrs/0007-nextjs-16-and-async-idioms.md
 
 ## Phase 0 — Foundation (close-out)
 
+- [ ] **Wire Vercel Analytics + Speed Insights** — `pnpm add @vercel/analytics @vercel/speed-insights`, then mount `<Analytics />` (from `@vercel/analytics/next`) and `<SpeedInsights />` (from `@vercel/speed-insights/next`) inside `<body>` in [`src/app/layout.tsx`](../../src/app/layout.tsx). Both packages are zero-config on Vercel and capture data from first deploy — landing them now (right after the project goes live) avoids a gap in the analytics record. Verify in the Vercel dashboard → Analytics tab after the next deploy.
 - [ ] **Drop `--turbopack` flag** from `package.json` scripts — Turbopack is the default in Next.js 16; the flag is a no-op. Per the [v16 upgrade guide](https://nextjs.org/docs/app/guides/upgrading/version-16).
 - [ ] **Add `engines.node`** to `package.json` (`>=24.15.0` matching `.nvmrc`).
 - [ ] **Add Next.js Devtools MCP** to project `.mcp.json` once `pnpm dev` is wired — see [Next.js MCP docs](https://nextjs.org/docs/app/guides/mcp). Bumps Tier 1 MCPs from 4 → 5; update [`CLAUDE.md`](../../CLAUDE.md) and [`docs/setup/mcp-servers.md`](../setup/mcp-servers.md) when added.
