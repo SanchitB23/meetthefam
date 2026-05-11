@@ -45,6 +45,43 @@ Definitions live in [`.claude/agents/`](.claude/agents/).
 - Co-author footer on every Claude-generated commit:
   `Co-Authored-By: Claude <noreply@anthropic.com>`
 
+### Git workflow — forward-promotion model
+
+Code flows in one direction: `local → qa → main → production`. Never commit directly to `main`.
+
+```
+local → qa → main → production
+         ↑           ↑
+     verify here  deploys here
+```
+
+- **Always commit and push to `qa` first.** The Vercel QA preview rebuilds at `meetthefam-git-qa-*.vercel.app` against the QA Supabase project (per [ADR 0005](docs/adrs/0005-three-environments.md)).
+- **`qa` is scratch space.** WIP commits, force-pushes, rebases — all fine on `qa` as long as you're the only one working on it.
+- **Promote with `git merge qa --ff-only`** from `main`. Fast-forward only — no merge bubble on `main`. If the fast-forward refuses, something has drifted; investigate (probably `git reset --hard qa` on `main` is the answer for a solo dev) but never `--no-ff` here.
+- **Hotfix exception**: if production breaks and `qa` has un-shipped work, branch off `main` for the fix, then forward-port to `qa` afterwards.
+- **Promotion to `main` is a release event** — see "Releases" below.
+
+### Releases
+
+Every promotion to `main` produces a versioned release. Full rationale in [ADR 0009 — Versioning and releases](docs/adrs/0009-versioning-and-releases.md).
+
+- **Versioning**: phase-anchored SemVer. Pre-Phase-5: `0.0.x` (patch per deploy). `v0.1.0` = Phase 5 complete (personal MVP). `v1.0.0` = Phase 9 complete (multi-tenant launch). Post-v1.0: strict Conventional Commits → SemVer.
+- **Tooling**: `pnpm version <patch|minor|major>` bumps `package.json` and creates an annotated `v`-prefixed git tag atomically.
+- **Release steps** (after qa→main merge):
+
+  ```bash
+  pnpm version patch                    # bumps + tags
+  git push origin main --follow-tags    # pushes commit + tag
+  # GitHub Release (gh CLI unavailable — org login, not personal):
+  curl -X POST \
+    -H "Authorization: Bearer $GITHUB_PERSONAL_ACCESS_TOKEN" \
+    -H "Accept: application/vnd.github+json" \
+    https://api.github.com/repos/SanchitB23/meetthefam/releases \
+    -d '{"tag_name":"vX.Y.Z","name":"vX.Y.Z","generate_release_notes":true,"prerelease":true}'
+  ```
+
+  Mark `prerelease: true` until `v1.0.0`. CI automation deferred to v1.0 — a human gate before tagging earns its keep at solo-dev release volume.
+
 ### Code
 
 - TypeScript strict mode. No `any` unless absolutely necessary and commented why.
@@ -91,7 +128,7 @@ If an MCP isn't available in your session, fall back to shell + file edits.
 
 ## Phasing at a glance
 
-- **Phase −1** — Project AI infrastructure (CLAUDE.md, docs, agents, .mcp.json) — current
+- **Phase −1** — Project AI infrastructure (CLAUDE.md, docs, agents, .mcp.json)
 - **Phase 0** — Foundation: Next.js + Supabase scaffolded
 - **Phases 1–5** — v0.1 (personal MVP): auth, tree CRUD, people CRUD, visualization, photos
 - **Phases 6–9** — v1.0 (multi-tenant launch): collaboration, share link, visual polish, QA + launch
