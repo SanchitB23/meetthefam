@@ -41,13 +41,24 @@ Every tag gets a GitHub Release, marked `prerelease: true` until `v1.0.0`. Relea
 
 ### 4. Manual tooling (no CI automation yet)
 
-The release process is run by the human after each `qa→main` promotion:
+The release process is run by the human after each `qa→main` promotion. **Always confirm `gh auth status` shows `SanchitB23` as the active account before any release operation** — the org account (`SQB6461_YUMGHCP`) is also logged in on this machine, and releasing under that identity would create the release on the wrong repo (or fail outright since `SQB6461_YUMGHCP` has no access to `SanchitB23/meetthefam`).
 
 ```bash
+gh auth status                          # MUST show SanchitB23 active
 git checkout main
 git merge qa --ff-only
-pnpm version patch                    # or minor/major
+pnpm version patch                      # or minor / major
 git push origin main --follow-tags
+gh release create vX.Y.Z \
+  --repo SanchitB23/meetthefam \
+  --title "vX.Y.Z — <summary>" \
+  --notes-file /tmp/vX.Y.Z-notes.md \
+  --prerelease                          # drop --prerelease starting v1.0.0
+```
+
+**Fallback for environments without `gh`** (CI, or a fresh machine before `gh auth login`): curl to the GitHub REST API using `$GITHUB_PERSONAL_ACCESS_TOKEN` from `.env.local` (loaded by direnv, fine-grained-scoped to `SanchitB23/meetthefam`):
+
+```bash
 curl -X POST \
   -H "Authorization: Bearer $GITHUB_PERSONAL_ACCESS_TOKEN" \
   -H "Accept: application/vnd.github+json" \
@@ -55,7 +66,7 @@ curl -X POST \
   -d '{"tag_name":"vX.Y.Z","name":"vX.Y.Z","generate_release_notes":true,"prerelease":true}'
 ```
 
-The `gh` CLI is not available — it's logged into the user's organization GitHub account, not the personal one that hosts this repo. The `curl` form uses the fine-grained `GITHUB_PERSONAL_ACCESS_TOKEN` from `.env.local` (loaded by direnv), which is already scoped to `SanchitB23/meetthefam` only. The GitHub MCP currently has only read-tools for releases (no `create_release`), so the API route is the working option.
+The GitHub MCP currently has only read-tools for releases (no `create_release`), so the API route is the working fallback when `gh` is unavailable.
 
 ### 5. Baseline at v0.0.0
 
@@ -79,5 +90,10 @@ The `gh` CLI is not available — it's logged into the user's organization GitHu
 
 - [SemVer 2.0.0](https://semver.org/)
 - [Conventional Commits 1.0.0](https://www.conventionalcommits.org/)
+- [GitHub CLI — `gh release create`](https://cli.github.com/manual/gh_release_create)
 - [GitHub REST API — Create a release](https://docs.github.com/en/rest/releases/releases#create-a-release)
 - [ADR 0005 — Three environments](0005-three-environments.md) — the `qa→main` promotion is what triggers a release
+
+## Amendments
+
+- **2026-05-12** — Promoted `gh release create` to the primary release command and demoted the `curl` form to a fallback. The original §4 (in `v0.0.0`'s ADR) claimed `gh` was unavailable because it was logged into the user's org account — that was incorrect at the time of writing. Both `SanchitB23` (personal) and `SQB6461_YUMGHCP` (org) are logged in on this machine, with `SanchitB23` set as the active account, and `gh release create` works against this repo. The `v0.0.0` release was itself created via `gh release create`, demonstrating the path. §4 was rewritten accordingly, and a "verify `gh auth status` first" step was prepended to guard against accidentally operating under the org identity.

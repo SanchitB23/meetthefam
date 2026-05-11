@@ -1,43 +1,63 @@
-# Current phase: 0 — Foundation (in progress)
+# Current phase: 1 — Auth (in progress)
 
 ## Goal
 
-Land the working app skeleton — Next.js 16 + Tailwind + shadcn/ui + local Supabase + first migration + a logged-in placeholder page proving auth + DB are wired end-to-end. Per the spec ([`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → "v0.1" → Phase 0 row).
+Take auth from the Phase 0 sub-task 6 proof to a production-ready boundary. Add Google OAuth as a secondary sign-in path, enforce auth at the edge via `proxy.ts` (not in-page redirects), and give the signed-in user a way to actually sign out. Per the spec ([`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → "v0.1" → Phase 1 row), [`../architecture/auth-and-rls.md`](../architecture/auth-and-rls.md), and [ADR 0007](../adrs/0007-nextjs-16-and-async-idioms.md) on `proxy.ts` over `middleware.ts`.
 
-**Ship gate**: from a fresh terminal in this repo,
-- `pnpm install && pnpm dev` boots the Next.js app at `http://localhost:3000`
-- `supabase start` brings up the local Postgres + Auth + Storage stack
-- A migration applied to that local DB has all four tables (`profiles`, `trees`, `tree_members`, `people`) + RLS policies
-- A QA Supabase project exists on the hosted free tier and a Vercel preview off the `qa` branch reads from it
-- A logged-in placeholder page shows a real authenticated user from the DB
-- All five Tier 1 MCPs (`supabase`, `context7`, `github-meetthefam`, `vercel`, **`nextjs-devtools`**) connect from a fresh `claude` session
+**Ship gate**:
+
+- Magic-link sign-in (from Phase 0) still works end-to-end on local + QA.
+- Google OAuth one-click sign-in works end-to-end on local + QA.
+- Hitting `/dashboard` while unauthenticated triggers an **edge-side** redirect to `/login` from `proxy.ts` — verified by checking that no in-page `redirect('/login')` fires (browser DevTools Network tab shows a 307 from `/dashboard` itself, not a 200 with a client-side redirect).
+- Hitting `/share/<random-token>` does NOT trigger the auth boundary (matcher explicitly skips it). 404 from the route handler, not a redirect to `/login`.
+- A "Sign out" button on `/dashboard` clears the session and returns the user to `/login`.
 
 ## Sub-tasks
 
 One Claude session per sub-task, per CLAUDE.md ("One Claude session per logical task").
 
-- [x] **Sub-task 1** — Next.js 16 scaffold: `pnpm create next-app@latest .` with App Router + TS + Tailwind v4 + ESLint + `src/`; Node pinned to 24.15.0 via `.nvmrc`; `pnpm typecheck`/`pnpm lint`/`pnpm dev` all pass. *(commit `34d1aa4`)*
-- [x] **Sub-task 2** — shadcn/ui init: `pnpm dlx shadcn@latest init --defaults` (`base-nova` preset on Base UI); custom heirloom-journal OKLCH palette + Cormorant Garamond / Manrope fonts; `pnpm dlx shadcn@latest add button` verified. *(commit `0dd1ae6`)*
-- [x] **Sub-task 3** — Local Supabase stack: `supabase init` + `supabase start` (Docker required). *Supabase CLI 2.98.2 installed as project dev-dep with `pnpm.onlyBuiltDependencies` permitting its postinstall; stack up at API `:54321`, DB `:54322`, Studio `:54323`, Mailpit `:54324`. (No commit hash yet — landing in this commit.)*
-- [x] **Sub-task 4** — First migration via the **`supabase-engineer`** subagent: `profiles`, `trees`, `tree_members`, `people` + RLS policies per [`../architecture/data-model.md`](../architecture/data-model.md) and [`../architecture/auth-and-rls.md`](../architecture/auth-and-rls.md). Includes the `tone` column + deterministic `BEFORE INSERT` trigger, the profile-on-signup trigger, and `supabase/seed.sql` with the 13-person Smith Family Demo. RLS smoke-checked: anon blocked, other authenticated user blocked, demo user sees their 13 people. *(commit `846cdfb`)*
-- [x] **Sub-task 5** — QA Supabase project on the hosted free tier; Vercel deployment off the `qa` branch. *Single Vercel project `meetthefam` (prj_Sg2X6N6UTnXIVFFOmDtHssUNa6eI) with branch-targeted env vars instead of two projects — Vercel's native Production/Preview/Development env-var scoping handles the QA↔prod split, and ADR 0005's "feature-branch previews share QA Supabase" falls out for free. QA Supabase project: `meetthefam-qa` (ref `ljjvwtpifmoshfknlbaj`, `ap-south-1`). Initial schema migration applied to QA. `qa` branch pushed and Vercel preview is `READY` at `meetthefam-git-qa-sanchit-bhatnagars-projects.vercel.app`; production `main` is `READY` at `meetthefam.vercel.app`. (Production Supabase project deferred until v0.1 ship — see [`../adrs/0005-three-environments.md`](../adrs/0005-three-environments.md); ADR will be amended to reflect the single-Vercel-project pattern.) *(commit `ce72df9`)*
-- [x] **Sub-task 6** — Logged-in placeholder page: magic-link login → `/dashboard` shows the user's email from `auth.users`. Proves auth + DB end-to-end. *Installed `@supabase/ssr@0.10.3` + `@supabase/supabase-js@2.105.4`. PKCE magic-link flow via `/login` (Server Component + Server Action) → Mailpit-delivered email → `/auth/callback` Route Handler runs `exchangeCodeForSession` → cookie set → `/dashboard` Server Component reads user via `supabase.auth.getUser()`. `supabase/config.toml` `site_url` corrected to `http://localhost:3000` so redirects resolve. Verified locally end-to-end. (commit `7e5346b`)*
+- [ ] **Sub-task 1** — **Google OAuth secondary sign-in**. "Continue with Google" button on `/login`. Extend `/auth/callback/route.ts` to handle the OAuth code branch (the PKCE code-exchange path is already there; OAuth uses the same `exchangeCodeForSession` mechanism). Configure the Google provider in local `supabase/config.toml` AND in the QA Supabase project dashboard (client_id / client_secret). Verify on local (direct browser redirect to Google, not Mailpit) and on QA (real Google account). See [`../architecture/auth-and-rls.md`](../architecture/auth-and-rls.md) → "Auth mechanisms" and [ADR 0004](../adrs/0004-magic-link-only-no-passwords.md).
+- [ ] **Sub-task 2** — **`proxy.ts` auth boundary**. Create `proxy.ts` at the repo root (NOT `middleware.ts` — per [ADR 0007](../adrs/0007-nextjs-16-and-async-idioms.md)). Export `proxy`, run on the Node.js runtime, refresh session via `@supabase/ssr`, redirect unauthenticated traffic to `/login`. Matcher: `['/((?!_next|.*\\..*|share).*)']` — explicitly skip `/share/[token]` and static assets. Once `proxy.ts` is in place, remove the in-page `if (!user) redirect('/login')` from `src/app/dashboard/page.tsx` — the proxy handles it now and we want a single source of truth.
+- [ ] **Sub-task 3** — **Sign-out**. Server Action `signOut()` (probably `src/app/dashboard/actions.ts`) that calls `supabase.auth.signOut()` then `redirect('/login')`. "Sign out" button on `/dashboard` that submits to the action. After this, the auth proof from Phase 0 sub-task 6 can be exercised end-to-end in a full loop: sign in → `/dashboard` shows email → sign out → back to `/login`.
 
-Per-sub-task TODOs (Next.js 16 idioms, MCP additions, image config) live in [`phase-backlog.md`](phase-backlog.md). **Always read that file when entering a sub-task.**
+Per-sub-task TODOs (Next.js 16 idioms, image config) live in [`phase-backlog.md`](phase-backlog.md). **Always read that file when entering a sub-task.**
 
-## Phase 0 close-out checklist
+---
 
-After all six sub-tasks land, before declaring Phase 0 done:
+## Previous phase: 0 — Foundation (✅ closed)
 
-- [x] Drop `--turbopack` flag from `package.json` scripts (Next.js 16 makes it default — flag is a no-op). *(never added — sub-task 1 scaffold shipped without it, commit `34d1aa4`)*
-- [x] Add `engines.node` to `package.json` (≥24.15.0, matching `.nvmrc`). *(landed in sub-task 1, commit `34d1aa4`)*
-- [x] Add **Next.js Devtools MCP** to project `.mcp.json`; bump Tier 1 MCP table in `CLAUDE.md` from 4 → 5. *(landed in this commit)*
-- [x] Update `docs/setup/mcp-servers.md` with the Devtools MCP install command. *(landed in this commit)*
-- [x] Verify `claude mcp list` shows all 5 Tier 1 MCPs connected from a fresh session. *(user-side verification — confirmed all 5 connected)*
-- [x] **Wire `@vercel/analytics` + `@vercel/speed-insights`** in `src/app/layout.tsx` so analytics capture starts from first deploy. *(landed in this commit)*
-- [x] **Palette refinement to match Kintree** (per [ADR 0008](../adrs/0008-design-system.md)) — `src/app/globals.css` migrated to two-tone (cream `--background` + paper `--card`) and seeded the 5 TONES CSS vars. *(landed in the same commit as ADR 0008)*
+Closed with **`v0.0.0`** — the project's conventions baseline tag. See [release notes](https://github.com/SanchitB23/meetthefam/releases/tag/v0.0.0).
 
-See [`../adrs/0007-nextjs-16-and-async-idioms.md`](../adrs/0007-nextjs-16-and-async-idioms.md) for why we baseline on Next.js 16 and which v16 idioms get adopted now vs. deferred.
+**Ship gate (met)**:
+
+- `pnpm install && pnpm dev` boots Next.js at `http://localhost:3000`.
+- `supabase start` brings up the local Postgres + Auth + Storage stack.
+- Migration applied locally has all four tables (`profiles`, `trees`, `tree_members`, `people`) + RLS policies.
+- QA Supabase project exists on the free tier; Vercel preview off `qa` reads from it.
+- Logged-in placeholder page (`/dashboard`) shows a real authenticated user from the DB.
+- All 5 Tier 1 MCPs (`supabase`, `context7`, `github-meetthefam`, `vercel`, `nextjs-devtools`) connect from a fresh `claude` session.
+
+**Sub-tasks (all closed)**:
+
+- [x] **Sub-task 1** — Next.js 16 scaffold (App Router + TS + Tailwind v4 + ESLint + `src/`; Node pinned to 24.15.0). *(commit `34d1aa4`)*
+- [x] **Sub-task 2** — shadcn/ui init (`base-nova` preset on Base UI); heirloom-journal OKLCH palette + Cormorant Garamond / Manrope fonts. *(commit `0dd1ae6`)*
+- [x] **Sub-task 3** — Local Supabase stack via `supabase init` + `supabase start`; CLI 2.98.2 installed as dev-dep with `pnpm.onlyBuiltDependencies` whitelist. *(landed in `846cdfb`)*
+- [x] **Sub-task 4** — First migration via the **`supabase-engineer`** subagent: `profiles`, `trees`, `tree_members`, `people` + RLS policies + `tone` trigger + profile-on-signup trigger + Smith Family Demo seed (13 people). RLS smoke-checked. *(commit `846cdfb`)*
+- [x] **Sub-task 5** — QA Supabase project `meetthefam-qa` (`ljjvwtpifmoshfknlbaj`, `ap-south-1`); single Vercel project with branch-targeted env vars. QA preview READY at `meetthefam-git-qa-sanchit-bhatnagars-projects.vercel.app`, production at `meetthefam.vercel.app` + `mtf.sanchitb23.in`. *(commit `ce72df9`)*
+- [x] **Sub-task 6** — Magic-link login → `/dashboard` showing user's email; PKCE flow via `/login` → `/auth/callback` → cookie set → server-side `getUser()`. UX polish: `useFormStatus` spinner + email in confirmation card. *(commits `7e5346b`, `d48d395`)*
+
+**Phase 0 close-out** (all done):
+
+- [x] Drop `--turbopack` flag from scripts (never added — `34d1aa4`).
+- [x] Add `engines.node` ≥ 24.15.0 to `package.json` (`34d1aa4`).
+- [x] Add Next.js Devtools MCP to `.mcp.json`; bump Tier 1 MCP table from 4 → 5 (`f107e7b`).
+- [x] Update `docs/setup/mcp-servers.md` with the Devtools MCP install command (`f107e7b`).
+- [x] Verify `claude mcp list` shows all 5 Tier 1 MCPs connected from a fresh session (user-confirmed).
+- [x] Wire `@vercel/analytics` + `@vercel/speed-insights` in `src/app/layout.tsx` (`f107e7b`).
+- [x] Palette refinement to match Kintree per [ADR 0008](../adrs/0008-design-system.md) — `globals.css` migrated to two-tone + 5 TONES CSS vars.
+- [x] Conventions baseline: `qa → main` workflow + phase-anchored SemVer + release process pinned. *(commit `dd1c3e1`, tagged `v0.0.0`)*
+
+See [ADR 0007](../adrs/0007-nextjs-16-and-async-idioms.md) for the Next.js 16 idioms baseline and [ADR 0009](../adrs/0009-versioning-and-releases.md) for the release process Phase 0 established.
 
 ---
 

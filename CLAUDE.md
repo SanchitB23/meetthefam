@@ -70,17 +70,28 @@ Every promotion to `main` produces a versioned release. Full rationale in [ADR 0
 - **Release steps** (after qa→main merge):
 
   ```bash
-  pnpm version patch                    # bumps + tags
-  git push origin main --follow-tags    # pushes commit + tag
-  # GitHub Release (gh CLI unavailable — org login, not personal):
-  curl -X POST \
-    -H "Authorization: Bearer $GITHUB_PERSONAL_ACCESS_TOKEN" \
-    -H "Accept: application/vnd.github+json" \
-    https://api.github.com/repos/SanchitB23/meetthefam/releases \
-    -d '{"tag_name":"vX.Y.Z","name":"vX.Y.Z","generate_release_notes":true,"prerelease":true}'
+  # 0. ALWAYS confirm gh is on the SanchitB23 (personal) account, not
+  #    the org one (SQB6461_YUMGHCP). Both are logged in on this machine.
+  gh auth status
+
+  # 1. Bump version + tag (pnpm version creates the annotated tag)
+  pnpm version patch                       # or minor / major
+
+  # 2. Push commit + tag
+  git push origin main --follow-tags
+
+  # 3. Create the GitHub Release. Write notes to a tmp file first —
+  #    multi-line markdown is awkward as a flag value.
+  gh release create vX.Y.Z \
+    --repo SanchitB23/meetthefam \
+    --title "vX.Y.Z — <summary>" \
+    --notes-file /tmp/vX.Y.Z-notes.md \
+    --prerelease                           # drop --prerelease starting v1.0.0
   ```
 
-  Mark `prerelease: true` until `v1.0.0`. CI automation deferred to v1.0 — a human gate before tagging earns its keep at solo-dev release volume.
+  **Fallback** for environments without `gh` (CI, fresh machine before `gh auth login`): curl to the GitHub REST API using `$GITHUB_PERSONAL_ACCESS_TOKEN` from `.env.local` (loaded by direnv, fine-grained-scoped to this repo). See [ADR 0009 §4](docs/adrs/0009-versioning-and-releases.md#4-manual-tooling-no-ci-automation-yet) for the payload.
+
+  CI automation deferred to v1.0 — a human gate before tagging earns its keep at solo-dev release volume.
 
 ### Code
 
