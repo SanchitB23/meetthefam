@@ -1,17 +1,17 @@
 # MCP server setup
 
-The project's [.mcp.json](../../.mcp.json) declares **two** Tier 1 MCP servers (supabase + context7) that Claude Code sessions in this repo should have available. The two **user-scope** MCPs (`github-meetthefam`, `vercel`) live in `~/.claude/settings.json` instead — see below for why.
+Claude Code sessions in this repo benefit from **four** MCP servers being available: Supabase, Context7, GitHub, and Vercel. **Scope is your choice** — each can live in project [`.mcp.json`](../../.mcp.json), user `~/.claude/settings.json`, or somewhere else entirely; the trade-offs are below. The committed [`.mcp.json`](../../.mcp.json) currently only ships Context7, since the rest have constraints that make user scope more convenient on the maintainer's setup. Treat the examples below as **one working configuration**, not as the prescribed one.
 
 No tokens are committed — project-scope tokens are referenced via `${env:VAR_NAME}` and live in `.env.local` (gitignored, loaded by direnv); user-scope tokens are stored as literals in `~/.claude/settings.json` (private to the machine).
 
-## The two project-scope MCPs
+## Stdio-friendly MCPs (Supabase, Context7)
 
 | Name | Type / Source | Token env var | Purpose |
 |---|---|---|---|
 | `supabase` | stdio — `@supabase/mcp-server-supabase@latest` | `SUPABASE_ACCESS_TOKEN` | SQL queries, schema, migrations, RLS |
 | `context7` | stdio — `@upstash/context7-mcp@latest` | *(none)* | Live docs for Next.js, Supabase, family-chart, Tailwind, shadcn, **Base UI**, **Lucide 1.x** |
 
-These two use stdio servers with `${env:VAR}` interpolation in their `env` block. Claude Code reliably resolves env-var references in stdio configs, so the PAT stays in `.env.local` (gitignored, loaded by direnv) and `.mcp.json` itself is safe to commit.
+These use stdio servers with `${env:VAR}` interpolation in their `env` block — which Claude Code reliably resolves at any scope. Project scope keeps `.mcp.json` self-documenting; user scope keeps every session lightweight. Either works.
 
 > **Verify package names before first run.** MCP package names occasionally rename or split — confirm the current package on the registry / vendor docs the first time you set this up.
 
@@ -32,11 +32,11 @@ We deliberately **don't** register the local MCP in `.mcp.json`:
 
 If you ever need it (e.g. for a one-off local-DB inspection task), connect ad-hoc with `claude mcp add --scope local supabase-local --transport http --url http://127.0.0.1:54321/mcp` — and remove it when done.
 
-## GitHub and Vercel MCPs — kept at user scope
+## GitHub and Vercel MCPs — user scope is often easier
 
-Both `github-meetthefam` and `vercel` are configured at **user scope** in `~/.claude/settings.json` — *not* in this project's `.mcp.json`.
+Both `github-meetthefam` and `vercel` *can* live in project `.mcp.json`, but on the maintainer's setup they're configured at **user scope** in `~/.claude/settings.json`. The reasons below explain why; pick whichever scope matches your secret-handling preferences.
 
-### Why user scope
+### Why user scope tends to win for these two
 
 - **GitHub MCP** uses GitHub's official remote HTTP server at `https://api.githubcopilot.com/mcp`, authenticated via a `Bearer` header. Claude Code does not interpolate `${env:VAR}` inside `headers.Authorization` (only inside stdio `env` blocks). The header therefore needs a **literal PAT** — which we don't want in a committed file. User-scope `~/.claude/settings.json` is private to the machine.
 - **Vercel MCP** was already user-scope before this project existed; no reason to duplicate.

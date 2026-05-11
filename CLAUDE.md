@@ -77,24 +77,16 @@ Definitions live in [`.claude/agents/`](.claude/agents/).
 
 ## Tier 1 MCPs
 
-If a session has them available, prefer them over shelling out:
+Sessions in this repo are noticeably more productive when these MCP servers are connected. Install each at whichever scope (project `.mcp.json`, user `~/.claude/settings.json`, or otherwise) fits your setup — see [`docs/setup/mcp-servers.md`](docs/setup/mcp-servers.md) for one working configuration.
 
-| MCP | Scope | Use for |
-|---|---|---|
-| **Supabase MCP** | Project (`.mcp.json`, `${env:SUPABASE_ACCESS_TOKEN}`) | SQL queries, schema inspection, migrations, RLS policies |
-| **Context7 MCP** | Project (`.mcp.json`, no auth) | Live docs for Next.js 16, Supabase, family-chart, Tailwind v4, shadcn/ui, react-hook-form |
-| **`github-meetthefam`** | **User scope** (`~/.claude/settings.json`, HTTP at `https://api.githubcopilot.com/mcp` with literal PAT) | Branches, PRs, issues, repo metadata. **Name suffix is intentional** — the PAT is fine-grained-scoped to only `SanchitB23/meetthefam`, so any other call would 404. The custom name reminds you of that limit on every `claude mcp list` line. |
-| **Vercel MCP** | **User scope** (already configured) | Deployments, env vars, domains |
+| MCP | Use for |
+|---|---|
+| **Supabase** | SQL queries, schema inspection, migrations, RLS policies |
+| **Context7** | Live docs for Next.js 16, Supabase, family-chart, Tailwind v4, shadcn/ui (Base UI), Lucide 1.x, react-hook-form |
+| **GitHub** | Branches, PRs, issues, repo metadata |
+| **Vercel** | Deployments, env vars, domains |
 
-`github-meetthefam` and `vercel` both live at **user scope** rather than project scope. Reasons:
-
-- Claude Code does not interpolate `${env:VAR}` inside HTTP `headers.Authorization` — the GitHub MCP requires a literal PAT, which we don't want in any committed file. User-scope `~/.claude/settings.json` is private to the machine.
-- The deprecated `@modelcontextprotocol/server-github` stdio package supports `${env:VAR}` but doesn't expose tools to modern Claude Code sessions, so it isn't a viable workaround.
-- Naming the server `github-meetthefam` (instead of generic `github`) keeps it honest: the MCP loads in every claude session, but the name itself signals it only authenticates against this repo.
-
-See [`docs/setup/mcp-servers.md`](docs/setup/mcp-servers.md) for the install commands.
-
-If MCPs aren't available, fall back to shell + file edits.
+If an MCP isn't available in your session, fall back to shell + file edits.
 
 ## Phasing at a glance
 
