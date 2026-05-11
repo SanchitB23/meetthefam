@@ -15,6 +15,23 @@ These two use stdio servers with `${env:VAR}` interpolation in their `env` block
 
 > **Verify package names before first run.** MCP package names occasionally rename or split — confirm the current package on the registry / vendor docs the first time you set this up.
 
+### Project-scope `supabase` MCP ≠ the local-stack MCP
+
+Two MCP-shaped things in this repo, easy to confuse:
+
+| | What it talks to | How it's wired |
+|---|---|---|
+| **Project-scope `supabase` MCP** (above table) | The **hosted** Supabase project (QA, eventually prod) via `SUPABASE_ACCESS_TOKEN` | stdio in `.mcp.json`, always loaded by Claude sessions |
+| **Local-stack MCP** | The Docker-local Postgres + Auth running on your machine after `supabase start` | HTTP at `http://127.0.0.1:54321/mcp` — exposed automatically by the running stack, **not wired into Claude sessions** |
+
+We deliberately **don't** register the local MCP in `.mcp.json`:
+
+- `pnpm exec supabase` CLI + direct `psql` against `127.0.0.1:54322` cover the same ground for local stack management.
+- The hosted-project MCP can't talk to the local stack (different access tokens, different URL) — they don't overlap functionally.
+- Adding the local MCP would only matter on machines where the stack is running, which makes `.mcp.json` non-portable.
+
+If you ever need it (e.g. for a one-off local-DB inspection task), connect ad-hoc with `claude mcp add --scope local supabase-local --transport http --url http://127.0.0.1:54321/mcp` — and remove it when done.
+
 ## GitHub and Vercel MCPs — kept at user scope
 
 Both `github-meetthefam` and `vercel` are configured at **user scope** in `~/.claude/settings.json` — *not* in this project's `.mcp.json`.

@@ -22,11 +22,19 @@ A multi-tenant family tree web app. Sign up, build a family tree, invite editors
 
 ## Local development
 
-> Phase −1 only. Phase 0 (Foundation) will replace this section with real instructions.
-
 ```bash
-# Once Phase 0 lands:
-# pnpm install
-# supabase start          # local Supabase stack via Docker
-# pnpm dev                # http://localhost:3000
+pnpm install                    # installs JS deps + Supabase CLI binary
+pnpm exec supabase start        # boots local Supabase stack (Docker required)
+pnpm dev                        # Next.js dev server at http://localhost:3000
 ```
+
+Local Supabase services after `supabase start`:
+
+| Service | URL |
+|---|---|
+| API + Auth + REST | <http://127.0.0.1:54321> |
+| Postgres | `postgresql://postgres:postgres@127.0.0.1:54322/postgres` |
+| Studio (DB UI) | <http://127.0.0.1:54323> |
+| Mailpit (catches magic-link emails) | <http://127.0.0.1:54324> |
+
+Tear down with `pnpm exec supabase stop`. Full DB wipe (re-applies migrations + seed) = `pnpm exec supabase db reset`.

@@ -58,6 +58,11 @@ Definitions live in [`.claude/agents/`](.claude/agents/).
 - **Lucide is on `lucide-react@1.x`** (the recent 0.x → 1.0 jump). Some icon names changed in the 1.0 cleanup. Always verify icon names via Context7 (`/lucide-icons/lucide`) or the live shadcn registry before importing — don't trust 0.x examples in training data.
 - **Theme tokens live in `src/app/globals.css`** — the heirloom-journal palette (cream `--background`, forest-green `--primary`, terracotta `--accent`, charcoal `--foreground`) in OKLCH. Don't hard-code hex; reference tokens via Tailwind utilities (`bg-primary`, `text-foreground`, `border-border`, etc.). Fonts: Cormorant Garamond (`--font-serif`, headings) + Manrope (`--font-sans`, body) wired through `next/font` in `src/app/layout.tsx`. Dark-mode tokens are placeholder shadcn defaults — proper dark-mode tuning is deferred to Phase 8 polish.
 
+### Local dev
+
+- **pnpm 10's strict postinstall policy** silently ignores package install-scripts by default. The `pnpm.onlyBuiltDependencies` whitelist in [`package.json`](package.json) permits the ones we actually need (currently just `supabase`, which downloads its Go binary). **Fresh clone**: `pnpm install` runs the whitelisted scripts automatically — no extra steps. **Gotcha after `pnpm add -D <pkg>`**: if the new package's postinstall is needed and it's *not yet* in `onlyBuiltDependencies`, pnpm installs the package but skips the script — symptom is `pnpm exec <bin>` returning *"Command not found"* even though `node_modules/<pkg>` exists. **Fix**: add the package to `pnpm.onlyBuiltDependencies` in `package.json`, then run `pnpm rebuild <pkg>` to trigger the now-permitted postinstall. Plain `pnpm install` after the whitelist edit will *not* retry the skipped script on an already-installed dep.
+- **Local Supabase stack** (Phase 0 sub-task 3 landed): `pnpm exec supabase start` boots Postgres (`:54322`), Auth + REST API (`:54321`), Studio (`:54323`), and Mailpit (`:54324` — catches magic-link emails for testing). `pnpm exec supabase stop` to tear down. Full DB reset = `pnpm exec supabase db reset`. Stack state survives `stop` → `start`; `reset` is the destructive one.
+
 ### Files
 
 - Never write secrets in committed files. Tokens live in `.env.local` (gitignored).

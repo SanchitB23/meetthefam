@@ -28,6 +28,9 @@ dist/
 # Supabase
 supabase/.branches/
 supabase/.temp/
+# Maintainer's personal-tree seed (per docs/adrs/0008-design-system.md → "Seed data").
+# Smith Family Demo lives in the committed supabase/seed.sql; this is the local-only override.
+supabase/seed.local.sql
 
 # Superpowers brainstorm artifacts
 .superpowers/
