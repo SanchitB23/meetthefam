@@ -42,6 +42,8 @@ supabase/seed.local.sql
 
 # Claude Code per-machine local settings (project agents + .mcp.json ARE committed)
 .claude/settings.local.json
+# Claude Code runtime artifacts (ScheduleWakeup lockfile etc.)
+.claude/*.lock
 
 # Logs
 *.log
