@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { SignOutButton } from './SignOutButton'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -19,6 +20,7 @@ export default async function DashboardPage() {
         <p className="text-xs text-foreground/40">
           Auth + DB wired ✓ — Phase 0 sub-task 6
         </p>
+        <SignOutButton />
       </div>
     </main>
   )
