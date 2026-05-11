@@ -23,5 +23,5 @@ export async function signInWithMagicLink(formData: FormData) {
     redirect(`/login?error=${encodeURIComponent(error.message)}`)
   }
 
-  redirect('/login?sent=true')
+  redirect(`/login?sent=true&email=${encodeURIComponent(email)}`)
 }
