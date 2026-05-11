@@ -4,14 +4,15 @@ Claude Code sessions in this repo benefit from **four** MCP servers being availa
 
 No tokens are committed — project-scope tokens are referenced via `${env:VAR_NAME}` and live in `.env.local` (gitignored, loaded by direnv); user-scope tokens are stored as literals in `~/.claude/settings.json` (private to the machine).
 
-## Stdio-friendly MCPs (Supabase, Context7)
+## Stdio-friendly MCPs (Supabase, Context7, Next.js DevTools)
 
 | Name | Type / Source | Token env var | Purpose |
 |---|---|---|---|
 | `supabase` | stdio — `@supabase/mcp-server-supabase@latest` | `SUPABASE_ACCESS_TOKEN` | SQL queries, schema, migrations, RLS |
 | `context7` | stdio — `@upstash/context7-mcp@latest` | *(none)* | Live docs for Next.js, Supabase, family-chart, Tailwind, shadcn, **Base UI**, **Lucide 1.x** |
+| `next-devtools` | stdio — `next-devtools-mcp@latest` | *(none)* | Auto-connects to a running `pnpm dev` server for codemods, async-API audits, Next.js 16 migration help. See [Next.js MCP docs](https://nextjs.org/docs/app/guides/mcp). |
 
-These use stdio servers with `${env:VAR}` interpolation in their `env` block — which Claude Code reliably resolves at any scope. Project scope keeps `.mcp.json` self-documenting; user scope keeps every session lightweight. Either works.
+These use stdio servers with `${env:VAR}` interpolation in their `env` block — which Claude Code reliably resolves at any scope. Project scope keeps `.mcp.json` self-documenting; user scope keeps every session lightweight. Either works. `context7` and `next-devtools` ship in the committed [`.mcp.json`](../../.mcp.json) since they need no auth and benefit every fresh clone; `supabase` is intentionally not committed there (see the intro).
 
 > **Verify package names before first run.** MCP package names occasionally rename or split — confirm the current package on the registry / vendor docs the first time you set this up.
 

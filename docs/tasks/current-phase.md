@@ -31,9 +31,10 @@ After all six sub-tasks land, before declaring Phase 0 done:
 
 - [x] Drop `--turbopack` flag from `package.json` scripts (Next.js 16 makes it default — flag is a no-op). *(never added — sub-task 1 scaffold shipped without it, commit `34d1aa4`)*
 - [x] Add `engines.node` to `package.json` (≥24.15.0, matching `.nvmrc`). *(landed in sub-task 1, commit `34d1aa4`)*
-- [ ] Add **Next.js Devtools MCP** to project `.mcp.json`; bump Tier 1 MCP table in `CLAUDE.md` from 4 → 5.
-- [ ] Update `docs/setup/mcp-servers.md` with the Devtools MCP install command.
-- [ ] Verify `claude mcp list` shows all 5 Tier 1 MCPs connected from a fresh session.
+- [x] Add **Next.js Devtools MCP** to project `.mcp.json`; bump Tier 1 MCP table in `CLAUDE.md` from 4 → 5. *(landed in this commit)*
+- [x] Update `docs/setup/mcp-servers.md` with the Devtools MCP install command. *(landed in this commit)*
+- [ ] Verify `claude mcp list` shows all 5 Tier 1 MCPs connected from a fresh session. *(user-side verification — run after pulling these changes)*
+- [x] **Wire `@vercel/analytics` + `@vercel/speed-insights`** in `src/app/layout.tsx` so analytics capture starts from first deploy. *(landed in this commit)*
 - [x] **Palette refinement to match Kintree** (per [ADR 0008](../adrs/0008-design-system.md)) — `src/app/globals.css` migrated to two-tone (cream `--background` + paper `--card`) and seeded the 5 TONES CSS vars. *(landed in the same commit as ADR 0008)*
 
 See [`../adrs/0007-nextjs-16-and-async-idioms.md`](../adrs/0007-nextjs-16-and-async-idioms.md) for why we baseline on Next.js 16 and which v16 idioms get adopted now vs. deferred.

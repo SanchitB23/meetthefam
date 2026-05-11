@@ -83,6 +83,7 @@ Sessions in this repo are noticeably more productive when these MCP servers are 
 |---|---|
 | **Supabase** | SQL queries, schema inspection, migrations, RLS policies |
 | **Context7** | Live docs for Next.js 16, Supabase, family-chart, Tailwind v4, shadcn/ui (Base UI), Lucide 1.x, react-hook-form |
+| **Next.js DevTools** | Auto-attaches to a running `pnpm dev` for codemods, async-API audits, v16 migration help |
 | **GitHub** | Branches, PRs, issues, repo metadata |
 | **Vercel** | Deployments, env vars, domains |
 
