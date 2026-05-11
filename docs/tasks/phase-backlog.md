@@ -14,8 +14,8 @@ For Next.js 16 idiom rationale, see [`../adrs/0007-nextjs-16-and-async-idioms.md
 - [ ] **Set `images.remotePatterns`** in `next.config.ts` for `*.supabase.co/storage/v1/object/public/photos/**` (deferred to Phase 5 if cleaner).
 - [ ] **Palette refinement to match Kintree** (per [ADR 0008](../adrs/0008-design-system.md)) — done at `src/app/globals.css` in the same commit as ADR 0008. Verifies `pnpm typecheck` + `pnpm lint` still pass.
 - [x] **Sub-task 3 follow-up — `.gitignore`**: `supabase/seed.local.sql` added to root `.gitignore` so the maintainer's personal-tree seed never gets committed (see [ADR 0008](../adrs/0008-design-system.md) → "Seed data"). *(landing in the sub-task 3 commit)*
-- [ ] **Sub-task 4 follow-up — Smith Family Demo seed**: ship `supabase/seed.sql` with the [`docs/ux/inspiration/kintree/project/data.jsx`](../ux/inspiration/kintree/project/data.jsx) shape (sanitized Smith / Anderson, 4 generations, 13 people). Production: do NOT run this seed (`supabase/seed.sql` is local-only by Supabase convention).
-- [ ] **Sub-task 4 follow-up — `tone` column + trigger**: add the `tone` column on `people` per [`../architecture/data-model.md`](../architecture/data-model.md) and a `BEFORE INSERT` trigger that auto-assigns via `hash(full_name) % 5` when null. See [`../ux/avatars-and-tones.md`](../ux/avatars-and-tones.md) for the algorithm.
+- [x] **Sub-task 4 follow-up — Smith Family Demo seed**: ship `supabase/seed.sql` with the [`docs/ux/inspiration/kintree/project/data.jsx`](../ux/inspiration/kintree/project/data.jsx) shape (sanitized Smith / Anderson, 4 generations, 13 people). Production: do NOT run this seed (`supabase/seed.sql` is local-only by Supabase convention). *(landed in sub-task 4 commit)*
+- [x] **Sub-task 4 follow-up — `tone` column + trigger**: add the `tone` column on `people` per [`../architecture/data-model.md`](../architecture/data-model.md) and a `BEFORE INSERT` trigger that auto-assigns via `hash(full_name) % 5` when null. See [`../ux/avatars-and-tones.md`](../ux/avatars-and-tones.md) for the algorithm. *(landed in sub-task 4 commit, uses `abs(hashtext(full_name)) % 5`)*
 
 ## Phase 1 — Auth
 
