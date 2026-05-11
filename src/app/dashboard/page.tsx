@@ -1,15 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect('/login')
-  }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
@@ -19,7 +14,7 @@ export default async function DashboardPage() {
         </h1>
         <p className="text-sm text-foreground/60">
           Signed in as{' '}
-          <span className="font-medium text-foreground">{user.email}</span>
+          <span className="font-medium text-foreground">{user?.email}</span>
         </p>
         <p className="text-xs text-foreground/40">
           Auth + DB wired ✓ — Phase 0 sub-task 6
