@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState, useSyncExternalStore, useTransition } from 'react'
-import { useForm, type SubmitHandler } from 'react-hook-form'
+import { useEffect, useMemo, useState, useSyncExternalStore, useTransition } from 'react'
+import { Controller, useForm, type SubmitHandler } from 'react-hook-form'
+import { Trash2 } from 'lucide-react'
 
 import {
   Dialog,
@@ -19,7 +20,10 @@ import {
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 
-import { createPerson, type PersonInput } from '../actions'
+import { createPerson, updatePerson, type PersonInput } from '../actions'
+import { DeletePersonDialog } from './DeletePersonDialog'
+import type { PersonRow } from './PersonCard'
+import type { Tone } from '@/components/ui/avatar'
 
 // Form-state strategy decision (Phase 3 sub-task 2): **react-hook-form**.
 //
@@ -29,15 +33,16 @@ import { createPerson, type PersonInput } from '../actions'
 //     controlled boolean is trivial in RHF (`watch('deceased')`) — with
 //     FormData you'd lift the bool into a separate `useState` *and* still
 //     submit via FormData, which fractures the source of truth.
-//   - Sub-task 3 adds a tone-swatch radio (5 options) inside the same form.
-//     Sub-task 5 adds a "How is this person related?" radio with discriminated
-//     sub-fields. Both are vastly easier with RHF's `register` + `watch`.
+//   - Sub-task 3 adds a tone-swatch radio (5 options) inside the same form
+//     (now wired below via `Controller`). Sub-task 5 adds a "How is this
+//     person related?" radio with discriminated sub-fields. Both are vastly
+//     easier with RHF.
 //   - The Server Action below takes a typed `PersonInput` object, not a raw
 //     `FormData`. RHF gives us that object cleanly.
 //
 // We still call the Server Action directly (not via `form action={...}`) and
 // dismiss the surface on `{ ok: true }`. Errors render inline; no Sonner /
-// Toast in sub-task 2 (per the scope brief).
+// Toast in sub-task 3 (per the scope brief).
 
 /** Form values mirror PersonInput but with form-friendly empty strings. */
 export type PersonFormValues = {
@@ -51,7 +56,11 @@ export type PersonFormValues = {
   occupation: string
   deceased: boolean
   death_year: string
+  /** Edit-mode-only override; create mode lets the DB trigger pick. */
+  tone: Tone
 }
+
+const TONES: readonly Tone[] = ['sage', 'rose', 'indigo', 'amber', 'green']
 
 const DEFAULT_VALUES: PersonFormValues = {
   full_name: '',
@@ -64,17 +73,42 @@ const DEFAULT_VALUES: PersonFormValues = {
   occupation: '',
   deceased: false,
   death_year: '',
+  // Placeholder; in edit mode we overwrite via `reset(...)` on open.
+  // In create mode this value is never read — we omit `tone` from the
+  // payload entirely so the DB trigger picks.
+  tone: 'sage',
 }
 
-// Designed for growth: sub-task 3 adds `mode: 'edit'` + `person`, sub-task 5
-// adds `linkSpec`. Keeping props flat + optional is simpler than a
-// discriminated union when the additions are also optional.
+function valuesFromPerson(person: PersonRow): PersonFormValues {
+  return {
+    full_name: person.full_name,
+    nickname: person.nickname ?? '',
+    bio: person.bio ?? '',
+    gender: person.gender,
+    birth_year: person.birth_year != null ? String(person.birth_year) : '',
+    // PersonRow doesn't carry birth_date today (sub-task 1's SELECT omitted
+    // it). Leaving blank preserves the DB value because update() builds a
+    // sparse patch and we only set fields that change — see below.
+    birth_date: '',
+    location: person.location ?? '',
+    occupation: person.occupation ?? '',
+    deceased: person.deceased,
+    death_year: person.death_year != null ? String(person.death_year) : '',
+    tone: person.tone,
+  }
+}
+
+// Designed for growth: sub-task 5 will add `linkSpec` (create-mode only).
 type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   treeId: string
-  /** Fired after a successful create; the parent uses this to refresh state. */
-  onCreated?: (personId: string) => void
+  /** `'create'` (default) opens with empty defaults; `'edit'` prefills from `person`. */
+  mode?: 'create' | 'edit'
+  /** Required when `mode === 'edit'`. */
+  person?: PersonRow
+  /** Fired after a successful create OR edit save. */
+  onSaved?: (personId: string) => void
 }
 
 // Tailwind classes shared with Phase 2's CreateTreeModal (keep these in
@@ -115,30 +149,46 @@ function useIsDesktop(): boolean {
   )
 }
 
-export function PersonForm({ open, onOpenChange, treeId, onCreated }: Props) {
+export function PersonForm({
+  open,
+  onOpenChange,
+  treeId,
+  mode = 'create',
+  person,
+  onSaved,
+}: Props) {
   const desktop = useIsDesktop()
+  const isEdit = mode === 'edit'
+
+  // Build the defaults once per `person` identity. In create mode we always
+  // start from DEFAULT_VALUES; in edit mode we seed from the row.
+  const formDefaults = useMemo<PersonFormValues>(
+    () => (isEdit && person ? valuesFromPerson(person) : DEFAULT_VALUES),
+    [isEdit, person],
+  )
 
   const {
     register,
     handleSubmit,
     watch,
     reset,
+    control,
     formState: { errors },
-  } = useForm<PersonFormValues>({ defaultValues: DEFAULT_VALUES })
+  } = useForm<PersonFormValues>({ defaultValues: formDefaults })
 
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const deceased = watch('deceased')
 
-  // Reset the form whenever the surface (re)opens — keeps stale field values
-  // from leaking between create sessions, and gives the parent a clean slate
-  // after a successful submit.
+  // Reset the form whenever the surface (re)opens, or the target row
+  // changes — keeps stale field values from leaking between sessions.
   useEffect(() => {
     if (open) {
-      reset(DEFAULT_VALUES)
+      reset(formDefaults)
       setSubmitError(null)
     }
-  }, [open, reset])
+  }, [open, reset, formDefaults])
 
   const onSubmit: SubmitHandler<PersonFormValues> = (values) => {
     setSubmitError(null)
@@ -157,15 +207,48 @@ export function PersonForm({ open, onOpenChange, treeId, onCreated }: Props) {
     }
 
     startTransition(async () => {
+      if (isEdit && person) {
+        // Include the tone override only in edit mode. In create mode we
+        // intentionally omit it so the DB trigger picks the swatch.
+        const editPayload: Partial<PersonInput> = {
+          ...payload,
+          tone: values.tone,
+        }
+        // birth_date isn't carried by PersonRow today, so the form field is
+        // blank on open. Don't overwrite the DB column with that blank —
+        // strip it from the patch unless the user actually typed a value.
+        if (!values.birth_date) delete editPayload.birth_date
+        const result = await updatePerson(person.id, treeId, editPayload)
+        if (!result.ok) {
+          setSubmitError(result.error)
+          return
+        }
+        onSaved?.(person.id)
+        onOpenChange(false)
+        return
+      }
+
       const result = await createPerson(treeId, payload)
       if (!result.ok) {
         setSubmitError(result.error)
         return
       }
-      onCreated?.(result.personId)
+      onSaved?.(result.personId)
       onOpenChange(false)
     })
   }
+
+  const title = isEdit ? 'Edit person' : 'Add a person'
+  const description = isEdit
+    ? 'Update the details below. Changes save when you submit.'
+    : 'Add a relative to this family tree. Only the name is required.'
+  const submitLabel = isEdit
+    ? isPending
+      ? 'Saving…'
+      : 'Save changes'
+    : isPending
+      ? 'Adding…'
+      : 'Add person'
 
   const body = (
     <form
@@ -232,6 +315,62 @@ export function PersonForm({ open, onOpenChange, treeId, onCreated }: Props) {
           <p className="text-xs text-destructive">{errors.bio.message}</p>
         )}
       </div>
+
+      {/*
+       * Tone-override swatch — edit mode only.
+       *
+       * Recommendation in the plan: omit in create mode, because the DB's
+       * deterministic name-hash assignment is the right default and users
+       * rarely want to override on first creation. The tone column is still
+       * editable via the swatch right here in the same form.
+       *
+       * Accessibility: role="radiogroup" + role="radio" + aria-checked,
+       * plus arrow-key handling deferred to a follow-up — the 5 buttons
+       * each receive tab focus on their own which is acceptable for v0.1.
+       */}
+      {isEdit && (
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium text-foreground">
+            Tone{' '}
+            <span className="text-foreground/40 font-normal">
+              (avatar color)
+            </span>
+          </span>
+          <Controller
+            control={control}
+            name="tone"
+            render={({ field }) => (
+              <div
+                role="radiogroup"
+                aria-label="Avatar tone"
+                className="flex items-center gap-2 py-1"
+              >
+                {TONES.map((t) => {
+                  const selected = field.value === t
+                  return (
+                    <button
+                      key={t}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      aria-label={t}
+                      onClick={() => field.onChange(t)}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-full transition-transform hover:scale-105 focus:outline-none"
+                      style={{
+                        background: `var(--tone-${t}-bg)`,
+                        outline: selected
+                          ? `2px solid var(--tone-${t}-ring)`
+                          : undefined,
+                        outlineOffset: selected ? 2 : undefined,
+                      }}
+                    />
+                  )
+                })}
+              </div>
+            )}
+          />
+        </div>
+      )}
 
       <div className="flex flex-col gap-1">
         <label htmlFor="pf-gender" className="text-sm font-medium text-foreground">
@@ -334,52 +473,86 @@ export function PersonForm({ open, onOpenChange, treeId, onCreated }: Props) {
         </p>
       )}
 
-      <div className="flex justify-end gap-2 mt-2">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => onOpenChange(false)}
-          disabled={isPending}
-        >
-          Cancel
-        </Button>
-        <Button type="submit" disabled={isPending}>
-          {isPending ? 'Adding…' : 'Add person'}
-        </Button>
+      {/*
+       * Footer layout:
+       *   - Create mode: [Cancel] [Add person]            (right-aligned)
+       *   - Edit mode:   [Delete] ……… [Cancel] [Save]    (delete left, save right)
+       *
+       * Sub-task 4 will move "Delete" into the PersonCardMenu; this footer
+       * button is the in-form fallback (and the canonical entry today).
+       */}
+      <div className="flex items-center gap-2 mt-2">
+        {isEdit && person && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setDeleteOpen(true)}
+            disabled={isPending}
+            className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4 mr-1" />
+            Delete
+          </Button>
+        )}
+        <div className="flex flex-1 justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isPending}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isPending}>
+            {submitLabel}
+          </Button>
+        </div>
       </div>
     </form>
   )
 
-  if (desktop) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="font-serif text-xl">Add a person</DialogTitle>
-            <DialogDescription>
-              Add a relative to this family tree. Only the name is required.
-            </DialogDescription>
-          </DialogHeader>
-          {body}
-        </DialogContent>
-      </Dialog>
-    )
-  }
-
-  return (
+  const surface = desktop ? (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-serif text-xl">{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        {body}
+      </DialogContent>
+    </Dialog>
+  ) : (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
         className="max-h-[90vh] overflow-y-auto rounded-t-xl"
       >
         <SheetHeader>
-          <SheetTitle className="font-serif text-xl">Add a person</SheetTitle>
-          <SheetDescription>
-            Add a relative to this family tree. Only the name is required.
-          </SheetDescription>
+          <SheetTitle className="font-serif text-xl">{title}</SheetTitle>
+          <SheetDescription>{description}</SheetDescription>
         </SheetHeader>
         {body}
       </SheetContent>
     </Sheet>
+  )
+
+  return (
+    <>
+      {surface}
+      {isEdit && person && (
+        <DeletePersonDialog
+          personId={person.id}
+          personName={person.full_name}
+          treeId={treeId}
+          open={deleteOpen}
+          onClose={() => setDeleteOpen(false)}
+          onDeleted={() => {
+            // Dismiss the parent form too — the row is gone.
+            setDeleteOpen(false)
+            onOpenChange(false)
+          }}
+        />
+      )}
+    </>
   )
 }

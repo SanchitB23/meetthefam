@@ -1,4 +1,7 @@
-import 'server-only'
+// No `'server-only'`: starting in sub-task 3, PersonCard renders inside the
+// client component `PersonList` (which owns the "edit-target" state). The
+// card itself stays presentational — no hooks, no effects, no client APIs —
+// so it works equally well in server contexts; we just can't lock it down.
 import { Avatar, type Tone } from '@/components/ui/avatar'
 
 // Fields needed across Phase 3 sub-tasks. Mirrors the columns selected in
