@@ -4,7 +4,10 @@
 
 import { describe, expect, test } from 'vitest'
 
-import { transformToFamilyChartShape } from '@/app/tree/[id]/_lib/family-chart-data'
+import {
+  arePartnersMarried,
+  transformToFamilyChartShape,
+} from '@/app/tree/[id]/_lib/family-chart-data'
 import type { PersonRow } from '@/app/tree/[id]/_lib/types'
 
 function row(overrides: Partial<PersonRow>): PersonRow {
@@ -193,5 +196,59 @@ describe('transformToFamilyChartShape', () => {
     ])
     expect(p.data.first_name).toBe('Maria')
     expect(p.data.last_name).toBe('de la Cruz')
+  })
+})
+
+describe('arePartnersMarried', () => {
+  function mapOf(...rows: PersonRow[]): Map<string, PersonRow> {
+    return new Map(rows.map((r) => [r.id, r]))
+  }
+
+  test('bidirectional spouse_id → married', () => {
+    const m = mapOf(
+      row({ id: 'a', spouse_id: 'b' }),
+      row({ id: 'b', spouse_id: 'a' }),
+    )
+    expect(arePartnersMarried('a', 'b', m)).toBe(true)
+    expect(arePartnersMarried('b', 'a', m)).toBe(true)
+  })
+
+  test('one-sided spouse_id → NOT married (matches the bug we are fixing)', () => {
+    // Hand-edit broke symmetry: A points at B, B does not point back.
+    // Treat this as co-parents/unmarried — do NOT draw the marriage bar.
+    const m = mapOf(
+      row({ id: 'a', spouse_id: 'b' }),
+      row({ id: 'b', spouse_id: null }),
+    )
+    expect(arePartnersMarried('a', 'b', m)).toBe(false)
+    expect(arePartnersMarried('b', 'a', m)).toBe(false)
+  })
+
+  test('both spouse_id null → NOT married (the seed case: Daniel + Nora)', () => {
+    const m = mapOf(
+      row({ id: 'daniel', spouse_id: null }),
+      row({ id: 'nora', spouse_id: null }),
+    )
+    expect(arePartnersMarried('daniel', 'nora', m)).toBe(false)
+  })
+
+  test('spouse_id points elsewhere → NOT married', () => {
+    const m = mapOf(
+      row({ id: 'a', spouse_id: 'c' }),
+      row({ id: 'b', spouse_id: 'c' }),
+      row({ id: 'c', spouse_id: 'a' }),
+    )
+    expect(arePartnersMarried('a', 'b', m)).toBe(false)
+  })
+
+  test('same id on both sides → NOT married', () => {
+    const m = mapOf(row({ id: 'solo', spouse_id: null }))
+    expect(arePartnersMarried('solo', 'solo', m)).toBe(false)
+  })
+
+  test('missing rows → NOT married', () => {
+    const m = mapOf(row({ id: 'a', spouse_id: 'ghost' }))
+    expect(arePartnersMarried('a', 'ghost', m)).toBe(false)
+    expect(arePartnersMarried('ghost', 'a', m)).toBe(false)
   })
 })
