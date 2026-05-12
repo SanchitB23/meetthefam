@@ -2,13 +2,44 @@
 
 // Phase 4 sub-task 1 — smoke render.
 // Phase 4 sub-task 2 — custom PersonNode HTML card.
-// Phase 4 sub-task 3 — tap → detail sheet (setOnCardClick override).
-// Phase 4 sub-task 4 — long-press / "…" → action menu, "Re-center here"
-//   moved off the tap path and into the menu.
+// Phase 4 sub-task 3 — tap → detail sheet.
+// Phase 4 sub-task 4 — long-press / "…" → action menu.
+// Phase 4 sub-task 5 — URL hash sync + context-aware FAB + manual memo.
 //
-// No URL-hash sync, no FAB context-awareness yet (sub-task 5).
+// Focus-state contract:
+//   - SSR seed from `?p=<id>` arrives as the `initialFocusId` prop.
+//   - On first mount we promote the hash `#p=<id>` over `initialFocusId`
+//     when both are present (the hash is more current — the user navigated
+//     within the session). The chosen id is fed to family-chart via
+//     `chart.updateMainId(...)` BEFORE the first `updateTree({ initial })`.
+//   - "Re-center here" writes the hash; a `hashchange` listener picks it up
+//     and applies the new focus. Hash is the single source of truth.
+//   - React mirrors the focus id in `currentFocusId` state for the FAB.
+//
+// <ViewTransition> defer-or-promote (per Phase 4 backlog item):
+//   DEFER to Phase 8 polish. family-chart's built-in `setTransitionTime(800)`
+//   already animates re-centering at a reasonable pace on mobile; layering a
+//   React 19.2 view transition on top doesn't add enough to justify the
+//   complexity here. Revisit in Phase 8 if user feedback wants snappier
+//   transitions or page-level (landing → dashboard → tree) crossfades.
+//
+// Memoization:
+//   `FamilyTree` is wrapped in `React.memo` (manual — defers React
+//   Compiler per the Phase 4 backlog). Defaults to reference equality on
+//   the `people` array. The Server Component returns a fresh array on each
+//   revalidate so the memo is a no-op there; its value is preventing
+//   re-renders from intermediate parent state if any later phase wraps the
+//   tree in client-side state owners.
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react'
 import f3 from 'family-chart'
 import 'family-chart/styles/family-chart.css'
 import type { TreeDatum } from 'family-chart'
@@ -20,17 +51,43 @@ import {
 import { personNodeHtml } from '../_lib/person-node-html'
 import { usePressActions } from '../_lib/usePressActions'
 import type { PersonRow } from '../_lib/types'
+import { AddRelativeFab } from './AddRelativeFab'
 import { PersonActionMenu, type ActionAnchor } from './PersonActionMenu'
 import { PersonDetailSheet } from './PersonDetailSheet'
 
 type Props = {
   treeId: string
   people: PersonRow[]
+  /** SSR-derived focus from `?p=<id>` searchParams. May be overridden by `#p=<id>` on mount. */
+  initialFocusId?: string | null
 }
 
 type Chart = ReturnType<typeof f3.createChart>
 
-export function FamilyTree({ treeId, people }: Props) {
+const HASH_PATTERN = /^#p=(.+)$/
+
+function readHashFocus(): string | null {
+  if (typeof window === 'undefined') return null
+  const match = window.location.hash.match(HASH_PATTERN)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
+// `hashchange` is an external source; useSyncExternalStore is the React 19
+// idiomatic path that avoids the `react-hooks/set-state-in-effect` lint
+// rule. SSR snapshot returns null so the server's "no hash" view matches
+// the first client paint, and we hydrate the real hash on the next tick.
+function subscribeToHash(callback: () => void): () => void {
+  window.addEventListener('hashchange', callback)
+  return () => window.removeEventListener('hashchange', callback)
+}
+function getHashSnapshot(): string | null {
+  return readHashFocus()
+}
+function getServerHashSnapshot(): string | null {
+  return null
+}
+
+function FamilyTreeImpl({ treeId, people, initialFocusId }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<Chart | null>(null)
   const [detailPersonId, setDetailPersonId] = useState<string | null>(null)
@@ -40,15 +97,23 @@ export function FamilyTree({ treeId, people }: Props) {
     () => new Map(people.map((p) => [p.id, p])),
     [people],
   )
-
   const peopleByIdRef = useRef(peopleById)
   useEffect(() => {
     peopleByIdRef.current = peopleById
   }, [peopleById])
 
-  // 500 ms long-press gesture. On fire, opens the action menu anchored at
-  // the pressed node's top-right corner (matches the three-dot trigger's
-  // anchor for consistency between gesture + fallback paths).
+  // Hash is the runtime source of truth for the focus id. Server + first
+  // client paint see no hash (matches the SSR snapshot); subsequent paints
+  // see the real value. If hash is absent, fall back to the SSR `?p=`
+  // seed; if both are absent, the focus is null until "Re-center here"
+  // sets it explicitly.
+  const hashFocus = useSyncExternalStore(
+    subscribeToHash,
+    getHashSnapshot,
+    getServerHashSnapshot,
+  )
+  const currentFocusId = hashFocus ?? initialFocusId ?? null
+
   const { shouldSuppressNextClickRef } = usePressActions(containerRef, {
     onLongPress: (personId, e) => {
       const node = (e.target as HTMLElement | null)?.closest('.mtf-node') as HTMLElement | null
@@ -61,6 +126,7 @@ export function FamilyTree({ treeId, people }: Props) {
     },
   })
 
+  // Chart-bound effect — full teardown + rebuild when `people` changes.
   useEffect(() => {
     const cont = containerRef.current
     if (!cont) return
@@ -81,8 +147,6 @@ export function FamilyTree({ treeId, people }: Props) {
       .setCardDim({ w: 158, h: 110 })
       .setCardInnerHtmlCreator(personNodeHtml)
       .setOnCardClick((e: Event, d: TreeDatum) => {
-        // Long-press just fired → swallow this click so the detail sheet
-        // doesn't pop on the pointerup that ended the gesture.
         if (shouldSuppressNextClickRef.current) {
           shouldSuppressNextClickRef.current = false
           return
@@ -90,8 +154,6 @@ export function FamilyTree({ treeId, people }: Props) {
         const id = d.data.id
         if (!peopleByIdRef.current.has(id)) return
 
-        // Three-dot tap → action menu anchored at the button. Anywhere
-        // else on the card → detail sheet.
         const target = (e.target as HTMLElement | null) ?? null
         const trigger = target?.closest('[data-action-trigger]') as HTMLElement | null
         if (trigger) {
@@ -106,6 +168,14 @@ export function FamilyTree({ treeId, people }: Props) {
         setDetailPersonId(id)
       })
 
+    // Seed initial focus before the first render so the chart paints
+    // already-centered on the SSR / hash-derived person. Hash wins over
+    // the SSR seed (matches the rendering contract above).
+    const seedFocus = readHashFocus() ?? initialFocusId ?? null
+    if (seedFocus && peopleByIdRef.current.has(seedFocus)) {
+      chart.updateMainId(seedFocus)
+    }
+
     chart.updateTree({ initial: true })
     chartRef.current = chart
 
@@ -113,16 +183,54 @@ export function FamilyTree({ treeId, people }: Props) {
       chartRef.current = null
       cont.innerHTML = ''
     }
+    // initialFocusId is read once on first mount only; subsequent changes
+    // come through the hash and the hashchange-driven `applyFocus`
+    // effect, not through teardown + rebuild.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [people, shouldSuppressNextClickRef])
 
-  const detailPerson = detailPersonId ? peopleById.get(detailPersonId) ?? null : null
-
-  const handleRecenter = (personId: string) => {
+  // React → chart sync. The hash-derived `currentFocusId` is the source;
+  // whenever it changes we push the new id into family-chart's store.
+  // Initial mount is handled inline in the chart-init effect above to
+  // avoid the first-paint flicker that a separate effect would cause.
+  const initialMountRef = useRef(true)
+  useEffect(() => {
+    if (initialMountRef.current) {
+      initialMountRef.current = false
+      return
+    }
+    if (!currentFocusId) return
+    if (!peopleByIdRef.current.has(currentFocusId)) return
     const chart = chartRef.current
     if (!chart) return
-    chart.updateMainId(personId)
+    chart.updateMainId(currentFocusId)
     chart.updateTree()
-  }
+  }, [currentFocusId])
+
+  const handleRecenter = useCallback((personId: string) => {
+    // Hash is the single source of truth — write it and let the
+    // useSyncExternalStore subscription propagate. history.replaceState
+    // avoids growing the back-stack with every re-center; if the hash is
+    // already current we still need to force the update because no
+    // hashchange event fires for a no-op assignment.
+    const target = `#p=${encodeURIComponent(personId)}`
+    if (window.location.hash === target) {
+      const chart = chartRef.current
+      if (chart && peopleByIdRef.current.has(personId)) {
+        chart.updateMainId(personId)
+        chart.updateTree()
+      }
+    } else {
+      window.history.replaceState(null, '', target)
+      // replaceState doesn't fire hashchange; dispatch manually so the
+      // subscription updates `currentFocusId` and the React → chart
+      // sync effect runs.
+      window.dispatchEvent(new HashChangeEvent('hashchange'))
+    }
+  }, [])
+
+  const detailPerson = detailPersonId ? peopleById.get(detailPersonId) ?? null : null
+  const focusPerson = currentFocusId ? peopleById.get(currentFocusId) ?? null : null
 
   return (
     <>
@@ -148,6 +256,9 @@ export function FamilyTree({ treeId, people }: Props) {
         onClose={() => setActionAnchor(null)}
         onRecenter={handleRecenter}
       />
+      <AddRelativeFab treeId={treeId} focusPerson={focusPerson} />
     </>
   )
 }
+
+export const FamilyTree = memo(FamilyTreeImpl)
