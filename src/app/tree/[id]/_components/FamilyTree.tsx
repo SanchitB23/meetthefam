@@ -1,18 +1,17 @@
 'use client'
 
 // Phase 4 sub-task 1 — smoke render.
+// Phase 4 sub-task 2 — custom PersonNode HTML card (setCardInnerHtmlCreator).
+// Phase 4 sub-task 3 — tap-to-detail: override library default
+//   click-to-recenter with `setOnCardClick`, surface a <PersonDetailSheet>
+//   driven by local state. Re-center moves to the sub-task 4 action menu.
 //
-// Thin client wrapper around `f3.createChart`. No custom node (sub-task 2),
-// no detail sheet (sub-task 3), no action menu (sub-task 4), no hash sync
-// or FAB (sub-task 5). The goal here is: prove that our `people` rows flow
-// through the transform and render as a real horizontal focus-person tree
-// with the library's default behaviour (default node + click-to-recenter +
-// pan / zoom). Each later sub-task swaps one piece of "library default"
-// for the project-specific behaviour.
+// No URL-hash sync, no FAB context-awareness yet (sub-task 5).
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import f3 from 'family-chart'
 import 'family-chart/styles/family-chart.css'
+import type { TreeDatum } from 'family-chart'
 
 import {
   transformToFamilyChartShape,
@@ -20,21 +19,38 @@ import {
 } from '../_lib/family-chart-data'
 import { personNodeHtml } from '../_lib/person-node-html'
 import type { PersonRow } from '../_lib/types'
+import { PersonDetailSheet } from './PersonDetailSheet'
 
 type Props = {
+  treeId: string
   people: PersonRow[]
 }
 
-export function FamilyTree({ people }: Props) {
+export function FamilyTree({ treeId, people }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const [detailPersonId, setDetailPersonId] = useState<string | null>(null)
+
+  // Stable id → row lookup for the detail sheet's relations summary and the
+  // click handler's resolution. Memoized on the `people` array reference;
+  // the Server Component hands back a new array on each revalidate.
+  const peopleById = useMemo(
+    () => new Map(people.map((p) => [p.id, p])),
+    [people],
+  )
+
+  // The click handler reads `peopleById` to resolve the tapped node's
+  // PersonRow. Keep the latest Map in a ref so the chart's onCardClick
+  // (registered once inside the effect) always sees fresh data — without
+  // tearing the chart down on every revalidate.
+  const peopleByIdRef = useRef(peopleById)
+  useEffect(() => {
+    peopleByIdRef.current = peopleById
+  }, [peopleById])
 
   useEffect(() => {
     const cont = containerRef.current
     if (!cont) return
 
-    // family-chart mutates the container's DOM. Under React 19 Strict Mode
-    // the effect runs → cleans up → runs again; the cleanup below blanks
-    // innerHTML so the second mount lands in a fresh container.
     const data: FamilyChartDatum[] = transformToFamilyChartShape(people)
 
     const chart = f3.createChart(cont, data)
@@ -43,56 +59,49 @@ export function FamilyTree({ people }: Props) {
       .setCardXSpacing(220)
       .setCardYSpacing(130)
       .setOrientationVertical()
-      // The library's default ancestry/progeny depths clip to ±1
-      // generation around the focus person. For our 50–200 people-per-tree
-      // target with full-tree exploration as the v1 UX, surface the whole
-      // tree at once. The focus person still gets the visual emphasis
-      // (outline ring + centered position); other branches sit further out
-      // and are reachable via pan / re-center.
       .setAncestryDepth(20)
       .setProgenyDepth(20)
-      // Off by default in the library; on by default in the chart instance.
-      // Disable so the canvas doesn't render dashed "Unknown" placeholders
-      // for missing parent slots — our add-person flow is the FAB
-      // (Phase 3 / sub-task 5), not in-canvas slot filling.
       .setSingleParentEmptyCard(false)
 
     chart
       .setCardHtml()
       .setCardDim({ w: 158, h: 110 })
       .setCardInnerHtmlCreator(personNodeHtml)
+      // Override the library's click-to-recenter. The detail sheet is the
+      // sub-task-3 entry point; re-centering becomes a menu item in
+      // sub-task 4 so the user can choose what a tap means.
+      .setOnCardClick((_e: Event, d: TreeDatum) => {
+        const id = d.data.id
+        if (peopleByIdRef.current.has(id)) {
+          setDetailPersonId(id)
+        }
+      })
 
     chart.updateTree({ initial: true })
 
     return () => {
       cont.innerHTML = ''
     }
-    // `people` reference is the only dependency. The Server Component
-    // re-fetches on revalidatePath, which produces a new array. A full
-    // teardown + rebuild on data change is fine for sub-task 1; sub-task 5
-    // tightens this with memoization.
   }, [people])
 
+  const detailPerson = detailPersonId ? peopleById.get(detailPersonId) ?? null : null
+
   return (
-    // `f3` is required by family-chart's CSS — it scopes the rules that size
-    // the internal SVG (`.f3 svg.main_svg { width: 100%; height: 100% }`)
-    // and set the container to `position: relative; display: flex`. Without
-    // it the chart attaches at 0×0 and you see an empty container.
-    //
-    // We deliberately do NOT add `f3-cont` (which would force the library's
-    // `height: 900px; max-height: 70vh` plus a dark background) — our own
-    // Tailwind classes own width/height and the CSS-var overrides below
-    // swap the library's dark theme for our heirloom palette.
-    <div
-      ref={containerRef}
-      className="f3 w-full h-[calc(100vh-9rem)] rounded-lg border border-border bg-card overflow-hidden"
-      style={{
-        // Override the library's hard-coded dark theme. The `.f3 *` CSS
-        // hooks reference these vars; overriding them at the container
-        // scope keeps the rest of the app untouched.
-        ['--background-color' as string]: 'var(--card)',
-        ['--text-color' as string]: 'var(--foreground)',
-      }}
-    />
+    <>
+      <div
+        ref={containerRef}
+        className="f3 w-full h-[calc(100vh-9rem)] rounded-lg border border-border bg-card overflow-hidden"
+        style={{
+          ['--background-color' as string]: 'var(--card)',
+          ['--text-color' as string]: 'var(--foreground)',
+        }}
+      />
+      <PersonDetailSheet
+        person={detailPerson}
+        peopleById={peopleById}
+        treeId={treeId}
+        onOpenChange={(next) => setDetailPersonId(next?.id ?? null)}
+      />
+    </>
   )
 }
