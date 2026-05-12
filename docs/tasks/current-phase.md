@@ -1,26 +1,73 @@
-# Current phase: 1 — Auth (in progress)
+# Current phase: 3 — People CRUD + linking (planning)
 
 ## Goal
 
-Take auth from the Phase 0 sub-task 6 proof to a production-ready boundary. Add Google OAuth as a secondary sign-in path, enforce auth at the edge via `proxy.ts` (not in-page redirects), and give the signed-in user a way to actually sign out. Per the spec ([`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → "v0.1" → Phase 1 row), [`../architecture/auth-and-rls.md`](../architecture/auth-and-rls.md), and [ADR 0007](../adrs/0007-nextjs-16-and-async-idioms.md) on `proxy.ts` over `middleware.ts`.
-
-**Ship gate**:
-
-- Magic-link sign-in (from Phase 0) still works end-to-end on local + QA.
-- Google OAuth one-click sign-in works end-to-end on local + QA.
-- Hitting `/dashboard` while unauthenticated triggers an **edge-side** redirect to `/login` from `proxy.ts` — verified by checking that no in-page `redirect('/login')` fires (browser DevTools Network tab shows a 307 from `/dashboard` itself, not a 200 with a client-side redirect).
-- Hitting `/share/<random-token>` does NOT trigger the auth boundary (matcher explicitly skips it). 404 from the route handler, not a redirect to `/login`.
-- A "Sign out" button on `/dashboard` clears the session and returns the user to `/login`.
+Stub — detailed sub-tasks will be scoped in a future brainstorm/plan session. Per the spec ([`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → "v0.1" → Phase 3 row): add / edit / delete a person within a tree, plus the spouse / parent / child relationship links. No visualization yet — Phase 4 owns rendering.
 
 ## Sub-tasks
 
-One Claude session per sub-task, per CLAUDE.md ("One Claude session per logical task").
+_To be scoped in a brainstorm/plan session before sub-task 1 starts._
 
-- [x] **Sub-task 1** — **Google OAuth secondary sign-in**. "Continue with Google" button on `/login`. Extend `/auth/callback/route.ts` to handle the OAuth code branch (the PKCE code-exchange path is already there; OAuth uses the same `exchangeCodeForSession` mechanism). Configure the Google provider in local `supabase/config.toml` AND in the QA Supabase project dashboard (client_id / client_secret). Verify on local (direct browser redirect to Google, not Mailpit) and on QA (real Google account). See [`../architecture/auth-and-rls.md`](../architecture/auth-and-rls.md) → "Auth mechanisms" and [ADR 0004](../adrs/0004-magic-link-only-no-passwords.md).
-- [x] **Sub-task 2** — **`proxy.ts` auth boundary**. Create `src/proxy.ts` (NOT `middleware.ts` — per [ADR 0007](../adrs/0007-nextjs-16-and-async-idioms.md); also NOT at the repo root — Next.js 16 looks for `(?:src/)?proxy` at the same level as `app/`, so our `src/app/` layout means proxy lives at `src/proxy.ts`). Export `proxy`, run on the Node.js runtime, refresh session via `@supabase/ssr`, redirect unauthenticated traffic to `/login`. Matcher: `['/((?!_next|.*\\..*|share).*)']` — explicitly skip `/share/[token]` and static assets. Once `proxy.ts` is in place, remove the in-page `if (!user) redirect('/login')` from `src/app/dashboard/page.tsx` — the proxy handles it now and we want a single source of truth. *(commit `3f1cee8`)*
-- [x] **Sub-task 3** — **Sign-out**. Server Action `signOut()` (probably `src/app/dashboard/actions.ts`) that calls `supabase.auth.signOut()` then `redirect('/login')`. "Sign out" button on `/dashboard` that submits to the action. After this, the auth proof from Phase 0 sub-task 6 can be exercised end-to-end in a full loop: sign in → `/dashboard` shows email → sign out → back to `/login`.
+Phase 3 backlog items already drafted in [`phase-backlog.md`](phase-backlog.md) → "Phase 3 — People CRUD + linking": `PageProps<'/tree/[id]'>` helper, `updateTag('tree:<treeId>')` on every people-mutation, cycle-detection + spouse-symmetry edge cases, `<Avatar>` component, tone-override UI, and the mobile bottom-sheet pattern for add-relative / edit-person forms. **Always read that file when entering a sub-task.**
 
-Per-sub-task TODOs (Next.js 16 idioms, image config) live in [`phase-backlog.md`](phase-backlog.md). **Always read that file when entering a sub-task.**
+---
+
+## Previous phase: 2 — Tree CRUD + dashboard (✅ closed)
+
+Closed with **`v0.0.3`**. See [release notes](https://github.com/SanchitB23/meetthefam/releases/tag/v0.0.3).
+
+**Ship gate (met)**:
+
+- Logged-in user on `/dashboard` sees every tree they own or are a member of, plus a role badge (owner / editor) and a "+ New tree" CTA. Empty state when none.
+- "+ New tree" → modal (Sheet on mobile, Dialog on desktop) → create works end-to-end. New tree appears immediately on the list — no hard reload (per [ADR 0007](../adrs/0007-nextjs-16-and-async-idioms.md); currently via `revalidatePath('/dashboard')`, `updateTag` deferred — see Phase 2 backlog).
+- "…" menu on an owner-card → Rename works. Updated name appears immediately.
+- "…" menu → Delete with a destructive-styled confirmation works. Tree disappears from list immediately. FK `ON DELETE CASCADE` on `tree_members` (and on `people` once Phase 3 lands rows) means the rest cleans up automatically.
+- "…" menu is **hidden on editor-cards** — non-owners can't see Rename / Delete.
+- **RLS holds**: a non-owner attempting `UPDATE` / `DELETE` on a tree row is blocked at the database, even if the UI is bypassed. Cross-tenant isolation proven by Vitest (`src/__tests__/rls/trees.test.ts`, 4 tests passing).
+- Mobile breakpoint = 1-col card grid; desktop = multi-col (`grid gap-4 sm:grid-cols-2 lg:grid-cols-3`). Reference: [`../ux/inspiration/kintree/`](../ux/inspiration/kintree/) → "Dashboard" screen.
+
+**Sub-tasks (all closed)**:
+
+- [x] **Sub-task 1** — Dashboard list page (read-only). Server Component reading `trees` joined to `tree_members` filtered to the current user's memberships; card per tree with name, description, role badge; empty state with disabled CTA. Sign-out moved into a top-nav slot under the new `/dashboard` layout. *(commit `9794295`)*
+- [x] **Sub-task 2** — Create tree. "+ New tree" CTA → `Sheet` on mobile / `Dialog` on desktop. `createTree(formData)` Server Action calls `create_tree_with_owner` RPC (atomic insert into `trees` + owner row in `tree_members`). Dashboard list refreshes via `revalidatePath('/dashboard')`. *(commit `1a87c84`)*
+- [x] **Sub-task 3** — Owner rename + delete. "…" menu on owner-cards only; `renameTree(treeId, newName)` + `deleteTree(treeId)` Server Actions, both gated by RLS `UPDATE` / `DELETE` policies. First Vitest RLS test landed at `src/__tests__/rls/trees.test.ts` — non-owner session blocked on `SELECT`, `UPDATE`, and `DELETE`. *(commit `46441ba`)*
+
+**Phase 2 close-out**:
+
+- [x] RLS Vitest test for `trees` / `tree_members` — user A cannot `SELECT` / `UPDATE` / `DELETE` user B's rows. *(commit `46441ba` — 4 tests in `src/__tests__/rls/trees.test.ts`)*
+- [x] Per-sub-task docs ticks landed in `current-phase.md` + `phase-backlog.md` in the same commit as each feature commit.
+- [x] Confirm `revalidatePath` cache-invalidation works on QA (not just local). Smoke: open `/dashboard` in two tabs, create a tree in tab 1, refresh tab 2 — verified by user 2026-05-12 against `meetthefam-git-qa-sanchit-bhatnagars-projects.vercel.app`.
+- [x] Confirm mobile layout (1-col card grid) on QA via Chrome devtools mobile emulator — verified by user 2026-05-12.
+
+See [ADR 0007](../adrs/0007-nextjs-16-and-async-idioms.md) for the async-idioms baseline (currently using `revalidatePath`; `updateTag` deferred until `"use cache"` adoption post-v0.1).
+
+---
+
+## Previous phase: 1 — Auth (✅ closed)
+
+Closed with **`v0.0.2`**. See [release notes](https://github.com/SanchitB23/meetthefam/releases/tag/v0.0.2).
+
+**Ship gate (met)**:
+
+- Magic-link sign-in (from Phase 0) still works end-to-end on local + QA.
+- Google OAuth one-click sign-in works end-to-end on local + QA.
+- Hitting `/dashboard` while unauthenticated triggers an **edge-side** 307 from `proxy.ts` (not an in-page redirect).
+- Hitting `/share/<random-token>` does NOT trigger the auth boundary (matcher skips it).
+- "Sign out" button on `/dashboard` clears the session and returns to `/login`.
+
+**Sub-tasks (all closed)**:
+
+- [x] **Sub-task 1** — Google OAuth secondary sign-in. "Continue with Google" button + `signInWithGoogle` server action; `[auth.external.google]` block in `supabase/config.toml` with explicit `redirect_uri` (the empty default broke local with "missing redirect URI"); reuses the existing PKCE `/auth/callback` route. Verified local + QA. *(commit `fad1bb7`)*
+- [x] **Sub-task 2** — `proxy.ts` auth boundary at `src/proxy.ts` (Node runtime, refreshes session via `@supabase/ssr`, 307s unauthenticated traffic to `/login`, matcher skips `/share/[token]`). Retired the in-page redirect from the dashboard. *(commit `3f1cee8`)*
+- [x] **Sub-task 3** — Sign-out. `signOut()` server action + `<SignOutButton />` client component with `useFormStatus` pending state. *(commit `9c8e4e9`)*
+
+**Phase 1 close-out** (all done):
+
+- [x] Per-sub-task docs ticks landed in `current-phase.md` + `phase-backlog.md` in the same commit as each feature commit.
+- [x] QA verification of all three sub-tasks via Chrome (`Sanchit Personal` profile) — Google OAuth → `/dashboard`, sign-out → `/login`, magic-link confirmation card.
+- [x] Backlog reconciliation + "Standing rules" section added in `phase-backlog.md`. *(commit `68af64c`)*
+
+See [ADR 0004](../adrs/0004-magic-link-only-no-passwords.md) for the passwordless-only auth stance and [ADR 0007](../adrs/0007-nextjs-16-and-async-idioms.md) for the `proxy.ts` over `middleware.ts` rationale.
 
 ---
 

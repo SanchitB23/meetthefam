@@ -31,6 +31,7 @@ For focused work, prefer these subagents over a generic agent:
 - **`supabase-engineer`** — schema, migrations, RLS policies, DB-touching server actions
 - **`frontend-engineer`** — React components, family-chart wrapper, mobile gestures
 - **`test-engineer`** — Vitest (RLS + server-action tests), Playwright (E2E happy paths)
+- **`task-doc-keeper`** — keeps `docs/tasks/current-phase.md` + `docs/tasks/phase-backlog.md` in sync with work about to land. **Invoke before every feature commit** so doc ticks land in the same commit as the code (per the standing memory rule). Also drives phase close-outs (mark current phase ✅ closed, open the next phase stub). It only edits the docs — the controller still stages + commits.
 
 Definitions live in [`.claude/agents/`](.claude/agents/).
 
@@ -57,8 +58,8 @@ local → qa → main → production
 
 - **Always commit and push to `qa` first.** The Vercel QA preview rebuilds at `meetthefam-git-qa-*.vercel.app` against the QA Supabase project (per [ADR 0005](docs/adrs/0005-three-environments.md)).
 - **`qa` is scratch space.** WIP commits, force-pushes, rebases — all fine on `qa` as long as you're the only one working on it.
-- **Promote with `git merge qa --ff-only`** from `main`. Fast-forward only — no merge bubble on `main`. If the fast-forward refuses, something has drifted; investigate (probably `git reset --hard qa` on `main` is the answer for a solo dev) but never `--no-ff` here.
-- **Hotfix exception**: if production breaks and `qa` has un-shipped work, branch off `main` for the fix, then forward-port to `qa` afterwards.
+- **Promote `qa → main` via a Pull Request, merged with a real merge commit** (the "Create a merge commit" option in GitHub's UI, or `gh pr merge --merge`). Each phase ships as one visible boundary on `main` — `git log --graph main` shows a merge bubble per release. The PR description captures the phase's release notes; the PR record itself becomes the durable history marker even after the release is cut. Do **not** use squash-and-merge (loses per-sub-task commits) or rebase-and-merge (loses the boundary). Fast-forward only is also off — flipped from the pre-v0.0.2 convention; pre-v0.0.2 phases (v0.0.0, v0.0.1, v0.0.2) shipped via `git merge qa --ff-only` directly to `main` with no PR.
+- **Hotfix exception**: if production breaks and `qa` has un-shipped work, branch off `main` for the fix, open a PR `fix/<…> → main`, merge with a merge commit, then forward-port to `qa` afterwards.
 - **Promotion to `main` is a release event** — see "Releases" below.
 
 ### Releases
@@ -67,21 +68,35 @@ Every promotion to `main` produces a versioned release. Full rationale in [ADR 0
 
 - **Versioning**: phase-anchored SemVer. Pre-Phase-5: `0.0.x` (patch per deploy). `v0.1.0` = Phase 5 complete (personal MVP). `v1.0.0` = Phase 9 complete (multi-tenant launch). Post-v1.0: strict Conventional Commits → SemVer.
 - **Tooling**: `pnpm version <patch|minor|major>` bumps `package.json` and creates an annotated `v`-prefixed git tag atomically.
-- **Release steps** (after qa→main merge):
+- **Release steps**:
 
   ```bash
   # 0. ALWAYS confirm gh is on the SanchitB23 (personal) account, not
   #    the org one (SQB6461_YUMGHCP). Both are logged in on this machine.
   gh auth status
 
-  # 1. Bump version + tag (pnpm version creates the annotated tag)
+  # 1. From qa, open a PR to main. Reuse the release notes for the body
+  #    so the PR record IS the historical marker. Write notes to a tmp
+  #    file first — multi-line markdown is awkward as a flag value.
+  gh pr create \
+    --repo SanchitB23/meetthefam \
+    --base main --head qa \
+    --title "vX.Y.Z — <summary>" \
+    --body-file /tmp/vX.Y.Z-notes.md
+
+  # 2. Merge with a real merge commit (NOT squash, NOT rebase). One
+  #    bubble per phase on main is the whole point of this workflow.
+  gh pr merge --repo SanchitB23/meetthefam --merge --delete-branch=false <pr-number>
+
+  # 3. Switch to main, pull the merge, then bump version + tag.
+  git checkout main && git pull --ff-only
   pnpm version patch                       # or minor / major
 
-  # 2. Push commit + tag
+  # 4. Push the version commit + tag.
   git push origin main --follow-tags
 
-  # 3. Create the GitHub Release. Write notes to a tmp file first —
-  #    multi-line markdown is awkward as a flag value.
+  # 5. Create the GitHub Release pointing at the new tag. Reuse the
+  #    same notes file from step 1.
   gh release create vX.Y.Z \
     --repo SanchitB23/meetthefam \
     --title "vX.Y.Z — <summary>" \
