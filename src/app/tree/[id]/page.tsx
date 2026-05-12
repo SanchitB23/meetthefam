@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { PersonList } from './_components/PersonList'
 import type { PersonRow } from './_components/PersonCard'
+import { AddPersonControls } from './_components/AddPersonControls'
 
 type TreeRow = {
   id: string
@@ -67,17 +68,13 @@ export default async function TreePage(props: PageProps<'/tree/[id]'>) {
           <p className="text-sm text-foreground/50 mb-6">
             Start by adding the first person in this family.
           </p>
-          {/* TODO(phase-3 sub-task 2): wire to AddPersonFab / PersonForm. */}
-          <button
-            type="button"
-            disabled
-            className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-primary/70 text-primary-foreground opacity-60 cursor-not-allowed"
-          >
-            + Add the first person
-          </button>
+          <AddPersonControls treeId={tree.id} showEmptyStateCta />
         </div>
       ) : (
-        <PersonList people={people} />
+        <>
+          <PersonList people={people} />
+          <AddPersonControls treeId={tree.id} />
+        </>
       )}
     </main>
   )
