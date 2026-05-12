@@ -10,6 +10,8 @@ Per the spec ([`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-
 
 _To be scoped in a future brainstorm/plan session before sub-task 1 starts._ See the Phase 4 backlog items in [`phase-backlog.md`](phase-backlog.md) for the standing TODOs that will fold into the sub-task slicing (PersonNode go/no-go spike, `<ViewTransition>` defer-or-promote, mobile FAB pattern, etc.).
 
+> **Workflow note** — Phase 4 is the first phase shipped under the feature-branch workflow ([ADR 0010](../adrs/0010-feature-branch-workflow.md)). Each sub-task and incidental fix lands on its own Conventional-Commit-prefixed branch (`feat/phase-4/sub-task-N-<slug>`, `fix/<slug>`, `chore/<slug>`, `docs/<slug>`, etc.), PR'd into `qa` with squash-merge. The release at the end of the phase rides a `release/v0.0.5` branch from `qa` into `main` (merge commit), then back into `qa` (squash) per [ADR 0009 §4](../adrs/0009-versioning-and-releases.md) — see CLAUDE.md → "Releases" for the full recipe.
+
 ---
 
 ## Previous phase: 3 — People CRUD + linking (✅ closed)
