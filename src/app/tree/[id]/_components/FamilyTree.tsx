@@ -1,10 +1,10 @@
 'use client'
 
 // Phase 4 sub-task 1 — smoke render.
-// Phase 4 sub-task 2 — custom PersonNode HTML card (setCardInnerHtmlCreator).
-// Phase 4 sub-task 3 — tap-to-detail: override library default
-//   click-to-recenter with `setOnCardClick`, surface a <PersonDetailSheet>
-//   driven by local state. Re-center moves to the sub-task 4 action menu.
+// Phase 4 sub-task 2 — custom PersonNode HTML card.
+// Phase 4 sub-task 3 — tap → detail sheet (setOnCardClick override).
+// Phase 4 sub-task 4 — long-press / "…" → action menu, "Re-center here"
+//   moved off the tap path and into the menu.
 //
 // No URL-hash sync, no FAB context-awareness yet (sub-task 5).
 
@@ -18,7 +18,9 @@ import {
   type FamilyChartDatum,
 } from '../_lib/family-chart-data'
 import { personNodeHtml } from '../_lib/person-node-html'
+import { usePressActions } from '../_lib/usePressActions'
 import type { PersonRow } from '../_lib/types'
+import { PersonActionMenu, type ActionAnchor } from './PersonActionMenu'
 import { PersonDetailSheet } from './PersonDetailSheet'
 
 type Props = {
@@ -26,26 +28,38 @@ type Props = {
   people: PersonRow[]
 }
 
+type Chart = ReturnType<typeof f3.createChart>
+
 export function FamilyTree({ treeId, people }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const chartRef = useRef<Chart | null>(null)
   const [detailPersonId, setDetailPersonId] = useState<string | null>(null)
+  const [actionAnchor, setActionAnchor] = useState<ActionAnchor | null>(null)
 
-  // Stable id → row lookup for the detail sheet's relations summary and the
-  // click handler's resolution. Memoized on the `people` array reference;
-  // the Server Component hands back a new array on each revalidate.
   const peopleById = useMemo(
     () => new Map(people.map((p) => [p.id, p])),
     [people],
   )
 
-  // The click handler reads `peopleById` to resolve the tapped node's
-  // PersonRow. Keep the latest Map in a ref so the chart's onCardClick
-  // (registered once inside the effect) always sees fresh data — without
-  // tearing the chart down on every revalidate.
   const peopleByIdRef = useRef(peopleById)
   useEffect(() => {
     peopleByIdRef.current = peopleById
   }, [peopleById])
+
+  // 500 ms long-press gesture. On fire, opens the action menu anchored at
+  // the pressed node's top-right corner (matches the three-dot trigger's
+  // anchor for consistency between gesture + fallback paths).
+  const { shouldSuppressNextClickRef } = usePressActions(containerRef, {
+    onLongPress: (personId, e) => {
+      const node = (e.target as HTMLElement | null)?.closest('.mtf-node') as HTMLElement | null
+      const rect = node?.getBoundingClientRect()
+      setActionAnchor({
+        personId,
+        x: rect ? rect.right - 4 : e.clientX,
+        y: rect ? rect.top + 8 : e.clientY,
+      })
+    },
+  })
 
   useEffect(() => {
     const cont = containerRef.current
@@ -55,7 +69,6 @@ export function FamilyTree({ treeId, people }: Props) {
 
     const chart = f3.createChart(cont, data)
       .setTransitionTime(800)
-      // Spacing tuned for the 158×110 PersonNode (per ADR 0008).
       .setCardXSpacing(220)
       .setCardYSpacing(130)
       .setOrientationVertical()
@@ -67,24 +80,49 @@ export function FamilyTree({ treeId, people }: Props) {
       .setCardHtml()
       .setCardDim({ w: 158, h: 110 })
       .setCardInnerHtmlCreator(personNodeHtml)
-      // Override the library's click-to-recenter. The detail sheet is the
-      // sub-task-3 entry point; re-centering becomes a menu item in
-      // sub-task 4 so the user can choose what a tap means.
-      .setOnCardClick((_e: Event, d: TreeDatum) => {
-        const id = d.data.id
-        if (peopleByIdRef.current.has(id)) {
-          setDetailPersonId(id)
+      .setOnCardClick((e: Event, d: TreeDatum) => {
+        // Long-press just fired → swallow this click so the detail sheet
+        // doesn't pop on the pointerup that ended the gesture.
+        if (shouldSuppressNextClickRef.current) {
+          shouldSuppressNextClickRef.current = false
+          return
         }
+        const id = d.data.id
+        if (!peopleByIdRef.current.has(id)) return
+
+        // Three-dot tap → action menu anchored at the button. Anywhere
+        // else on the card → detail sheet.
+        const target = (e.target as HTMLElement | null) ?? null
+        const trigger = target?.closest('[data-action-trigger]') as HTMLElement | null
+        if (trigger) {
+          const rect = trigger.getBoundingClientRect()
+          setActionAnchor({
+            personId: id,
+            x: rect.right,
+            y: rect.bottom,
+          })
+          return
+        }
+        setDetailPersonId(id)
       })
 
     chart.updateTree({ initial: true })
+    chartRef.current = chart
 
     return () => {
+      chartRef.current = null
       cont.innerHTML = ''
     }
-  }, [people])
+  }, [people, shouldSuppressNextClickRef])
 
   const detailPerson = detailPersonId ? peopleById.get(detailPersonId) ?? null : null
+
+  const handleRecenter = (personId: string) => {
+    const chart = chartRef.current
+    if (!chart) return
+    chart.updateMainId(personId)
+    chart.updateTree()
+  }
 
   return (
     <>
@@ -101,6 +139,14 @@ export function FamilyTree({ treeId, people }: Props) {
         peopleById={peopleById}
         treeId={treeId}
         onOpenChange={(next) => setDetailPersonId(next?.id ?? null)}
+      />
+      <PersonActionMenu
+        anchor={actionAnchor}
+        treeId={treeId}
+        people={people}
+        peopleById={peopleById}
+        onClose={() => setActionAnchor(null)}
+        onRecenter={handleRecenter}
       />
     </>
   )
