@@ -113,6 +113,23 @@ describe('personNodeHtml', () => {
     expect(html).toContain('JS')
   })
 
+  test('avatar wrapper is a circle with flex-centered content (both branches)', () => {
+    // Regression for the v0.0.5 screenshot bug — square block + top-left
+    // initials. Without these wrapper styles the avatar reads as a flat
+    // tinted box.
+    const initialsHtml = personNodeHtml(treeNode(datum({ photo_url: null })))
+    expect(initialsHtml).toContain('border-radius:50%')
+    expect(initialsHtml).toContain('display:inline-flex')
+    expect(initialsHtml).toContain('align-items:center')
+    expect(initialsHtml).toContain('justify-content:center')
+
+    const photoHtml = personNodeHtml(
+      treeNode(datum({ photo_url: 'https://example.com/p.jpg' })),
+    )
+    expect(photoHtml).toContain('border-radius:50%')
+    expect(photoHtml).toContain('overflow:hidden')
+  })
+
   test('escapes HTML-unsafe characters in name + photo url', () => {
     const html = personNodeHtml(
       treeNode(
