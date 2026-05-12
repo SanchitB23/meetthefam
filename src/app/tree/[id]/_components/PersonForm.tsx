@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, useSyncExternalStore, useTransition } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 import { Controller, useForm, type SubmitHandler } from 'react-hook-form'
 import { Trash2 } from 'lucide-react'
 
@@ -19,6 +19,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
+import { useIsDesktop } from '@/components/ui/use-is-desktop'
 
 import { createPerson, updatePerson, type PersonInput } from '../actions'
 import { DeletePersonDialog } from './DeletePersonDialog'
@@ -116,38 +117,9 @@ type Props = {
 const inputClass =
   'border border-border rounded-md px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary'
 
-const DESKTOP_QUERY = '(min-width: 640px)'
-
-function subscribeToMedia(callback: () => void): () => void {
-  const mql = window.matchMedia(DESKTOP_QUERY)
-  mql.addEventListener('change', callback)
-  return () => mql.removeEventListener('change', callback)
-}
-
-function getDesktopSnapshot(): boolean {
-  return window.matchMedia(DESKTOP_QUERY).matches
-}
-
-function getServerSnapshot(): boolean {
-  // Render the mobile surface during SSR + first client paint. Both
-  // surfaces stay `open=false` on first paint anyway — the swap is
-  // invisible to the user.
-  return false
-}
-
-/**
- * Hydration-safe media-query hook via `useSyncExternalStore` — the
- * idiomatic React 19 path for external sources. Avoids the
- * `react-hooks/set-state-in-effect` lint we'd hit with the naive
- * `useState + useEffect` shape.
- */
-function useIsDesktop(): boolean {
-  return useSyncExternalStore(
-    subscribeToMedia,
-    getDesktopSnapshot,
-    getServerSnapshot,
-  )
-}
+// `useIsDesktop` lives in `@/components/ui/use-is-desktop` so the same
+// responsive Sheet/Dialog swap is available to PersonPicker + SetParentsDialog
+// (Phase 3 sub-task 4) without duplicating the snapshot logic.
 
 export function PersonForm({
   open,

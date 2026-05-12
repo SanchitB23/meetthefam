@@ -4,8 +4,10 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 // Phase 3 sub-task 3 adds `updatePerson` + `deletePerson` on top of
-// sub-task 2's `createPerson`. Sub-tasks 4/5 will add `setSpouse`,
-// `setParents`, `clearSpouse`, and a `linkSpec` argument to `createPerson`.
+// sub-task 2's `createPerson`. Sub-task 4 adds `setSpouse`, `setParents`,
+// and `clearSpouse` — thin wrappers around the parallel-landing RPCs in
+// the `<ts>_people_link_rpcs.sql` migration (supabase-engineer). Sub-task
+// 5 will add a `linkSpec` argument to `createPerson`.
 
 const TONES = ['sage', 'rose', 'indigo', 'amber', 'green'] as const
 type ToneLiteral = (typeof TONES)[number]
@@ -242,6 +244,93 @@ export async function deletePerson(
   if (!user) return { ok: false, error: 'Not signed in' }
 
   const { error } = await supabase.rpc('delete_person_atomic', {
+    p_person_id: personId,
+  })
+
+  if (error) return { ok: false, error: error.message }
+
+  revalidatePath(`/tree/${treeId}`)
+  return { ok: true }
+}
+
+// ---- Linking actions (sub-task 4) ----
+//
+// Each wrapper:
+//   1. Verifies the user is signed in (defense in depth — RLS gates the
+//      actual write inside the RPC because the RPCs are SECURITY INVOKER).
+//   2. Calls the corresponding `*_atomic` Postgres function by name.
+//      Supabase's `.rpc()` is stringly-typed for function names, so the
+//      typecheck passes even though the RPCs ship in a separate migration
+//      in parallel with this PR.
+//   3. Surfaces the RPC's `error.message` to the caller — the supabase-
+//      engineer's brief calls for user-facing error text on the three
+//      rejection cases (self-spouse, cross-tree, ancestor cycle).
+//   4. `revalidatePath('/tree/' + treeId)` so the list reflects the new
+//      links on the next render.
+
+export type SetSpouseResult =
+  | { ok: true; error?: never }
+  | { ok: false; error: string }
+export type SetParentsResult = SetSpouseResult
+export type ClearSpouseResult = SetSpouseResult
+
+export async function setSpouse(
+  personA: string,
+  personB: string,
+  treeId: string,
+): Promise<SetSpouseResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: 'Not signed in' }
+
+  const { error } = await supabase.rpc('set_spouse_atomic', {
+    p_person_a: personA,
+    p_person_b: personB,
+  })
+
+  if (error) return { ok: false, error: error.message }
+
+  revalidatePath(`/tree/${treeId}`)
+  return { ok: true }
+}
+
+export async function setParents(
+  personId: string,
+  fatherId: string | null,
+  motherId: string | null,
+  treeId: string,
+): Promise<SetParentsResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: 'Not signed in' }
+
+  const { error } = await supabase.rpc('set_parents_atomic', {
+    p_person_id: personId,
+    p_father_id: fatherId,
+    p_mother_id: motherId,
+  })
+
+  if (error) return { ok: false, error: error.message }
+
+  revalidatePath(`/tree/${treeId}`)
+  return { ok: true }
+}
+
+export async function clearSpouse(
+  personId: string,
+  treeId: string,
+): Promise<ClearSpouseResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: 'Not signed in' }
+
+  const { error } = await supabase.rpc('clear_spouse_atomic', {
     p_person_id: personId,
   })
 

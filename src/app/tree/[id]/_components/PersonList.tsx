@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { PersonCard, type PersonRow } from './PersonCard'
+import { PersonCardMenu } from './PersonCardMenu'
 import { PersonForm } from './PersonForm'
 
 type Props = {
@@ -11,37 +12,27 @@ type Props = {
 
 /**
  * PersonList owns the "which row is being edited" state for the whole grid
- * and renders a single shared `<PersonForm mode="edit">`. Each card is
- * wrapped in a `<button>` whose click sets that state, opening the form.
+ * and renders a single shared `<PersonForm mode="edit">`.
  *
- * Tappability design choice (Phase 3 sub-task 3, option chosen from the
- * three offered):
+ * Sub-task 4 layout: stretched-button pattern (matches `<TreeCard>`).
  *
- *   The plan offered three options:
- *     (a) convert `PersonCard` itself to `'use client'` + take an onClick prop
- *     (b) introduce a new `EditPersonControls` wrapper
- *     (c) lift state into `PersonList` and have it own the open-state +
- *         edit-target + edit form
+ *   Outer  : `relative` wrapper
+ *   z-0    : absolute `<button>` covering the card → tap-to-edit
+ *   z-10   : `<PersonCard>` content with `pointer-events-none` so the
+ *            button below receives clicks
+ *   z-10   : `<PersonCardMenu>` floats in the top-right with
+ *            `pointer-events-auto` so its dropdown trigger wins clicks
+ *            over the underlying edit-button
  *
- *   We went with (c). Rationale:
- *     - The cards live in a grid that already needs to share one piece of
- *       state (which row to edit). Hoisting that to the list is the natural
- *       home — no fan-out via context, no separate wrapper component.
- *     - PersonCard stays purely presentational, so sub-task 4 can drop in
- *       a `PersonCardMenu` (a separate client component) without touching
- *       this file's interactive seam.
- *     - The card-tap → edit behavior remains the default, exactly as
- *       sub-task 4 expects to inherit ("card body itself opens the edit
- *       form on click; sub-task 4 will move Edit + Delete into the menu
- *       and keep card-tap → edit as the default").
- *
- * Sub-task 4 will likely add a wrapping div per card so the menu trigger
- * can sit outside the tappable area. For now the whole card is the tap
- * surface, which is also fine because there's no menu yet to conflict.
+ * This preserves tap-to-edit AND lets the menu live inside the card chrome
+ * without nesting a button inside a button (invalid HTML the previous
+ * sub-task 3 implementation was getting away with only because the inner
+ * menu didn't yet exist).
  */
 export function PersonList({ treeId, people }: Props) {
-  // Build the lookup map once per render so each PersonCard can resolve
-  // spouse/parent names in O(1) without re-querying.
+  // Build the lookup map once per render so each PersonCard and
+  // PersonCardMenu can resolve spouse/parent names + relation walks in
+  // O(1) without re-querying.
   const peopleById = useMemo(
     () => new Map(people.map((p) => [p.id, p])),
     [people],
@@ -54,19 +45,42 @@ export function PersonList({ treeId, people }: Props) {
     <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {people.map((p) => (
-          <button
+          <div
             key={p.id}
-            type="button"
-            onClick={() => setEditId(p.id)}
-            aria-label={`Edit ${p.full_name}`}
-            // text-left + display:block so the inner card lays out normally.
-            // focus-visible ring uses the heirloom primary token. The card
-            // itself already exceeds the 44px hit-area minimum (p-4 + avatar
-            // md = 56px), so no extra padding shim is needed.
-            className="text-left block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:bg-foreground/[0.02] transition-colors"
+            className="relative rounded-lg transition-colors hover:bg-foreground/[0.02] focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-background"
           >
-            <PersonCard person={p} peopleById={peopleById} />
-          </button>
+            {/* z-0 absolute button — the tap-to-edit surface. Mirrors
+                <TreeCard>'s stretched-Link pattern. aria-label gives
+                screen readers a meaningful target name; visible focus
+                ring lives on the outer wrapper via focus-within. */}
+            <button
+              type="button"
+              onClick={() => setEditId(p.id)}
+              aria-label={`Edit ${p.full_name}`}
+              className="absolute inset-0 z-0 rounded-lg focus:outline-none"
+            />
+
+            {/* z-10 card content with pointer-events-none so clicks fall
+                through to the underlying button. The menu (next sibling)
+                re-enables pointer events on its own subtree only. */}
+            <div className="pointer-events-none relative z-10">
+              <PersonCard person={p} peopleById={peopleById} />
+            </div>
+
+            {/* z-10 menu in the top-right. pointer-events-auto re-enables
+                the dropdown trigger; the menu's own portal handles the
+                rest. min h/w 44px keeps the hit-area at the Apple HIG
+                floor on mobile. */}
+            <div className="absolute top-2 right-2 z-10 pointer-events-auto">
+              <PersonCardMenu
+                person={p}
+                treeId={treeId}
+                people={people}
+                peopleById={peopleById}
+                onEdit={(id) => setEditId(id)}
+              />
+            </div>
+          </div>
         ))}
       </div>
 
