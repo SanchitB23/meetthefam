@@ -1,37 +1,45 @@
-# Current phase: 2 — Tree CRUD + dashboard (in progress)
+# Current phase: 3 — People CRUD + linking (planning)
 
 ## Goal
 
-Make `/dashboard` real. Logged-in user lands on it and sees every tree they own or are a member of, can create a new tree, and can rename or delete trees they own. **No people, no visualization yet** — Phase 3 owns those. Per the spec ([`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → "v0.1" → Phase 2 row), [`../architecture/data-model.md`](../architecture/data-model.md) (`trees` + `tree_members` tables), and [`../architecture/auth-and-rls.md`](../architecture/auth-and-rls.md) (RLS policies on `trees`/`tree_members`).
-
-This is the first phase where any UI is *backed by user-mutable data*. Use the **`supabase-engineer`** subagent for the Server Actions + RLS verification (per CLAUDE.md "Use the `supabase-engineer` agent for any RLS work — RLS holes are the #1 silent bug class in multi-tenant SaaS"). Use the **`frontend-engineer`** subagent for the dashboard UI + modal pieces.
-
-**Ship gate**:
-
-- Logged-in user on `/dashboard` sees every tree they own or are a member of, plus a role badge (owner / editor) and a "+ New tree" CTA. Empty state when none.
-- "+ New tree" → modal (Sheet on mobile, Dialog on desktop) → create works end-to-end. New tree appears immediately on the list — no hard reload (`updateTag('user-trees:<userId>')` for read-your-writes per [ADR 0007](../adrs/0007-nextjs-16-and-async-idioms.md)).
-- "…" menu on an owner-card → Rename works. Updated name appears immediately.
-- "…" menu → Delete with a destructive-styled confirmation works. Tree disappears from list immediately. FK `ON DELETE CASCADE` on `tree_members` (and on `people` once Phase 3 lands rows) means the rest cleans up automatically.
-- "…" menu is **hidden on editor-cards** — non-owners can't see Rename / Delete.
-- **RLS holds**: a non-owner attempting `UPDATE` / `DELETE` on a tree row is blocked at the database, even if the UI is bypassed. Cross-tenant isolation: user A signed in cannot `SELECT`, `UPDATE`, or `DELETE` user B's trees (extends the Phase 0 sub-task 4 smoke check into a real Vitest case).
-- Mobile breakpoint = 1-col card grid; desktop = multi-col. Reference: [`../ux/inspiration/kintree/`](../ux/inspiration/kintree/) → "Dashboard" screen.
-- Verified on **local AND QA**.
+Stub — detailed sub-tasks will be scoped in a future brainstorm/plan session. Per the spec ([`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → "v0.1" → Phase 3 row): add / edit / delete a person within a tree, plus the spouse / parent / child relationship links. No visualization yet — Phase 4 owns rendering.
 
 ## Sub-tasks
 
-One Claude session per sub-task, per CLAUDE.md ("One Claude session per logical task").
+_To be scoped in a brainstorm/plan session before sub-task 1 starts._
 
-- [ ] **Sub-task 1** — **Dashboard list page (read-only).** Replace the placeholder `src/app/dashboard/page.tsx` with a real read-only list. Server Component that calls `supabase.from('trees').select(..., tree_members!inner(role))` filtered to the current user's memberships (RLS does the heavy lifting). Card per tree with name, description, role badge. Empty state when zero trees with the same "+ New tree" CTA used in sub-task 2 (placeholder/disabled until sub-task 2 wires the modal). Move the existing Sign-out button into a top-nav slot now that the dashboard has its own layout. **Verification**: insert a tree manually via Supabase Studio (`docker exec` or the local Studio UI) → reload `/dashboard` → tree appears. Mobile breakpoint check.
-- [ ] **Sub-task 2** — **Create tree.** Hook the "+ New tree" CTA to a modal: `Sheet` (shadcn) on mobile, `Dialog` on desktop. Form: name (required, ≤80 chars), description (optional, ≤500 chars). `createTree(formData)` Server Action — inserts into `trees` (`owner_id = auth.uid()`), then inserts the owner row into `tree_members` (`role='owner'`). Wrap both inserts in a single DB transaction (Postgres function `create_tree_with_owner`, or a Supabase RPC). Call `updateTag('user-trees:<userId>')` so the dashboard list refreshes immediately. Close the modal on success. **Verification**: click CTA, submit form, see new tree appear without hard reload. Try invalid input — name empty / >80 chars — confirm the action rejects.
-- [ ] **Sub-task 3** — **Rename + delete tree.** "…" menu on each owner-card only (use the role badge from sub-task 1 to gate this). Rename → modal with name field → `renameTree(treeId, newName)` action. Delete → destructive confirmation modal ("Delete *<name>*? This cannot be undone.") → `deleteTree(treeId)` action. Both call `updateTag('user-trees:<userId>')`. RLS `UPDATE` / `DELETE` policies on `trees` already restrict to owners — write the Vitest test that proves a non-owner session is blocked. **Use the `test-engineer` subagent** for that RLS test (per CLAUDE.md "RLS tests are the one tier we don't skip"). FK `ON DELETE CASCADE` on `tree_members.tree_id` handles membership cleanup automatically.
+Phase 3 backlog items already drafted in [`phase-backlog.md`](phase-backlog.md) → "Phase 3 — People CRUD + linking": `PageProps<'/tree/[id]'>` helper, `updateTag('tree:<treeId>')` on every people-mutation, cycle-detection + spouse-symmetry edge cases, `<Avatar>` component, tone-override UI, and the mobile bottom-sheet pattern for add-relative / edit-person forms. **Always read that file when entering a sub-task.**
 
-Per-sub-task TODOs (`PageProps<'/dashboard'>` async, `updateTag` wiring, mobile pattern, bottom-tab-bar deferral) live in [`phase-backlog.md`](phase-backlog.md) → "Phase 2." **Always read that file when entering a sub-task.**
+---
 
-## Phase 2 close-out (to do before promotion)
+## Previous phase: 2 — Tree CRUD + dashboard (✅ closed)
 
-- [ ] RLS Vitest test for `trees` / `tree_members` — user A cannot `SELECT` / `UPDATE` / `DELETE` user B's rows (sub-task 3 territory).
-- [ ] Confirm `updateTag` cache-invalidation works on QA (not just local). Smoke: open `/dashboard` in two tabs, create a tree in tab 1, refresh tab 2.
-- [ ] Confirm mobile layout (1-col card grid) on QA via Chrome devtools mobile emulator.
+Closed with **`v0.0.3`**. See [release notes](https://github.com/SanchitB23/meetthefam/releases/tag/v0.0.3).
+
+**Ship gate (met)**:
+
+- Logged-in user on `/dashboard` sees every tree they own or are a member of, plus a role badge (owner / editor) and a "+ New tree" CTA. Empty state when none.
+- "+ New tree" → modal (Sheet on mobile, Dialog on desktop) → create works end-to-end. New tree appears immediately on the list — no hard reload (per [ADR 0007](../adrs/0007-nextjs-16-and-async-idioms.md); currently via `revalidatePath('/dashboard')`, `updateTag` deferred — see Phase 2 backlog).
+- "…" menu on an owner-card → Rename works. Updated name appears immediately.
+- "…" menu → Delete with a destructive-styled confirmation works. Tree disappears from list immediately. FK `ON DELETE CASCADE` on `tree_members` (and on `people` once Phase 3 lands rows) means the rest cleans up automatically.
+- "…" menu is **hidden on editor-cards** — non-owners can't see Rename / Delete.
+- **RLS holds**: a non-owner attempting `UPDATE` / `DELETE` on a tree row is blocked at the database, even if the UI is bypassed. Cross-tenant isolation proven by Vitest (`src/__tests__/rls/trees.test.ts`, 4 tests passing).
+- Mobile breakpoint = 1-col card grid; desktop = multi-col (`grid gap-4 sm:grid-cols-2 lg:grid-cols-3`). Reference: [`../ux/inspiration/kintree/`](../ux/inspiration/kintree/) → "Dashboard" screen.
+
+**Sub-tasks (all closed)**:
+
+- [x] **Sub-task 1** — Dashboard list page (read-only). Server Component reading `trees` joined to `tree_members` filtered to the current user's memberships; card per tree with name, description, role badge; empty state with disabled CTA. Sign-out moved into a top-nav slot under the new `/dashboard` layout. *(commit `9794295`)*
+- [x] **Sub-task 2** — Create tree. "+ New tree" CTA → `Sheet` on mobile / `Dialog` on desktop. `createTree(formData)` Server Action calls `create_tree_with_owner` RPC (atomic insert into `trees` + owner row in `tree_members`). Dashboard list refreshes via `revalidatePath('/dashboard')`. *(commit `1a87c84`)*
+- [x] **Sub-task 3** — Owner rename + delete. "…" menu on owner-cards only; `renameTree(treeId, newName)` + `deleteTree(treeId)` Server Actions, both gated by RLS `UPDATE` / `DELETE` policies. First Vitest RLS test landed at `src/__tests__/rls/trees.test.ts` — non-owner session blocked on `SELECT`, `UPDATE`, and `DELETE`. *(commit `46441ba`)*
+
+**Phase 2 close-out**:
+
+- [x] RLS Vitest test for `trees` / `tree_members` — user A cannot `SELECT` / `UPDATE` / `DELETE` user B's rows. *(commit `46441ba` — 4 tests in `src/__tests__/rls/trees.test.ts`)*
+- [x] Per-sub-task docs ticks landed in `current-phase.md` + `phase-backlog.md` in the same commit as each feature commit.
+- [ ] Confirm `updateTag` cache-invalidation works on QA (not just local). Smoke: open `/dashboard` in two tabs, create a tree in tab 1, refresh tab 2. *(pending manual QA verification after deploy)*
+- [ ] Confirm mobile layout (1-col card grid) on QA via Chrome devtools mobile emulator. *(pending manual QA verification after deploy)*
+
+See [ADR 0007](../adrs/0007-nextjs-16-and-async-idioms.md) for the async-idioms baseline (currently using `revalidatePath`; `updateTag` deferred until `"use cache"` adoption post-v0.1).
 
 ---
 

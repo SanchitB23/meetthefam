@@ -35,9 +35,9 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 
 ## Phase 2 — Tree CRUD + dashboard
 
-- [ ] **`PageProps<'/dashboard'>`** type helper on the dashboard page; `await props.searchParams` if we add a sort/filter query string.
-- [ ] On tree create / rename / delete Server Actions, call `updateTag('user-trees:<userId>')` for read-your-writes on the dashboard list.
-- [ ] **Mobile pattern (per [ADR 0008](../adrs/0008-design-system.md))** — dashboard at mobile breakpoint uses stacked card grid (1-col), desktop uses multi-col. Reference: [`../ux/inspiration/kintree/`](../ux/inspiration/kintree/) → screen "Dashboard". **Defer the bespoke bottom-tab-bar decision here** — try top-nav-only first; only build the tab bar if mobile feels cramped after Phase 3.
+- [ ] **`PageProps<'/dashboard'>`** type helper on the dashboard page; `await props.searchParams` if we add a sort/filter query string. *(Phase 2 did not add search params — helper not yet needed; revisit when sort / filter UI lands.)*
+- [ ] ~~On tree create / rename / delete Server Actions, call `updateTag('user-trees:<userId>')` for read-your-writes on the dashboard list.~~ **Deferred** — Phase 2 ships with `revalidatePath('/dashboard')` per the approved plan. `updateTag` only pays off once we adopt `"use cache"` cache-component segments (post-v0.1). See [ADR 0007](../adrs/0007-nextjs-16-and-async-idioms.md).
+- [x] **Mobile pattern (per [ADR 0008](../adrs/0008-design-system.md))** — dashboard at mobile breakpoint uses stacked card grid (1-col), desktop uses multi-col. Reference: [`../ux/inspiration/kintree/`](../ux/inspiration/kintree/) → screen "Dashboard". *(landed in sub-task 1, commit `9794295` — `grid gap-4 sm:grid-cols-2 lg:grid-cols-3` in `src/app/dashboard/page.tsx`)*. **Bottom-tab-bar decision still deferred** — top-nav-only for now; revisit after Phase 3 if mobile feels cramped.
 
 ## Phase 3 — People CRUD + linking
 
