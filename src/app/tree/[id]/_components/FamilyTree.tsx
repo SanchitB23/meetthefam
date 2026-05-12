@@ -18,6 +18,7 @@ import {
   transformToFamilyChartShape,
   type FamilyChartDatum,
 } from '../_lib/family-chart-data'
+import { personNodeHtml } from '../_lib/person-node-html'
 import type { PersonRow } from '../_lib/types'
 
 type Props = {
@@ -38,8 +39,9 @@ export function FamilyTree({ people }: Props) {
 
     const chart = f3.createChart(cont, data)
       .setTransitionTime(800)
-      .setCardXSpacing(250)
-      .setCardYSpacing(150)
+      // Spacing tuned for the 158×110 PersonNode (per ADR 0008).
+      .setCardXSpacing(220)
+      .setCardYSpacing(130)
       .setOrientationVertical()
       // The library's default ancestry/progeny depths clip to ±1
       // generation around the focus person. For our 50–200 people-per-tree
@@ -57,7 +59,8 @@ export function FamilyTree({ people }: Props) {
 
     chart
       .setCardHtml()
-      .setCardDisplay([['full_name'], ['birth_year']])
+      .setCardDim({ w: 158, h: 110 })
+      .setCardInnerHtmlCreator(personNodeHtml)
 
     chart.updateTree({ initial: true })
 
