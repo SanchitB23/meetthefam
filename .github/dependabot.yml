@@ -1,0 +1,75 @@
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Kolkata
+    target-branch: qa
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      next:
+        patterns:
+          - next
+          - "@next/*"
+          - eslint-config-next
+      react:
+        patterns:
+          - react
+          - react-dom
+          - "@types/react"
+          - "@types/react-dom"
+      supabase:
+        patterns:
+          - "@supabase/*"
+          - supabase
+      shadcn-base-ui:
+        patterns:
+          - "@base-ui/*"
+          - class-variance-authority
+          - clsx
+          - tailwind-merge
+          - lucide-react
+      tailwind:
+        patterns:
+          - tailwindcss
+          - "@tailwindcss/*"
+          - "@types/tailwindcss"
+      typescript-tooling:
+        patterns:
+          - typescript
+          - eslint
+          - "@typescript-eslint/*"
+          - prettier
+      testing:
+        patterns:
+          - vitest
+          - "@vitest/*"
+          - "@playwright/*"
+      vercel:
+        patterns:
+          - "@vercel/*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Asia/Kolkata
+    target-branch: qa
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: chore
+      include: scope
