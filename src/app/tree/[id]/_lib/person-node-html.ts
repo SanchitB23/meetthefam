@@ -93,13 +93,20 @@ function avatarHtml(data: FamilyChartDatum['data']): string {
 }
 
 export function personNodeHtml(d: TreeDatum): string {
-  // family-chart's TreeDatum.data is typed loosely (`{ gender, [k]: any }`).
-  // At runtime it's exactly the object the transform produced.
-  const data = d.data as unknown as FamilyChartDatum['data']
+  // `d` is a d3 hierarchy node. `d.data` is the Datum we shipped to
+  // family-chart (`{ id, data: payload, rels }`). The renderable payload
+  // (full_name, birth_year, tone, …) lives at `d.data.data` — one level
+  // deeper than the typed TreeDatum surface suggests.
+  //
+  // Synthetic spouse nodes the library generates for layout (see
+  // family-chart.esm.js line ~707) wrap a real Datum the same way, so
+  // this path stays valid for them too.
+  const datum = d.data as unknown as FamilyChartDatum
+  const data = datum.data
 
   const name = escapeHtml(data.full_name)
   const dates = formatDates(data.birth_year, data.death_year, data.deceased)
-  const id = escapeHtml(d.data.id)
+  const id = escapeHtml(datum.id)
 
   // Three-dot trigger SVG inlined (EllipsisVertical from Lucide). The button
   // is the non-gesture fallback per docs/ux/mobile-gestures.md — taps open
