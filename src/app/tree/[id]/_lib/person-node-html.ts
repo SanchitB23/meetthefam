@@ -99,11 +99,60 @@ export function personNodeHtml(d: TreeDatum): string {
 
   const name = escapeHtml(data.full_name)
   const dates = formatDates(data.birth_year, data.death_year, data.deceased)
+  const id = escapeHtml(d.data.id)
+
+  // Three-dot trigger SVG inlined (EllipsisVertical from Lucide). The button
+  // is the non-gesture fallback per docs/ux/mobile-gestures.md — taps open
+  // the action menu just like long-press does. The 44×44 hit-area (Apple
+  // HIG minimum) wraps a smaller 16×16 icon so the icon stays subtle
+  // while the tap target meets accessibility.
+  const ellipsisButton = `
+    <button
+      type="button"
+      data-action-trigger
+      data-person-id="${id}"
+      aria-label="Actions for ${name}"
+      style="
+        position:absolute;
+        top:-6px;
+        right:-6px;
+        width:44px;
+        height:44px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        background:transparent;
+        border:0;
+        padding:0;
+        cursor:pointer;
+        color:var(--foreground);
+        opacity:0.5;
+      "
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <circle cx="12" cy="12" r="1"></circle>
+        <circle cx="12" cy="5" r="1"></circle>
+        <circle cx="12" cy="19" r="1"></circle>
+      </svg>
+    </button>
+  `
 
   return `
     <div
       class="mtf-node"
+      data-person-id="${id}"
       style="
+        position:relative;
         width:158px;
         height:110px;
         padding:8px 10px;
@@ -117,9 +166,10 @@ export function personNodeHtml(d: TreeDatum): string {
         justify-content:flex-start;
         gap:4px;
         box-sizing:border-box;
-        overflow:hidden;
+        overflow:visible;
       "
     >
+      ${ellipsisButton}
       ${avatarHtml(data)}
       <div
         style="
