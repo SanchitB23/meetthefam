@@ -27,7 +27,7 @@ const SIZE_MAP: Record<Exclude<Size, number>, number> = {
 }
 
 /** First letter of the first word + first letter of the last word, uppercased. */
-function computeInitials(fullName: string): string {
+export function computeInitials(fullName: string): string {
   const parts = fullName.trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return '?'
   const first = parts[0][0] ?? ''
