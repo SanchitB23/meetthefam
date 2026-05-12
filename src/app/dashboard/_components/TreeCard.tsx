@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
 
 export type TreeRow = {
@@ -17,12 +18,22 @@ type Props = {
 
 export function TreeCard({ tree, role, actions }: Props) {
   return (
-    <div className="border border-border rounded-lg p-4 bg-card flex flex-col gap-3">
-      <div className="flex items-start justify-between gap-2">
+    <div className="relative border border-border rounded-lg p-4 bg-card flex flex-col gap-3 transition-colors hover:bg-card/70 focus-within:ring-2 focus-within:ring-ring/40">
+      {/* Stretched Link covers the card surface but sits BEHIND the actions
+          slot (z-0 vs z-10 below). The DropdownMenu's own event handling
+          stops propagation, but layering also guarantees clicks land on the
+          intended target without relying on Base UI's stopPropagation alone. */}
+      <Link
+        href={`/tree/${tree.id}`}
+        className="absolute inset-0 z-0 rounded-lg"
+        aria-label={`Open ${tree.name}`}
+      />
+
+      <div className="relative z-10 flex items-start justify-between gap-2 pointer-events-none">
         <h2 className="font-serif text-lg text-foreground leading-tight">
           {tree.name}
         </h2>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 pointer-events-auto">
           <span
             className={`text-xs px-2 py-0.5 rounded-full font-medium ${
               role === 'owner'
@@ -36,11 +47,11 @@ export function TreeCard({ tree, role, actions }: Props) {
         </div>
       </div>
       {tree.description && (
-        <p className="text-sm text-foreground/60 line-clamp-2">
+        <p className="relative z-10 text-sm text-foreground/60 line-clamp-2 pointer-events-none">
           {tree.description}
         </p>
       )}
-      <p className="text-xs text-foreground/40 mt-auto">
+      <p className="relative z-10 text-xs text-foreground/40 mt-auto pointer-events-none">
         Updated{' '}
         {formatDistanceToNow(new Date(tree.updated_at), { addSuffix: true })}
       </p>

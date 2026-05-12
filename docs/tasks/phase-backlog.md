@@ -41,12 +41,12 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 
 ## Phase 3 — People CRUD + linking
 
-- [ ] **`PageProps<'/tree/[id]'>`** on the tree page; `await props.params` to read `id`.
-- [ ] On every people-mutation Server Action (add / edit / delete person, link spouse, set parent, add child), call `updateTag('tree:<treeId>')`. Avoid `revalidatePath` — `updateTag` gives read-your-writes without re-rendering unaffected segments.
-- [ ] Cycle-detection + spouse-symmetry edge cases per [`../architecture/data-model.md`](../architecture/data-model.md) → "Edge cases."
-- [ ] **Build `<Avatar>` component** at `src/components/ui/avatar.tsx` per [`../ux/avatars-and-tones.md`](../ux/avatars-and-tones.md). Photo-fallback to tinted-circle initials in Cormorant Garamond. Source shape: [`../ux/inspiration/kintree/project/shared.jsx`](../ux/inspiration/kintree/project/shared.jsx) → `Avatar`.
-- [ ] **Tone override UI** — person-edit form exposes a 5-swatch tone picker; defaults to the auto-assigned value from the DB trigger.
-- [ ] **Mobile pattern** — add-relative + edit-person forms render in a bottom-sheet (`<Sheet side="bottom">` from shadcn) on mobile, side-drawer on desktop. Reference: [`../ux/inspiration/kintree/`](../ux/inspiration/kintree/) → screen "Add Relative".
+- [x] **`PageProps<'/tree/[id]'>`** on the tree page; `await props.params` to read `id`. *(landed in sub-task 1 — `src/app/tree/[id]/page.tsx` uses `PageProps<'/tree/[id]'>` and `await props.params`)*
+- [ ] On every people-mutation Server Action (add / edit / delete person, link spouse, set parent, add child), call `updateTag('tree:<treeId>')`. Avoid `revalidatePath` — `updateTag` gives read-your-writes without re-rendering unaffected segments. *(Plan-of-record: stays on `revalidatePath('/tree/[id]')` for Phase 3 per [ADR 0007](../adrs/0007-nextjs-16-and-async-idioms.md); `updateTag` deferred until `"use cache"` adoption post-v0.1.)*
+- [ ] Cycle-detection + spouse-symmetry edge cases per [`../architecture/data-model.md`](../architecture/data-model.md) → "Edge cases." *(Sub-tasks 4 + 6 — ancestor-cycle check via recursive CTE inside `set_parents_atomic` RPC; spouse-symmetry covered by `set_spouse_atomic` + `clear_spouse_atomic`. Vitest coverage in sub-task 6.)*
+- [x] **Build `<Avatar>` component** at `src/components/ui/avatar.tsx` per [`../ux/avatars-and-tones.md`](../ux/avatars-and-tones.md). Photo-fallback to tinted-circle initials in Cormorant Garamond. Source shape: [`../ux/inspiration/kintree/project/shared.jsx`](../ux/inspiration/kintree/project/shared.jsx) → `Avatar`. *(landed in sub-task 1)*
+- [ ] **Tone override UI** — person-edit form exposes a 5-swatch tone picker; defaults to the auto-assigned value from the DB trigger. *(Sub-task 3.)*
+- [ ] **Mobile pattern** — add-relative + edit-person forms render in a bottom-sheet (`<Sheet side="bottom">` from shadcn) on mobile, side-drawer on desktop. Reference: [`../ux/inspiration/kintree/`](../ux/inspiration/kintree/) → screen "Add Relative". *(Sub-task 2.)*
 
 ## Phase 4 — Tree visualization
 

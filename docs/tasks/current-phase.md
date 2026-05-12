@@ -1,14 +1,40 @@
-# Current phase: 3 — People CRUD + linking (planning)
+# Current phase: 3 — People CRUD + linking
 
 ## Goal
 
-Stub — detailed sub-tasks will be scoped in a future brainstorm/plan session. Per the spec ([`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → "v0.1" → Phase 3 row): add / edit / delete a person within a tree, plus the spouse / parent / child relationship links. No visualization yet — Phase 4 owns rendering.
+Add / edit / delete people; set spouse / parents / add child; bidirectional spouse sync works; cycle detection works. No visualization yet — Phase 4 owns rendering.
+
+Per the spec ([`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → Phase 3 row): *"Add / edit / delete people; set spouse / parents / add child; bidirectional spouse sync works; cycle detection works. **No visualization yet** — verify via DB rows."*
+
+Plan brainstormed 2026-05-12 (saved at `~/.claude/plans/let-s-start-with-phase-glowing-thacker.md`). The 6-sub-task breakdown below is the implementation slicing — `/tree/[id]` ships as a person-list page (option B), each sub-task is independently demoable + committable, atomic multi-row operations live in Postgres RPC functions (matches Phase 2's `create_tree_with_owner` precedent). Phase 3 backlog items in [`phase-backlog.md`](phase-backlog.md) are ticked as their owning sub-task lands.
+
+## Ship gate
+
+- Navigating `/dashboard` → tapping a tree card → lands on `/tree/[id]` showing the tree name + a person list (or empty state). Non-members get a 404 via RLS.
+- Add a person via "+" FAB → row appears immediately (`revalidatePath`); tone auto-assigned by the DB trigger.
+- Edit a person from the card menu → form prefills, save updates the row + the list; tone-override swatch works.
+- Delete a person → confirmation modal → row removed, any inbound FKs (other rows pointing at it as spouse / father / mother) nulled atomically via RPC.
+- Set spouse from the card menu → both `A.spouse_id` and `B.spouse_id` are set (bidirectional sync); clearing spouse nulls both sides.
+- Set parents → ancestor-cycle detection rejects "make grandpa my son" with a clear error toast; the person-picker UI also guards obvious cases (self, descendants).
+- Add child → opens the create form with parents prefilled (focus person + their spouse if any).
+- Vitest RLS suite for `people` passes: non-members blocked on SELECT / INSERT / UPDATE / DELETE; editors can read + write; anon has no access. Spouse-symmetry + cycle-detection integration tests pass.
 
 ## Sub-tasks
 
-_To be scoped in a brainstorm/plan session before sub-task 1 starts._
+- [x] **Sub-task 1** — Page shell + `<Avatar>` + read-only person-list at `/tree/[id]`. Server Component using `PageProps<'/tree/[id]'>`; RLS-gated `trees` + `people` fetches; `notFound()` on missing tree; back-arrow + tree-name header; empty state with disabled "+ Add the first person" CTA (wired in sub-task 2). `<Avatar>` component per [`../ux/avatars-and-tones.md`](../ux/avatars-and-tones.md) (photo fallback → tone-tinted initials in Cormorant Garamond). `PersonList` grid + `PersonCard` (avatar + name + italic nickname + relations summary + birth/death years). Dashboard `<TreeCard>` switched from `#` to `/tree/${id}` using the stretched-link pattern.
+- [ ] **Sub-task 2** — Add person (no linking). Install shadcn `Sheet`; `PersonForm.tsx` (`react-hook-form`, Sheet on mobile / Dialog on desktop) — fields per [`../ux/add-edit-person.md`](../ux/add-edit-person.md) minus photo (deferred to Phase 5). `AddPersonFab` floating "+" bottom-right; `createPerson(treeId, data)` Server Action with `revalidatePath`. Empty-state CTA wired up.
+- [ ] **Sub-task 3** — Edit + delete person. `PersonForm` extended with `mode="edit"` (prefill + destructive Delete CTA) + 5-swatch tone-override radio. `DeletePersonDialog` mirroring `DeleteTreeDialog`. `updatePerson` (direct `.update()`) + `deletePerson` (RPC `delete_person_atomic` — nulls inbound FKs then deletes, all in one transaction) Server Actions.
+- [ ] **Sub-task 4** — Linking after creation. Install shadcn `Command`; `PersonPicker` (searchable list filtered by name + nickname); `PersonCardMenu` ("Set spouse" / "Set parents" / "Add child" / "Clear spouse" / "Edit" / "Delete"). Three new RPCs in one migration: `set_spouse_atomic` (clears prior bond on either side, sets both directions), `set_parents_atomic` (ancestor-cycle check via recursive CTE, rejects with a clear error), `clear_spouse_atomic` (nulls both ends). UI guards in `PersonPicker` exclude self / ancestors / descendants as appropriate.
+- [ ] **Sub-task 5** — Linking at creation. `PersonForm` extended with optional `linkSpec` and a "How is this person related?" radio (Spouse / Parent / Child of `<focus>`). `PersonCardMenu` adds "+ Add relative" submenu. `createPerson` accepts `linkSpec` and composes the relevant RPC from sub-task 4 — no new SQL.
+- [ ] **Sub-task 6** — Tests + close-out. Vitest RLS suite at `src/__tests__/rls/people.test.ts` (mirrors the Phase 2 `trees.test.ts` pattern). Integration tests for spouse-symmetry + cycle-detection. Append the Phase 3 flow to [`../qa/smoke-flows.md`](../qa/smoke-flows.md) and run `e2e-smoke-tester` against the QA preview once sub-tasks 1–5 land. Tick the remaining backlog items + close out this phase.
 
-Phase 3 backlog items already drafted in [`phase-backlog.md`](phase-backlog.md) → "Phase 3 — People CRUD + linking": `PageProps<'/tree/[id]'>` helper, `updateTag('tree:<treeId>')` on every people-mutation, cycle-detection + spouse-symmetry edge cases, `<Avatar>` component, tone-override UI, and the mobile bottom-sheet pattern for add-relative / edit-person forms. **Always read that file when entering a sub-task.**
+## Close-out gates
+
+- [ ] All six sub-tasks ticked above.
+- [ ] Per-sub-task docs ticks landed in `current-phase.md` + `phase-backlog.md` in the same commit as each feature commit (per the standing memory rule).
+- [ ] RLS + spouse-symmetry + cycle-detection Vitest tests passing locally (`pnpm test`). CI gating not enforced yet — see Tooling backlog "GitHub Action: pnpm test on PR".
+- [ ] `e2e-smoke-tester` PASSes the new Phase 3 flow against the QA preview.
+- [ ] Release version decided (likely `v0.0.4`, or fold into a Phase 4 bundled release).
 
 ---
 
