@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { TreeCard, type TreeRow } from './_components/TreeCard'
 import { CreateTreeModal } from './_components/CreateTreeModal'
+import { TreeCardMenu } from './_components/TreeCardMenu'
 
 type Membership = {
   role: 'owner' | 'editor'
@@ -52,7 +53,14 @@ export default async function DashboardPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {trees.map((m) => (
-            <TreeCard key={m.trees.id} tree={m.trees} role={m.role} />
+            <TreeCard
+              key={m.trees.id}
+              tree={m.trees}
+              role={m.role}
+              actions={
+                m.role === 'owner' ? <TreeCardMenu tree={m.trees} /> : null
+              }
+            />
           ))}
         </div>
       )}
