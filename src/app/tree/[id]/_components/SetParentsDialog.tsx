@@ -23,7 +23,7 @@ import { useIsDesktop } from '@/components/ui/use-is-desktop'
 import { setParents } from '../actions'
 import { collectDescendants } from '../_lib/relations'
 import { PersonPicker } from './PersonPicker'
-import type { PersonRow } from './PersonCard'
+import type { PersonRow } from '../_lib/types'
 
 // Phase 3 sub-task 4 — Set Parents dialog.
 //

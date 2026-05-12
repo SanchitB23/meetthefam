@@ -1,4 +1,4 @@
-import type { PersonRow } from '../_components/PersonCard'
+import type { PersonRow } from './types'
 
 // Phase 3 sub-task 4 — relation-walk helpers.
 //

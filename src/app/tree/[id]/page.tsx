@@ -2,8 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import { PersonList } from './_components/PersonList'
-import type { PersonRow } from './_components/PersonCard'
+import { FamilyTree } from './_components/FamilyTree'
+import type { PersonRow } from './_lib/types'
 import { AddPersonControls } from './_components/AddPersonControls'
 
 type TreeRow = {
@@ -46,8 +46,11 @@ export default async function TreePage(props: PageProps<'/tree/[id]'>) {
   const people = peopleRows ?? []
 
   return (
-    <main className="px-4 py-8 max-w-4xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
+    // Phase 4: the tree canvas wants full-bleed width on desktop (per
+    // docs/ux/tree-view.md). The header + empty state are still constrained
+    // to `max-w-4xl` for readability — only the chart breaks out.
+    <main className="px-4 py-8">
+      <div className="flex items-center gap-3 mb-6 max-w-4xl mx-auto">
         <Link
           href="/dashboard"
           aria-label="Back to dashboard"
@@ -61,7 +64,10 @@ export default async function TreePage(props: PageProps<'/tree/[id]'>) {
       </div>
 
       {people.length === 0 ? (
-        <div className="text-center py-16 border border-dashed border-border rounded-lg bg-card/50">
+        // family-chart can't render an empty dataset, so the empty-state
+        // branch stays — same shape Phase 3 shipped, with the CTA wired to
+        // the existing create form.
+        <div className="max-w-4xl mx-auto text-center py-16 border border-dashed border-border rounded-lg bg-card/50">
           <p className="font-serif text-xl text-foreground/70 mb-2">
             No people yet
           </p>
@@ -72,7 +78,7 @@ export default async function TreePage(props: PageProps<'/tree/[id]'>) {
         </div>
       ) : (
         <>
-          <PersonList treeId={tree.id} people={people} />
+          <FamilyTree people={people} />
           <AddPersonControls treeId={tree.id} />
         </>
       )}

@@ -68,31 +68,42 @@ The `f3.createChart` API and full options list — pull via Context7 MCP at buil
 Performed once per page load in the Server Component.
 
 ```ts
+// Verified against family-chart 0.9.0 (node_modules/family-chart/dist/types/types/data.d.ts):
+//   interface Datum {
+//     id: string
+//     data: { gender: 'M' | 'F'; [k: string]: any }
+//     rels: { parents: string[]; spouses: string[]; children: string[] }
+//   }
 function transformToFamilyChartShape(rows: Person[]) {
-  return rows.map(p => ({
-    id: p.id,
-    data: {
-      first_name: p.full_name.split(' ')[0],
-      last_name: p.full_name.split(' ').slice(1).join(' '),
-      img: p.photo_url,
-      birthday: p.birth_year?.toString(),
-      gender: p.gender,
-      bio: p.bio,
-      // ... etc
-    },
-    rels: {
-      father: p.father_id,
-      mother: p.mother_id,
-      spouses: p.spouse_id ? [p.spouse_id] : [],
-      children: rows
-        .filter(c => c.father_id === p.id || c.mother_id === p.id)
-        .map(c => c.id),
-    },
-  }))
+  return rows.map(p => {
+    const parents: string[] = []
+    if (p.father_id) parents.push(p.father_id)
+    if (p.mother_id) parents.push(p.mother_id)
+    return {
+      id: p.id,
+      data: {
+        // 'm' / 'other' / 'unknown' → 'M', 'f' → 'F' (layout-only).
+        // The truthful value lives at data.gender_raw for the custom node.
+        gender: p.gender === 'f' ? 'F' : 'M',
+        gender_raw: p.gender,
+        full_name: p.full_name,
+        photo_url: p.photo_url,
+        birth_year: p.birth_year,
+        // ... etc
+      },
+      rels: {
+        parents,
+        spouses: p.spouse_id ? [p.spouse_id] : [],
+        children: rows
+          .filter(c => c.father_id === p.id || c.mother_id === p.id)
+          .map(c => c.id),
+      },
+    }
+  })
 }
 ```
 
-The `children` array is **derived** from `father_id` / `mother_id`, never stored. See [`../architecture/data-model.md`](../architecture/data-model.md).
+The `children` array is **derived** from `father_id` / `mother_id`, never stored. See [`../architecture/data-model.md`](../architecture/data-model.md). The live implementation is at [`../../src/app/tree/[id]/_lib/family-chart-data.ts`](../../src/app/tree/%5Bid%5D/_lib/family-chart-data.ts).
 
 ## Custom person card
 
