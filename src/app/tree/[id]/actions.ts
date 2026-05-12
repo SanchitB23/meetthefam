@@ -36,6 +36,20 @@ export type CreatePersonResult =
   | { ok: true; personId: string; error?: never }
   | { ok: false; error: string; personId?: never }
 
+// Phase 3 sub-task 5 — at-creation linking.
+//
+// `LinkSpecInput` is a discriminated union over the four relations the
+// "How is this person related?" radio exposes. Each variant carries the
+// focus person's id; the action composes existing sub-task 4 RPCs after
+// the insert lands. See the inline notes inside `createPerson` for the
+// non-atomic insert/link nuance (the row is kept on linking failure —
+// the user can re-link or delete manually).
+export type LinkSpecInput =
+  | { relation: 'spouse'; focusPersonId: string }
+  | { relation: 'father'; focusPersonId: string }
+  | { relation: 'mother'; focusPersonId: string }
+  | { relation: 'child'; focusPersonId: string }
+
 /** Trim string fields and coerce empty strings to null. */
 function clean<T extends string | null | undefined>(value: T): string | null {
   if (value == null) return null
@@ -46,6 +60,7 @@ function clean<T extends string | null | undefined>(value: T): string | null {
 export async function createPerson(
   treeId: string,
   data: PersonInput,
+  linkSpec?: LinkSpecInput,
 ): Promise<CreatePersonResult> {
   const supabase = await createClient()
 
@@ -108,8 +123,113 @@ export async function createPerson(
     return { ok: false, error: error?.message ?? 'Insert failed' }
   }
 
+  const newPersonId = row.id
+
+  // Sub-task 5: optional at-creation linking. The insert + the link RPC
+  // are NOT atomic — Server Actions can't span a transaction across two
+  // Supabase calls without a wrapping RPC. If the link step fails the new
+  // row stays in the DB; the user can either re-link manually from the
+  // card menu (sub-task 4 flows) or delete the orphan. The alternative —
+  // silently rolling back via a DELETE — risks the user thinking their
+  // person was saved when it wasn't; explicit error is the safer call.
+  //
+  // We still `revalidatePath` regardless of link success, since the row
+  // exists either way and the UI should reflect that.
+  if (linkSpec) {
+    const linkError = await applyLinkSpec(
+      supabase,
+      newPersonId,
+      linkSpec,
+    )
+    if (linkError) {
+      revalidatePath(`/tree/${treeId}`)
+      return { ok: false, error: linkError }
+    }
+  }
+
   revalidatePath(`/tree/${treeId}`)
-  return { ok: true, personId: row.id }
+  return { ok: true, personId: newPersonId }
+}
+
+// Composes sub-task 4's `set_spouse_atomic` / `set_parents_atomic` RPCs
+// for the at-creation linking flow. Returns an error message on failure,
+// or `null` on success. The new person row already exists by the time
+// this runs — see the non-atomic note in `createPerson`.
+async function applyLinkSpec(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  newPersonId: string,
+  linkSpec: LinkSpecInput,
+): Promise<string | null> {
+  if (linkSpec.relation === 'spouse') {
+    const { error } = await supabase.rpc('set_spouse_atomic', {
+      p_person_a: newPersonId,
+      p_person_b: linkSpec.focusPersonId,
+    })
+    return error?.message ?? null
+  }
+
+  if (linkSpec.relation === 'father' || linkSpec.relation === 'mother') {
+    // We're setting the new person as one of the focus's parents. To
+    // avoid clobbering the other parent slot we read it first. One extra
+    // round-trip; not worth a dedicated RPC.
+    const { data: focus, error: selErr } = await supabase
+      .from('people')
+      .select('father_id, mother_id')
+      .eq('id', linkSpec.focusPersonId)
+      .single<{ father_id: string | null; mother_id: string | null }>()
+    if (selErr || !focus) {
+      return selErr?.message ?? 'Could not load focus person'
+    }
+    const fatherId =
+      linkSpec.relation === 'father' ? newPersonId : focus.father_id
+    const motherId =
+      linkSpec.relation === 'mother' ? newPersonId : focus.mother_id
+
+    const { error } = await supabase.rpc('set_parents_atomic', {
+      p_person_id: linkSpec.focusPersonId,
+      p_father_id: fatherId,
+      p_mother_id: motherId,
+    })
+    return error?.message ?? null
+  }
+
+  // relation === 'child': the focus becomes one of the new person's
+  // parents; if the focus has a spouse, the spouse fills the other slot.
+  // Slot assignment is gender-driven:
+  //   - focus.gender === 'f' → focus is the mother
+  //   - otherwise            → focus is the father (covers 'm', 'other',
+  //                            'unknown' — picking a single default
+  //                            avoids prompting the user; they can fix
+  //                            it via "Set parents" if it's wrong).
+  const { data: focus, error: selErr } = await supabase
+    .from('people')
+    .select('gender, spouse_id')
+    .eq('id', linkSpec.focusPersonId)
+    .single<{ gender: 'm' | 'f' | 'other' | 'unknown'; spouse_id: string | null }>()
+  if (selErr || !focus) {
+    return selErr?.message ?? 'Could not load focus person'
+  }
+
+  const focusIsMother = focus.gender === 'f'
+  let fatherId: string | null = focusIsMother ? null : linkSpec.focusPersonId
+  let motherId: string | null = focusIsMother ? linkSpec.focusPersonId : null
+
+  // If the focus has a spouse, they fill whichever parent slot the focus
+  // didn't take. We don't read the spouse's gender — putting the focus's
+  // partner into the opposite slot from the focus is the only consistent
+  // rule when one of them is 'other' / 'unknown'. The user can correct
+  // via "Set parents" later if needed.
+  if (focus.spouse_id) {
+    if (focusIsMother) fatherId = focus.spouse_id
+    else motherId = focus.spouse_id
+  }
+
+  const { error } = await supabase.rpc('set_parents_atomic', {
+    p_person_id: newPersonId,
+    p_father_id: fatherId,
+    p_mother_id: motherId,
+  })
+  return error?.message ?? null
 }
 
 // ---- updatePerson ----

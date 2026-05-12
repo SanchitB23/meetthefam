@@ -21,7 +21,12 @@ import {
 import { Button } from '@/components/ui/button'
 import { useIsDesktop } from '@/components/ui/use-is-desktop'
 
-import { createPerson, updatePerson, type PersonInput } from '../actions'
+import {
+  createPerson,
+  updatePerson,
+  type LinkSpecInput,
+  type PersonInput,
+} from '../actions'
 import { DeletePersonDialog } from './DeletePersonDialog'
 import type { PersonRow } from './PersonCard'
 import type { Tone } from '@/components/ui/avatar'
@@ -59,6 +64,28 @@ export type PersonFormValues = {
   death_year: string
   /** Edit-mode-only override; create mode lets the DB trigger pick. */
   tone: Tone
+  /**
+   * Sub-task 5: only present when create-mode is invoked with a `linkSpec`.
+   * The 4-option radio sets the new person's relation to the focus person.
+   */
+  relation: LinkRelation
+}
+
+/**
+ * The 4 relation choices the at-creation radio exposes. The plan considered
+ * a 3-option radio with a "father / mother" sub-question for the parent
+ * case, but splitting into 4 explicit options sidesteps the gender-default
+ * logic (which is fragile when the new person's gender hasn't been picked
+ * yet) and is less ambiguous for the user.
+ */
+export type LinkRelation = 'spouse' | 'father' | 'mother' | 'child'
+
+/** Optional create-mode prop wiring the focus person + default selection. */
+export type LinkSpec = {
+  focusPersonId: string
+  focusPersonName: string
+  /** When set, pre-selects the corresponding radio. */
+  defaultRelation?: LinkRelation
 }
 
 const TONES: readonly Tone[] = ['sage', 'rose', 'indigo', 'amber', 'green']
@@ -78,7 +105,21 @@ const DEFAULT_VALUES: PersonFormValues = {
   // In create mode this value is never read — we omit `tone` from the
   // payload entirely so the DB trigger picks.
   tone: 'sage',
+  // Only consulted when `linkSpec` is set on the form. The "Add relative"
+  // entry point defaults this to 'child' (the most common direction for
+  // tree expansion); the in-form radio lets the user override.
+  relation: 'child',
 }
+
+const RELATION_OPTIONS: ReadonlyArray<{
+  value: LinkRelation
+  label: (focusName: string) => string
+}> = [
+  { value: 'spouse', label: (n) => `Spouse of ${n}` },
+  { value: 'father', label: (n) => `Father of ${n}` },
+  { value: 'mother', label: (n) => `Mother of ${n}` },
+  { value: 'child', label: (n) => `Child of ${n}` },
+]
 
 function valuesFromPerson(person: PersonRow): PersonFormValues {
   return {
@@ -96,10 +137,12 @@ function valuesFromPerson(person: PersonRow): PersonFormValues {
     deceased: person.deceased,
     death_year: person.death_year != null ? String(person.death_year) : '',
     tone: person.tone,
+    // `relation` is never read in edit mode; placeholder keeps the type
+    // happy without leaking a meaningful default.
+    relation: 'child',
   }
 }
 
-// Designed for growth: sub-task 5 will add `linkSpec` (create-mode only).
 type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -108,6 +151,13 @@ type Props = {
   mode?: 'create' | 'edit'
   /** Required when `mode === 'edit'`. */
   person?: PersonRow
+  /**
+   * Sub-task 5 — at-creation linking. Only meaningful in create mode.
+   * When set, the form renders a "How is this person related?" radio
+   * above the name field and on submit the Server Action runs the
+   * matching `set_*_atomic` RPC after the insert.
+   */
+  linkSpec?: LinkSpec
   /** Fired after a successful create OR edit save. */
   onSaved?: (personId: string) => void
 }
@@ -127,17 +177,25 @@ export function PersonForm({
   treeId,
   mode = 'create',
   person,
+  linkSpec,
   onSaved,
 }: Props) {
   const desktop = useIsDesktop()
   const isEdit = mode === 'edit'
+  // The link picker only renders in create mode with an explicit linkSpec.
+  // The bare "+" FAB path stays radio-free (sub-task 2 behaviour).
+  const showLinkPicker = !isEdit && Boolean(linkSpec)
 
-  // Build the defaults once per `person` identity. In create mode we always
-  // start from DEFAULT_VALUES; in edit mode we seed from the row.
-  const formDefaults = useMemo<PersonFormValues>(
-    () => (isEdit && person ? valuesFromPerson(person) : DEFAULT_VALUES),
-    [isEdit, person],
-  )
+  // Build the defaults once per `person` / `linkSpec` identity. In create
+  // mode we start from DEFAULT_VALUES and override `relation` if the
+  // caller pre-selected one; in edit mode we seed from the row.
+  const formDefaults = useMemo<PersonFormValues>(() => {
+    if (isEdit && person) return valuesFromPerson(person)
+    return {
+      ...DEFAULT_VALUES,
+      relation: linkSpec?.defaultRelation ?? DEFAULT_VALUES.relation,
+    }
+  }, [isEdit, person, linkSpec?.defaultRelation])
 
   const {
     register,
@@ -200,7 +258,15 @@ export function PersonForm({
         return
       }
 
-      const result = await createPerson(treeId, payload)
+      const linkPayload: LinkSpecInput | undefined =
+        showLinkPicker && linkSpec
+          ? {
+              relation: values.relation,
+              focusPersonId: linkSpec.focusPersonId,
+            }
+          : undefined
+
+      const result = await createPerson(treeId, payload, linkPayload)
       if (!result.ok) {
         setSubmitError(result.error)
         return
@@ -210,10 +276,16 @@ export function PersonForm({
     })
   }
 
-  const title = isEdit ? 'Edit person' : 'Add a person'
+  const title = isEdit
+    ? 'Edit person'
+    : showLinkPicker && linkSpec
+      ? `Add a relative of ${linkSpec.focusPersonName}`
+      : 'Add a person'
   const description = isEdit
     ? 'Update the details below. Changes save when you submit.'
-    : 'Add a relative to this family tree. Only the name is required.'
+    : showLinkPicker
+      ? 'Pick the relationship and fill in the new person’s details. The link saves with the person.'
+      : 'Add a relative to this family tree. Only the name is required.'
   const submitLabel = isEdit
     ? isPending
       ? 'Saving…'
@@ -227,6 +299,54 @@ export function PersonForm({
       onSubmit={handleSubmit(onSubmit)}
       className="flex flex-col gap-4 px-4 pb-4 sm:px-0 sm:pb-0 sm:mt-2"
     >
+      {/*
+       * Sub-task 5 — relation radio. Render-gated by `showLinkPicker` so the
+       * bare "+" FAB flow (no focus person) stays radio-free.
+       *
+       * Accessibility mirrors the tone-swatch below: role="radiogroup" on
+       * the wrapper + role="radio" + aria-checked on each option. Each
+       * button is independently tab-focusable; arrow-key handling is left
+       * to a later polish pass (same trade-off the tone swatch makes).
+       */}
+      {showLinkPicker && linkSpec && (
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium text-foreground">
+            How is this person related?
+          </span>
+          <Controller
+            control={control}
+            name="relation"
+            render={({ field }) => (
+              <div
+                role="radiogroup"
+                aria-label="Relationship to focus person"
+                className="flex flex-col gap-1.5 mt-1"
+              >
+                {RELATION_OPTIONS.map((opt) => {
+                  const selected = field.value === opt.value
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => field.onChange(opt.value)}
+                      className={`text-left px-3 py-2 rounded-md border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${
+                        selected
+                          ? 'border-primary bg-primary/10 text-foreground'
+                          : 'border-border bg-background text-foreground hover:bg-foreground/[0.03]'
+                      }`}
+                    >
+                      {opt.label(linkSpec.focusPersonName)}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          />
+        </div>
+      )}
+
       <div className="flex flex-col gap-1">
         <label htmlFor="pf-full-name" className="text-sm font-medium text-foreground">
           Full name <span className="text-destructive">*</span>

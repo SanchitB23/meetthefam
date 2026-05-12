@@ -15,11 +15,12 @@ import { Button } from '@/components/ui/button'
 import { clearSpouse, setSpouse } from '../actions'
 import { collectAncestors, collectDescendants } from '../_lib/relations'
 import { DeletePersonDialog } from './DeletePersonDialog'
+import { PersonForm } from './PersonForm'
 import { PersonPicker } from './PersonPicker'
 import { SetParentsDialog } from './SetParentsDialog'
 import type { PersonRow } from './PersonCard'
 
-// Phase 3 sub-task 4 — per-card "..." menu.
+// Phase 3 sub-task 4 + 5 — per-card "..." menu.
 //
 // Owns the exclusion-set computation for each picker surface (so
 // PersonPicker stays dumb / reusable). The flows:
@@ -29,9 +30,12 @@ import type { PersonRow } from './PersonCard'
 //     is intuitively wrong and shouldn't even be picker-visible).
 //   Set parents — opens `SetParentsDialog`, which owns its own
 //     descendant-excluding pickers for father + mother.
-//   Add child — stubbed for sub-task 5 per the brief. Renders as a
-//     disabled menu item with a "(soon)" hint so the affordance is
-//     discoverable but doesn't fire half-baked behaviour.
+//   Add relative — sub-task 5. Single menu item (rather than separate
+//     "Add child" / "Add spouse" / "Add parent" entries) keeping the
+//     menu compact. Opens <PersonForm> in create mode with a `linkSpec`
+//     pre-selecting "Child of <X>" — the most common direction for
+//     tree expansion. The in-form radio lets the user switch to spouse
+//     / father / mother before submitting.
 //   Clear spouse — fires directly. Per the brief: no inline error slot
 //     for this path; the user notices via the (unchanged) row if the
 //     RPC rejects. Errors only surface where the user is inside a
@@ -60,6 +64,7 @@ export function PersonCardMenu({
 }: Props) {
   const [spousePickerOpen, setSpousePickerOpen] = useState(false)
   const [parentsDialogOpen, setParentsDialogOpen] = useState(false)
+  const [addRelativeOpen, setAddRelativeOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [spouseError, setSpouseError] = useState<string | null>(null)
   const [, startTransition] = useTransition()
@@ -120,18 +125,12 @@ export function PersonCardMenu({
             Set parents
           </DropdownMenuItem>
           {/*
-           * Sub-task 5 owns the prefilled-create flow. Until then the
-           * item is rendered (so the affordance is visible) but disabled
-           * with a hint suffix. The seam — `linkSpec` on createPerson +
-           * a new "Add relative" dialog — will replace this onClick.
+           * Sub-task 5: opens <PersonForm mode="create"> with a `linkSpec`
+           * pre-selecting "Child of <X>". The form's radio lets the user
+           * pick spouse / father / mother instead before submitting.
            */}
-          <DropdownMenuItem
-            disabled
-            onClick={() => {
-              /* TODO(phase-3 sub-task 5): open <PersonForm mode="create"> with linkSpec. */
-            }}
-          >
-            Add child <span className="ml-auto text-xs opacity-60">soon</span>
+          <DropdownMenuItem onClick={() => setAddRelativeOpen(true)}>
+            Add relative…
           </DropdownMenuItem>
           {person.spouse_id && (
             <DropdownMenuItem onClick={handleClearSpouse}>
@@ -180,6 +179,18 @@ export function PersonCardMenu({
         person={person}
         people={people}
         peopleById={peopleById}
+      />
+
+      <PersonForm
+        mode="create"
+        open={addRelativeOpen}
+        onOpenChange={setAddRelativeOpen}
+        treeId={treeId}
+        linkSpec={{
+          focusPersonId: person.id,
+          focusPersonName: person.full_name,
+          defaultRelation: 'child',
+        }}
       />
 
       <DeletePersonDialog
