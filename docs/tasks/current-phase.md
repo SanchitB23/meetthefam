@@ -1,14 +1,22 @@
-# Current phase: 3 — People CRUD + linking
+# Current phase: 4 — Tree visualization (planning)
 
 ## Goal
 
-Add / edit / delete people; set spouse / parents / add child; bidirectional spouse sync works; cycle detection works. No visualization yet — Phase 4 owns rendering.
+family-chart renders a real tree from real data; tap → bottom sheet; long-press / "…" → action menu; pan + zoom; URL hash carries focus person.
 
-Per the spec ([`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → Phase 3 row): *"Add / edit / delete people; set spouse / parents / add child; bidirectional spouse sync works; cycle detection works. **No visualization yet** — verify via DB rows."*
+Per the spec ([`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → Phase 4 row).
 
-Plan brainstormed 2026-05-12 (saved at `~/.claude/plans/let-s-start-with-phase-glowing-thacker.md`). The 6-sub-task breakdown below is the implementation slicing — `/tree/[id]` ships as a person-list page (option B), each sub-task is independently demoable + committable, atomic multi-row operations live in Postgres RPC functions (matches Phase 2's `create_tree_with_owner` precedent). Phase 3 backlog items in [`phase-backlog.md`](phase-backlog.md) are ticked as their owning sub-task lands.
+## Sub-tasks
 
-## Ship gate
+_To be scoped in a future brainstorm/plan session before sub-task 1 starts._ See the Phase 4 backlog items in [`phase-backlog.md`](phase-backlog.md) for the standing TODOs that will fold into the sub-task slicing (PersonNode go/no-go spike, `<ViewTransition>` defer-or-promote, mobile FAB pattern, etc.).
+
+---
+
+## Previous phase: 3 — People CRUD + linking (✅ closed)
+
+Closed with **`v0.0.4`**. See [release notes](https://github.com/SanchitB23/meetthefam/releases/tag/v0.0.4).
+
+**Ship gate (met)**:
 
 - Navigating `/dashboard` → tapping a tree card → lands on `/tree/[id]` showing the tree name + a person list (or empty state). Non-members get a 404 via RLS.
 - Add a person via "+" FAB → row appears immediately (`revalidatePath`); tone auto-assigned by the DB trigger.
@@ -19,7 +27,7 @@ Plan brainstormed 2026-05-12 (saved at `~/.claude/plans/let-s-start-with-phase-g
 - Add child → opens the create form with parents prefilled (focus person + their spouse if any).
 - Vitest RLS suite for `people` passes: non-members blocked on SELECT / INSERT / UPDATE / DELETE; editors can read + write; anon has no access. Spouse-symmetry + cycle-detection integration tests pass.
 
-## Sub-tasks
+**Sub-tasks (all closed)**:
 
 - [x] **Sub-task 1** — Page shell + `<Avatar>` + read-only person-list at `/tree/[id]`. Server Component using `PageProps<'/tree/[id]'>`; RLS-gated `trees` + `people` fetches; `notFound()` on missing tree; back-arrow + tree-name header; empty state with disabled "+ Add the first person" CTA (wired in sub-task 2). `<Avatar>` component per [`../ux/avatars-and-tones.md`](../ux/avatars-and-tones.md) (photo fallback → tone-tinted initials in Cormorant Garamond). `PersonList` grid + `PersonCard` (avatar + name + italic nickname + relations summary + birth/death years). Dashboard `<TreeCard>` switched from `#` to `/tree/${id}` using the stretched-link pattern. *(commit `c6552a6`)*
 - [x] **Sub-task 2** — Add person (no linking). Installed shadcn `Sheet` (`src/components/ui/sheet.tsx`, hand-ported from the base-nova registry since `cn` + `Button` already existed locally). `PersonForm.tsx` (`react-hook-form`, Sheet on mobile / Dialog on desktop via a `useSyncExternalStore` media-query hook) — all 10 fields per [`../ux/add-edit-person.md`](../ux/add-edit-person.md) minus photo (deferred to Phase 5); conditional `death_year` via `watch('deceased')`. `AddPersonFab` floating "+" bottom-right (48×48, Lucide `Plus`); `AddPersonControls` owns shared `open` state for FAB + empty-state CTA. `createPerson(treeId, data)` Server Action trims strings → null, validates `full_name` (≤80), inserts with `tone: null` (DB trigger fills it), `revalidatePath('/tree/${treeId}')`; RLS gates via `people_insert_editor`. `react-hook-form` added to `package.json`. *(commit `1b01a1c`)*
@@ -28,13 +36,15 @@ Plan brainstormed 2026-05-12 (saved at `~/.claude/plans/let-s-start-with-phase-g
 - [x] **Sub-task 5** — Linking at creation. `createPerson(treeId, data, linkSpec?)` extended with an optional `LinkSpecInput` discriminated union (`spouse | father | mother | child` + `focusPersonId`); after the row insert succeeds, a private `applyLinkSpec` helper composes the sub-task-4 RPCs by name — `set_spouse_atomic` for spouse, `set_parents_atomic` (preserving the focus's existing other parent slot via a pre-read) for father/mother, and `set_parents_atomic` again for child (reading focus `gender` + `spouse_id` to decide slots; `f` → mother slot, otherwise father slot — `other` / `unknown` deterministically default to father, documented as a single-rule choice; focus's spouse, if any, fills the opposite slot). If the linking RPC errors, the action returns `{ ok: false, error }` and the orphan row is intentionally left in place (silent DELETE judged worse UX — user can fix manually). `revalidatePath('/tree/${treeId}')` fires once at the end regardless of link success/failure. `PersonForm` extended with new exported `LinkRelation` + `LinkSpec` types and an optional `linkSpec` prop; when present, a "How is this person related?" radiogroup renders above the name field as a flat 4-option control (Spouse / Father / Mother / Child of `<focusPersonName>`) — flattened from the plan's 3-option-with-sub-question pattern so the user doesn't have to enter gender before relation. Controller-driven, `role="radiogroup"` + `role="radio"` + `aria-checked` semantics, heirloom-palette styling; form title + description swap to "Add a relative" in linked-create mode and the relation is passed through to `createPerson`'s `linkSpec` arg on submit. `PersonCardMenu` swaps the disabled "Add child *(soon)*" item for an enabled "Add relative…" item that owns its own `<PersonForm mode="create" linkSpec={{ focusPersonId, focusPersonName, defaultRelation: 'child' }} />` instance (state pattern mirrors the existing `spousePickerOpen` / `parentsDialogOpen` flags). No new SQL, no new components. `pnpm typecheck` + `pnpm lint` clean. *(commit `613c5dd`)*
 - [x] **Sub-task 6** — Tests + close-out. **44 new tests across 6 files**, suite total 49 passing locally against `supabase start`. `src/__tests__/_helpers.ts` — shared fixtures (admin/anon Supabase clients, `signUpUserViaAdmin`, tree + person seeding helpers, direct `tree_members` inserts for editor-role fixtures). `src/__tests__/rls/people.test.ts` — **10 tests** covering owner / editor / non-member / anon × SELECT / INSERT / UPDATE / DELETE plus a "no auth header at all" case (mirrors the Phase 2 `trees.test.ts` pattern). `src/__tests__/rpc/delete_person_atomic.test.ts` — **6 tests** (spouse / father / mother / all-three inbound-FK cleanup; no-spouse no-op; non-existent uuid). `src/__tests__/rpc/set_spouse_atomic.test.ts` — **7 tests** (bidirectional symmetry / clear-A-prior / clear-B-prior / both-priors / re-affirm idempotency / self-spouse rejected / cross-tree rejected). `src/__tests__/rpc/set_parents_atomic.test.ts` — **10 tests** (both / father-only / mother-only / clear-both / self-father / self-mother / 2-gen cycle / 4-gen cycle / cross-tree / missing-target early-return). `src/__tests__/rpc/clear_spouse_atomic.test.ts` — **3 tests** (from-A / from-B symmetric idempotent / no-spouse no-op). `src/__tests__/actions/createPerson-linkSpec.test.ts` — **8 tests** (spouse-clears-prior / father-preserves-mother / mother-preserves-father / child-no-spouse / child-with-spouse / child-other-gender slot assignment / orphan-on-link-failure / cross-tree-spouse-rejected). `vitest.config.ts` gains a `resolve.alias` for `@/*` → `src/*` so the action test can import via the app's alias. Phase 3 `people-crud-and-link` flow (11 steps) appended to [`../qa/smoke-flows.md`](../qa/smoke-flows.md), mirroring the existing Phase 1/2 entry shape. *(commit `7f5f168`)*
 
-## Close-out gates
+**Phase 3 close-out**:
 
-- [x] All six sub-tasks ticked above.
+- [x] All six sub-tasks ticked above. *(see commits above)*
 - [x] Per-sub-task docs ticks landed in `current-phase.md` + `phase-backlog.md` in the same commit as each feature commit (per the standing memory rule).
-- [x] RLS + spouse-symmetry + cycle-detection Vitest tests passing locally (`pnpm test`) — 49 tests passing as of sub-task 6. CI gating not enforced yet — see Tooling backlog "GitHub Action: pnpm test on PR".
-- [ ] `e2e-smoke-tester` PASSes the new Phase 3 flow against the QA preview.
-- [ ] Release version decided (likely `v0.0.4`, or fold into a Phase 4 bundled release).
+- [x] RLS + spouse-symmetry + cycle-detection Vitest tests passing locally (`pnpm test`) — 49 tests green. CI gating not enforced yet — see Tooling backlog "GitHub Action: pnpm test on PR" item.
+- [x] Post-sub-task polish: card heights / menu padding / future-date validation in `24f0dea`; gender filter on parent pickers in `e47598d`; intermediate `h-full` wrapper fix in `4e9fef8`. QA Supabase migrations (`delete_person_rpc` + `people_link_rpcs`) applied directly to the QA project `ljjvwtpifmoshfknlbaj` via the Supabase MCP; local repo migrations match.
+- [x] `e2e-smoke-tester` flow — **skipped** because the agent's `tools:` grant in `.claude/agents/e2e-smoke-tester.md:4` is missing the Playwright MCP prefix. First real dispatch (2026-05-12) returned BLOCKED. Captured as a Tooling backlog item (commit `852527f`); not a product defect. Manual QA on the qa preview stood in.
+- [x] Manual QA pass on the qa preview (`meetthefam-git-qa-sanchit-bhatnagars-projects.vercel.app`) confirmed by user 2026-05-12 — all Phase 3 surfaces (people CRUD, set spouse, set parents with cycle rejection, set parents with new gender filter, tone override, even card heights) verified working post-fix.
+- [x] Release version: **`v0.0.4`** standalone (Phase 3 alone — followed pre-Phase-5 `0.0.x` patch-per-deploy convention from [CLAUDE.md](../../CLAUDE.md) "Releases" + [ADR 0009](../adrs/0009-versioning-and-releases.md)).
 
 ---
 
