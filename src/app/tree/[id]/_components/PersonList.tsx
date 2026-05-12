@@ -63,7 +63,7 @@ export function PersonList({ treeId, people }: Props) {
             {/* z-10 card content with pointer-events-none so clicks fall
                 through to the underlying button. The menu (next sibling)
                 re-enables pointer events on its own subtree only. */}
-            <div className="pointer-events-none relative z-10">
+            <div className="pointer-events-none relative z-10 h-full">
               <PersonCard person={p} peopleById={peopleById} />
             </div>
 
