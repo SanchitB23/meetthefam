@@ -147,3 +147,16 @@
     @apply font-sans;
   }
 }
+
+/*
+ * family-chart 0.9.0 hard-codes `stroke="#fff"` on `.link` SVG paths
+ * (`node_modules/family-chart/dist/family-chart.esm.js:1268`), assuming
+ * the library's dark default theme. On our cream heirloom background the
+ * connecting lines disappear. CSS beats SVG presentation attributes, so
+ * this override colours the parent-child + spouse links to match our
+ * border token without `!important`.
+ */
+.f3 .link {
+  stroke: var(--border);
+  stroke-width: 1.5px;
+}

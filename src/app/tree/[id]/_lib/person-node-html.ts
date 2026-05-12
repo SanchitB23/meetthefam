@@ -49,12 +49,24 @@ function formatDates(
 
 function avatarHtml(data: FamilyChartDatum['data']): string {
   const sizePx = 48
+  // Mirror the React <Avatar>'s chrome — `inline-flex items-center
+  // justify-center rounded-full overflow-hidden shrink-0`. Inlined here
+  // because cardInnerHtmlCreator hands HTML strings to family-chart,
+  // not React elements, so the Tailwind classes don't reach.
+  const wrapperBase = `
+    width:${sizePx}px;
+    height:${sizePx}px;
+    border-radius:50%;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    flex-shrink:0;
+  `
+
   if (data.photo_url) {
     return `
-      <span
-        class="mtf-node__avatar"
-        style="width:${sizePx}px;height:${sizePx}px;"
-      >
+      <span class="mtf-node__avatar" style="${wrapperBase}">
         <img
           src="${escapeHtml(data.photo_url)}"
           alt=""
@@ -73,8 +85,7 @@ function avatarHtml(data: FamilyChartDatum['data']): string {
     <span
       class="mtf-node__avatar"
       style="
-        width:${sizePx}px;
-        height:${sizePx}px;
+        ${wrapperBase}
         background:var(--tone-${data.tone}-bg);
         color:var(--tone-${data.tone}-ink);
       "
