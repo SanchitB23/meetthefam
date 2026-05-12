@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { TreeCard, type TreeRow } from './_components/TreeCard'
+import { CreateTreeModal } from './_components/CreateTreeModal'
 
 type Membership = {
   role: 'owner' | 'editor'
@@ -38,16 +39,7 @@ export default async function DashboardPage() {
     <main className="px-4 py-8 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-serif text-3xl text-foreground">Your Trees</h1>
-        {/* CTA enabled in Sub-task 2 */}
-        <button
-          type="button"
-          disabled
-          aria-disabled="true"
-          title="Tree creation lands in the next sub-task"
-          className="text-sm px-4 py-2 rounded-md bg-primary text-primary-foreground opacity-50 cursor-not-allowed"
-        >
-          + New tree
-        </button>
+        <CreateTreeModal />
       </div>
 
       {trees.length === 0 ? (
