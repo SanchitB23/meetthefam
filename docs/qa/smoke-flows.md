@@ -142,6 +142,32 @@ If service-role admin API is not available in env (e.g. QA without a fixture loa
 
 ---
 
+### Phase 3 — people CRUD + linking flows
+
+All Phase 3 flows assume the agent is already signed in (use `signin-magic-link` first on local, or a `pre-authed-cookie` on QA). The flow creates and tears down its own tree so it can run idempotently.
+
+#### `people-crud-and-link` *(env: local | qa)*
+
+Tests: the Phase 3 ship gate — add / edit / delete people, set spouse / parents, bidirectional spouse sync, ancestor-cycle detection, inbound-FK cleanup on delete.
+
+1. From `/dashboard`, click `+ New tree`. Fill name `Phase 3 E2E ${randomId}`, leave description blank. Submit. Wait for the new card.
+2. Click the new tree card. Land on `/tree/<id>`. Snapshot — assert the empty state ("No people yet" + "+ Add the first person" CTA enabled).
+3. Click "+ Add the first person". The PersonForm opens (Sheet on mobile, Dialog on desktop). Fill `Full name = Alice Allen`. Submit. Form closes; the Alice card appears in the list.
+4. Click the floating `+` FAB (bottom-right). Fill `Full name = Bob Brown`, `Gender = m`. Submit. Bob card appears.
+5. Click the `…` menu on Bob's card → "Add relative…". The PersonForm opens with a "How is this person related?" radiogroup at the top, defaulting to "Child of Bob Brown". Fill `Full name = Charlie Brown`. Submit. Charlie's card appears with a relations summary reading `Child of Bob Brown` (or "Son of Bob Brown" if the UI distinguishes gender — match whichever the live build renders).
+6. Click `…` on Alice's card → "Set spouse". The PersonPicker opens. Pick Bob Brown. Confirm. Snapshot — assert Alice's card now reads `Spouse of Bob Brown` AND Bob's card reads `Spouse of Alice Allen` (bidirectional sync).
+7. Click `…` on Charlie's card → "Set parents". The dialog shows two pickers. Father stays as Bob (existing). Pick Alice as Mother. Confirm. Charlie's relations summary updates to `Child of Bob Brown & Alice Allen` (order may vary — both names must appear).
+8. Click `…` on Alice's card → "Set parents". Pick Bob as Father. Confirm. Assert: an inline error appears mentioning "circular" / "ancestry" (the DB rejects the cycle Bob → Alice → Charlie? Actually Bob's only descendant chain is Bob→Charlie; Bob→Alice would NOT close a cycle yet. To force a cycle: Set Bob's parents to Charlie. Try Set parents on Bob → Father = Charlie → assert the error). **NOTE for the agent**: pick whichever pair currently forms a cycle in the seeded state — Bob→Charlie means setting Charlie as Bob's parent closes the loop Bob→Charlie→Bob. If the UI guard blocks the picker before the DB call (descendant exclusion), accept that as PASS too — the assertion is *the user cannot complete the action and an explanation is shown*.
+9. Click Alice's card body (or the Edit menu item) → PersonForm opens in edit mode prefilled with `Alice Allen`. Tap a non-default tone swatch (e.g. `indigo` if current is `sage`). Save. Alice's avatar tint changes; no row jump in the list.
+10. Click `…` on Bob's card → "Edit" (or click card body) → in the form, click the destructive "Delete" CTA. Confirm in the destructive-styled dialog. Bob's card disappears. Assert: Alice's card no longer shows `Spouse of Bob Brown` (inbound spouse_id nulled); Charlie's relations summary loses Bob and now reads `Child of Alice Allen` (inbound father_id nulled).
+11. **Cleanup:** navigate back to `/dashboard`. Open the `…` menu on the `Phase 3 E2E ${randomId}` card → Delete → confirm. The tree disappears; cascade deletes the remaining people rows.
+
+**Pass:** all 11 steps complete; spouse symmetry visible at step 6; cycle rejection visible at step 8; inbound-FK cleanup visible at step 10; no console errors; no orphan tree left on dashboard.
+
+**Skip rules:** if running on `local` without `supabase start`, SKIP with reason "needs-local-supabase".
+
+---
+
 ## Adding a new flow
 
 When closing out a phase:
