@@ -109,6 +109,24 @@ export function SetParentsDialog({
     return set
   }, [excludeBase, fatherId])
 
+  // Phase 3 polish — gender filter on parent pickers.
+  //
+  // The Father picker hides people explicitly marked `gender === 'f'`;
+  // the Mother picker hides `gender === 'm'`. `other` and `unknown`
+  // show in BOTH — per the form's helper text the gender field is
+  // visual styling only, so we only hide the explicit mismatch and
+  // don't over-gate. Kept separate from `excludeIds` (which is for
+  // tree-relationship walks: self + descendants + already-picked-other-
+  // parent) so the two concerns stay independent.
+  const fatherCandidates = useMemo(
+    () => people.filter((p) => p.gender !== 'f'),
+    [people],
+  )
+  const motherCandidates = useMemo(
+    () => people.filter((p) => p.gender !== 'm'),
+    [people],
+  )
+
   const father = fatherId ? peopleById.get(fatherId) : null
   const mother = motherId ? peopleById.get(motherId) : null
 
@@ -198,7 +216,7 @@ export function SetParentsDialog({
         onOpenChange={(v) => {
           if (!v) setPickerOpen(null)
         }}
-        people={people}
+        people={fatherCandidates}
         excludeIds={fatherExcludes}
         title="Choose father"
         onSelect={(id) => {
@@ -211,7 +229,7 @@ export function SetParentsDialog({
         onOpenChange={(v) => {
           if (!v) setPickerOpen(null)
         }}
-        people={people}
+        people={motherCandidates}
         excludeIds={motherExcludes}
         title="Choose mother"
         onSelect={(id) => {
