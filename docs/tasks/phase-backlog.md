@@ -91,3 +91,7 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 - [ ] **(Optional)** Evaluate `reactCompiler: true` if profiler shows wasted renders. Default: don't enable.
 - [ ] Verify no `--turbopack` flags lurking in `package.json` (cleanup if any survived).
 - [ ] Verify Next.js Devtools MCP still works against the production deployment (or document that it's dev-only).
+
+## Tooling / Agents
+
+- [ ] **Create an `e2e-smoke-tester` agent** at `.claude/agents/e2e-smoke-tester.md`. Mirrors the `task-doc-keeper` pattern. Job: run the project's standard QA smoke flows (sign in via magic-link OR Google OAuth on the QA preview URL, then for each Phase the relevant golden path — Phase 2 = create / rename / delete tree without hard reload, two-tab read-your-writes check, mobile 1-col grid at 375px; later phases extend the list) and return a single summary with per-flow PASS / FAIL / SKIPPED + console / network errors. Runs in the background (controller dispatches with `run_in_background: true`) so the human-in-the-loop QA step at phase close-out becomes "wait for the agent + read its report." Uses the Playwright MCP (already in `.mcp.json`). Inputs: target URL, list of flows to run, credentials path. Replaces the current manual "open the QA URL and click around" step in phase close-outs. *(originated 2026-05-12 from Phase 2 close-out experience)*

@@ -36,8 +36,8 @@ Closed with **`v0.0.3`**. See [release notes](https://github.com/SanchitB23/meet
 
 - [x] RLS Vitest test for `trees` / `tree_members` — user A cannot `SELECT` / `UPDATE` / `DELETE` user B's rows. *(commit `46441ba` — 4 tests in `src/__tests__/rls/trees.test.ts`)*
 - [x] Per-sub-task docs ticks landed in `current-phase.md` + `phase-backlog.md` in the same commit as each feature commit.
-- [ ] Confirm `updateTag` cache-invalidation works on QA (not just local). Smoke: open `/dashboard` in two tabs, create a tree in tab 1, refresh tab 2. *(pending manual QA verification after deploy)*
-- [ ] Confirm mobile layout (1-col card grid) on QA via Chrome devtools mobile emulator. *(pending manual QA verification after deploy)*
+- [x] Confirm `revalidatePath` cache-invalidation works on QA (not just local). Smoke: open `/dashboard` in two tabs, create a tree in tab 1, refresh tab 2 — verified by user 2026-05-12 against `meetthefam-git-qa-sanchit-bhatnagars-projects.vercel.app`.
+- [x] Confirm mobile layout (1-col card grid) on QA via Chrome devtools mobile emulator — verified by user 2026-05-12.
 
 See [ADR 0007](../adrs/0007-nextjs-16-and-async-idioms.md) for the async-idioms baseline (currently using `revalidatePath`; `updateTag` deferred until `"use cache"` adoption post-v0.1).
 
