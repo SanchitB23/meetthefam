@@ -43,11 +43,11 @@ export function PersonList({ treeId, people }: Props) {
 
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 auto-rows-fr sm:grid-cols-2 lg:grid-cols-3">
         {people.map((p) => (
           <div
             key={p.id}
-            className="relative rounded-lg transition-colors hover:bg-foreground/[0.02] focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-background"
+            className="relative h-full rounded-lg transition-colors hover:bg-foreground/[0.02] focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2 focus-within:ring-offset-background"
           >
             {/* z-0 absolute button — the tap-to-edit surface. Mirrors
                 <TreeCard>'s stretched-Link pattern. aria-label gives

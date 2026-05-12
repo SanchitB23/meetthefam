@@ -55,7 +55,7 @@ export function PersonCard({ person, peopleById }: Props) {
   const relations = buildRelations(person, peopleById)
 
   return (
-    <div className="border border-border rounded-lg p-4 bg-card flex gap-3">
+    <div className="h-full border border-border rounded-lg p-4 pr-10 bg-card flex gap-3">
       <Avatar
         fullName={person.full_name}
         photoUrl={person.photo_url}

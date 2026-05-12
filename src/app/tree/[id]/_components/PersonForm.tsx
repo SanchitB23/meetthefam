@@ -210,6 +210,15 @@ export function PersonForm({
   const [isPending, startTransition] = useTransition()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const deceased = watch('deceased')
+  const birthYear = watch('birth_year')
+
+  // Temporal-field clamps (Fix 3 — block future dates and impossible
+  // birth_year < death_year combos). The `max` HTML attrs give mobile
+  // pickers + native validation a hint; the RHF `validate` rules below
+  // are the actual gate. The server action validates these too — defense
+  // in depth — see actions.ts.
+  const currentYear = new Date().getFullYear()
+  const todayISO = new Date().toISOString().slice(0, 10)
 
   // Reset the form whenever the surface (re)opens, or the target row
   // changes — keeps stale field values from leaking between sessions.
@@ -487,9 +496,24 @@ export function PersonForm({
             type="number"
             inputMode="numeric"
             placeholder="1955"
+            min={1000}
+            max={currentYear}
+            aria-invalid={errors.birth_year ? true : undefined}
             className={inputClass}
-            {...register('birth_year')}
+            {...register('birth_year', {
+              validate: (v) => {
+                if (!v) return true
+                const n = Number(v)
+                if (!Number.isFinite(n)) return 'Please enter a valid year.'
+                if (n > currentYear) return 'Birth year cannot be in the future.'
+                if (n < 1000) return 'Please enter a valid year.'
+                return true
+              },
+            })}
           />
+          {errors.birth_year && (
+            <p className="text-xs text-destructive">{errors.birth_year.message}</p>
+          )}
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="pf-birth-date" className="text-sm font-medium text-foreground">
@@ -498,9 +522,22 @@ export function PersonForm({
           <input
             id="pf-birth-date"
             type="date"
+            max={todayISO}
+            aria-invalid={errors.birth_date ? true : undefined}
             className={inputClass}
-            {...register('birth_date')}
+            {...register('birth_date', {
+              validate: (v) => {
+                if (!v) return true
+                // ISO 'YYYY-MM-DD' strings compare lexically the same way
+                // they compare chronologically, so a string compare is safe.
+                if (v > todayISO) return 'Birth date cannot be in the future.'
+                return true
+              },
+            })}
           />
+          {errors.birth_date && (
+            <p className="text-xs text-destructive">{errors.birth_date.message}</p>
+          )}
         </div>
       </div>
 
@@ -552,9 +589,30 @@ export function PersonForm({
               type="number"
               inputMode="numeric"
               placeholder="2020"
+              min={1000}
+              max={currentYear}
+              aria-invalid={errors.death_year ? true : undefined}
               className={inputClass}
-              {...register('death_year')}
+              {...register('death_year', {
+                validate: (v) => {
+                  if (!v) return true
+                  const n = Number(v)
+                  if (!Number.isFinite(n)) return 'Please enter a valid year.'
+                  if (n > currentYear) return 'Death year cannot be in the future.'
+                  if (n < 1000) return 'Please enter a valid year.'
+                  if (birthYear) {
+                    const b = Number(birthYear)
+                    if (Number.isFinite(b) && n < b) {
+                      return 'Death year cannot be before birth year.'
+                    }
+                  }
+                  return true
+                },
+              })}
             />
+            {errors.death_year && (
+              <p className="text-xs text-destructive">{errors.death_year.message}</p>
+            )}
           </div>
         )}
       </div>

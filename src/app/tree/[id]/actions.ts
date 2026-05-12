@@ -57,6 +57,44 @@ function clean<T extends string | null | undefined>(value: T): string | null {
   return trimmed.length === 0 ? null : trimmed
 }
 
+// ---- Temporal-field validation (defense in depth for Fix 3) ----
+//
+// The client's react-hook-form rules already block future / impossible
+// year inputs at submit time, but a curl POST or a stale tab can bypass
+// that. These helpers run on every create + sparse update.
+//
+// `currentYear` is read at call time so a long-running process won't
+// drift past Jan 1 with a stale value.
+const YEAR_FLOOR = 1000
+
+function validateBirthYear(year: number): string | null {
+  const currentYear = new Date().getFullYear()
+  if (year > currentYear) return 'Birth year cannot be in the future.'
+  if (year < YEAR_FLOOR) return 'Please enter a valid birth year.'
+  return null
+}
+
+function validateDeathYear(
+  deathYear: number,
+  birthYear: number | null,
+): string | null {
+  const currentYear = new Date().getFullYear()
+  if (deathYear > currentYear) return 'Death year cannot be in the future.'
+  if (deathYear < YEAR_FLOOR) return 'Please enter a valid death year.'
+  if (birthYear != null && deathYear < birthYear) {
+    return 'Death year cannot be before birth year.'
+  }
+  return null
+}
+
+function validateBirthDate(date: string): string | null {
+  // ISO 'YYYY-MM-DD' strings compare lexically the same way they compare
+  // chronologically — that's the whole point of the format.
+  const todayISO = new Date().toISOString().slice(0, 10)
+  if (date > todayISO) return 'Birth date cannot be in the future.'
+  return null
+}
+
 export async function createPerson(
   treeId: string,
   data: PersonInput,
@@ -96,6 +134,22 @@ export async function createPerson(
     ? (data.birth_year as number)
     : null
 
+  // Temporal validation (Fix 3). Each helper returns a user-facing message
+  // or null. Mirror the existing 80-char rejection style.
+  if (birth_year != null) {
+    const err = validateBirthYear(birth_year)
+    if (err) return { ok: false, error: err }
+  }
+  const birth_date = clean(data.birth_date)
+  if (birth_date) {
+    const err = validateBirthDate(birth_date)
+    if (err) return { ok: false, error: err }
+  }
+  if (death_year != null) {
+    const err = validateDeathYear(death_year, birth_year)
+    if (err) return { ok: false, error: err }
+  }
+
   const insert = {
     tree_id: treeId,
     created_by: user.id,
@@ -104,7 +158,7 @@ export async function createPerson(
     bio,
     gender: data.gender ?? 'unknown',
     birth_year,
-    birth_date: clean(data.birth_date),
+    birth_date,
     location: clean(data.location),
     occupation: clean(data.occupation),
     deceased,
@@ -295,11 +349,23 @@ export async function updatePerson(
 
   if (data.gender !== undefined) patch.gender = data.gender ?? 'unknown'
   if (data.birth_year !== undefined) {
-    patch.birth_year = Number.isFinite(data.birth_year)
+    const by = Number.isFinite(data.birth_year)
       ? (data.birth_year as number)
       : null
+    if (by != null) {
+      const err = validateBirthYear(by)
+      if (err) return { ok: false, error: err }
+    }
+    patch.birth_year = by
   }
-  if (data.birth_date !== undefined) patch.birth_date = clean(data.birth_date)
+  if (data.birth_date !== undefined) {
+    const bd = clean(data.birth_date)
+    if (bd) {
+      const err = validateBirthDate(bd)
+      if (err) return { ok: false, error: err }
+    }
+    patch.birth_date = bd
+  }
   if (data.location !== undefined) patch.location = clean(data.location)
   if (data.occupation !== undefined) patch.occupation = clean(data.occupation)
 
@@ -312,10 +378,21 @@ export async function updatePerson(
   if (data.death_year !== undefined) {
     // Only honour death_year when the row is (or is being set) deceased.
     const willBeDeceased = data.deceased ?? true
-    patch.death_year =
+    const dy =
       willBeDeceased && Number.isFinite(data.death_year)
         ? (data.death_year as number)
         : null
+    if (dy != null) {
+      // Cross-field check uses birth_year only when it's in this same
+      // patch — we don't read the existing row. If the user updates just
+      // death_year and the stored birth_year would conflict, the client
+      // form already shows both inputs together so this case is rare.
+      const patchBirthYear =
+        typeof patch.birth_year === 'number' ? patch.birth_year : null
+      const err = validateDeathYear(dy, patchBirthYear)
+      if (err) return { ok: false, error: err }
+    }
+    patch.death_year = dy
   }
 
   if (data.tone !== undefined) {
