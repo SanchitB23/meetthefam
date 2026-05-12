@@ -31,6 +31,7 @@ For focused work, prefer these subagents over a generic agent:
 - **`supabase-engineer`** — schema, migrations, RLS policies, DB-touching server actions
 - **`frontend-engineer`** — React components, family-chart wrapper, mobile gestures
 - **`test-engineer`** — Vitest (RLS + server-action tests), Playwright (E2E happy paths)
+- **`task-doc-keeper`** — keeps `docs/tasks/current-phase.md` + `docs/tasks/phase-backlog.md` in sync with work about to land. **Invoke before every feature commit** so doc ticks land in the same commit as the code (per the standing memory rule). Also drives phase close-outs (mark current phase ✅ closed, open the next phase stub). It only edits the docs — the controller still stages + commits.
 
 Definitions live in [`.claude/agents/`](.claude/agents/).
 
