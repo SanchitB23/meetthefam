@@ -78,7 +78,7 @@ export default async function TreePage(props: PageProps<'/tree/[id]'>) {
         </div>
       ) : (
         <>
-          <FamilyTree people={people} />
+          <FamilyTree treeId={tree.id} people={people} />
           <AddPersonControls treeId={tree.id} />
         </>
       )}
