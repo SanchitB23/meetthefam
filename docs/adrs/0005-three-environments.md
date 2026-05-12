@@ -42,3 +42,5 @@ QA's stable hostname is Vercel's auto-generated `meetthefam-git-qa-<account>.ver
 ## Amendments
 
 - **2026-05-11** — Made the Vercel project layout explicit (single project + branch-targeted env vars). The original Decision text was silent on whether QA and prod should be one Vercel project or two, and the implementation in Phase 0 sub-task 5 ([`current-phase.md`](../tasks/current-phase.md)) settled on one. See the "Two Vercel projects" entry in Alternatives considered for the rejected option.
+
+- **2026-05-12** — The §"Consequences" "Promotion flow" bullet (`feature branch → PR into qa → merge qa → main`) is now also the operational convention. From v0.0.0 through v0.0.4 the codebase deviated: sub-tasks landed as direct commits on `qa` and `qa → main` was a direct PR. Adopted feature-branch workflow per [ADR 0010](0010-feature-branch-workflow.md), and the merge `qa → main` step is now drawn by a `release/vX.Y.Z` branch rather than `qa` itself.

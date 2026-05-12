@@ -19,7 +19,8 @@ Stack: Next.js 16 (App Router, Turbopack default) on Vercel, Supabase (Postgres 
 - [`docs/architecture/photo-upload.md`](docs/architecture/photo-upload.md) — client-side resize + Storage paths
 - [`docs/architecture/share-link.md`](docs/architecture/share-link.md) — token mechanics
 - [`docs/ux/`](docs/ux/) — page-by-page UX details
-- [`docs/adrs/`](docs/adrs/) — Architecture Decision Records (why each non-obvious call was made)
+- [`docs/dev/`](docs/dev/) — operational recipes: git workflow, releases (the *how*)
+- [`docs/adrs/`](docs/adrs/) — Architecture Decision Records (the *why*)
 - [`docs/tasks/current-phase.md`](docs/tasks/current-phase.md) — what we're working on right now
 
 When unsure, read `docs/tasks/current-phase.md` first to know what phase we're in, then load only the docs relevant to the current phase.
@@ -46,67 +47,19 @@ Definitions live in [`.claude/agents/`](.claude/agents/).
 - Co-author footer on every Claude-generated commit:
   `Co-Authored-By: Claude <noreply@anthropic.com>`
 
-### Git workflow — forward-promotion model
+### Git workflow
 
-Code flows in one direction: `local → qa → main → production`. Never commit directly to `main`.
+Feature-branch forward-promotion: `local → feat/* (or fix/, chore/, docs/, refactor/, test/, style/) → qa → release/vX.Y.Z → main → production`. Never commit directly to `main`; per-sub-task branches are mandatory and direct `qa` commits are emergency-only. Branch prefix mirrors the Conventional Commit type used in the commit message.
 
-```
-local → qa → main → production
-         ↑           ↑
-     verify here  deploys here
-```
-
-- **Always commit and push to `qa` first.** The Vercel QA preview rebuilds at `meetthefam-git-qa-*.vercel.app` against the QA Supabase project (per [ADR 0005](docs/adrs/0005-three-environments.md)).
-- **`qa` is scratch space.** WIP commits, force-pushes, rebases — all fine on `qa` as long as you're the only one working on it.
-- **Promote `qa → main` via a Pull Request, merged with a real merge commit** (the "Create a merge commit" option in GitHub's UI, or `gh pr merge --merge`). Each phase ships as one visible boundary on `main` — `git log --graph main` shows a merge bubble per release. The PR description captures the phase's release notes; the PR record itself becomes the durable history marker even after the release is cut. Do **not** use squash-and-merge (loses per-sub-task commits) or rebase-and-merge (loses the boundary). Fast-forward only is also off — flipped from the pre-v0.0.2 convention; pre-v0.0.2 phases (v0.0.0, v0.0.1, v0.0.2) shipped via `git merge qa --ff-only` directly to `main` with no PR.
-- **Hotfix exception**: if production breaks and `qa` has un-shipped work, branch off `main` for the fix, open a PR `fix/<…> → main`, merge with a merge commit, then forward-port to `qa` afterwards.
-- **Promotion to `main` is a release event** — see "Releases" below.
+- Full sub-task recipe + branch-type table + hotfix exception: [`docs/dev/git-workflow.md`](docs/dev/git-workflow.md).
+- Rationale + alternatives considered: [ADR 0010](docs/adrs/0010-feature-branch-workflow.md).
 
 ### Releases
 
-Every promotion to `main` produces a versioned release. Full rationale in [ADR 0009 — Versioning and releases](docs/adrs/0009-versioning-and-releases.md).
+Phase-anchored SemVer (rules: [ADR 0009 §1](docs/adrs/0009-versioning-and-releases.md)). Releases ship via a `release/vX.Y.Z` branch cut from `qa`, merged to `main` with a real merge commit, then PR'd back into `qa` to return the version bump. Tag is created on GitHub via `gh release create --target main` — `pnpm version` always runs with `--no-git-tag-version` so no local tag exists.
 
-- **Versioning**: phase-anchored SemVer. Pre-Phase-5: `0.0.x` (patch per deploy). `v0.1.0` = Phase 5 complete (personal MVP). `v1.0.0` = Phase 9 complete (multi-tenant launch). Post-v1.0: strict Conventional Commits → SemVer.
-- **Tooling**: `pnpm version <patch|minor|major>` bumps `package.json` and creates an annotated `v`-prefixed git tag atomically.
-- **Release steps**:
-
-  ```bash
-  # 0. ALWAYS confirm gh is on the SanchitB23 (personal) account, not
-  #    the org one (SQB6461_YUMGHCP). Both are logged in on this machine.
-  gh auth status
-
-  # 1. From qa, open a PR to main. Reuse the release notes for the body
-  #    so the PR record IS the historical marker. Write notes to a tmp
-  #    file first — multi-line markdown is awkward as a flag value.
-  gh pr create \
-    --repo SanchitB23/meetthefam \
-    --base main --head qa \
-    --title "vX.Y.Z — <summary>" \
-    --body-file /tmp/vX.Y.Z-notes.md
-
-  # 2. Merge with a real merge commit (NOT squash, NOT rebase). One
-  #    bubble per phase on main is the whole point of this workflow.
-  gh pr merge --repo SanchitB23/meetthefam --merge --delete-branch=false <pr-number>
-
-  # 3. Switch to main, pull the merge, then bump version + tag.
-  git checkout main && git pull --ff-only
-  pnpm version patch                       # or minor / major
-
-  # 4. Push the version commit + tag.
-  git push origin main --follow-tags
-
-  # 5. Create the GitHub Release pointing at the new tag. Reuse the
-  #    same notes file from step 1.
-  gh release create vX.Y.Z \
-    --repo SanchitB23/meetthefam \
-    --title "vX.Y.Z — <summary>" \
-    --notes-file /tmp/vX.Y.Z-notes.md \
-    --prerelease                           # drop --prerelease starting v1.0.0
-  ```
-
-  **Fallback** for environments without `gh` (CI, fresh machine before `gh auth login`): curl to the GitHub REST API using `$GITHUB_PERSONAL_ACCESS_TOKEN` from `.env.local` (loaded by direnv, fine-grained-scoped to this repo). See [ADR 0009 §4](docs/adrs/0009-versioning-and-releases.md#4-manual-tooling-no-ci-automation-yet) for the payload.
-
-  CI automation deferred to v1.0 — a human gate before tagging earns its keep at solo-dev release volume.
+- Full 8-step release recipe + versioning table: [`docs/dev/releases.md`](docs/dev/releases.md).
+- Rationale + Amendment history: [ADR 0009](docs/adrs/0009-versioning-and-releases.md).
 
 ### Code
 

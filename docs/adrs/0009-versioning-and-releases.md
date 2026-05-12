@@ -45,15 +45,49 @@ The release process is run by the human after each `qa→main` promotion. **Alwa
 
 ```bash
 gh auth status                          # MUST show SanchitB23 active
-git checkout main
-git merge qa --ff-only
-pnpm version patch                      # or minor / major
-git push origin main --follow-tags
+
+# 1. Cut release branch from qa.
+git checkout qa && git pull --ff-only
+git checkout -b release/vX.Y.Z
+
+# 2. Bump version. Choose patch / minor / major per §1 above.
+#    --no-git-tag-version because the tag is created on GitHub in step 6,
+#    not locally — keeps the tag's source of truth on GitHub against the
+#    actual main merge commit.
+pnpm version <patch|minor|major> --no-git-tag-version
+git add package.json pnpm-lock.yaml
+git commit -m "chore(release): vX.Y.Z"
+
+# 3. Push branch. No tags pushed.
+git push -u origin release/vX.Y.Z
+
+# 4. PR into main. Release notes in body.
+gh pr create --repo SanchitB23/meetthefam \
+  --base main --head release/vX.Y.Z \
+  --title "vX.Y.Z — <summary>" \
+  --body-file /tmp/vX.Y.Z-notes.md
+
+# 5. Merge with a real merge commit. Keep the branch alive — step 7 reuses it.
+gh pr merge --repo SanchitB23/meetthefam --merge \
+            --delete-branch=false <release-pr-number>
+
+# 6. Create GitHub Release — this creates the tag, pointing at the new
+#    main merge commit.
+git fetch origin main
 gh release create vX.Y.Z \
   --repo SanchitB23/meetthefam \
+  --target main \
   --title "vX.Y.Z — <summary>" \
   --notes-file /tmp/vX.Y.Z-notes.md \
   --prerelease                          # drop --prerelease starting v1.0.0
+
+# 7. Forward the bump back to qa so the branches don't diverge on package.json.
+gh pr create --repo SanchitB23/meetthefam \
+  --base qa --head release/vX.Y.Z \
+  --title "chore(release): forward vX.Y.Z bump to qa" \
+  --body "Brings the package.json bump from #<release-pr-number> back to qa."
+gh pr merge --repo SanchitB23/meetthefam --squash \
+            --delete-branch <forward-pr-number>
 ```
 
 **Fallback for environments without `gh`** (CI, or a fresh machine before `gh auth login`): curl to the GitHub REST API using `$GITHUB_PERSONAL_ACCESS_TOKEN` from `.env.local` (loaded by direnv, fine-grained-scoped to `SanchitB23/meetthefam`):
@@ -92,10 +126,18 @@ The GitHub MCP currently has only read-tools for releases (no `create_release`),
 - [Conventional Commits 1.0.0](https://www.conventionalcommits.org/)
 - [GitHub CLI — `gh release create`](https://cli.github.com/manual/gh_release_create)
 - [GitHub REST API — Create a release](https://docs.github.com/en/rest/releases/releases#create-a-release)
-- [ADR 0005 — Three environments](0005-three-environments.md) — the `qa→main` promotion is what triggers a release
+- [ADR 0005 — Three environments](0005-three-environments.md) — the `qa→main` promotion is what triggers a release.
+- [ADR 0010 — Feature-branch workflow on qa](0010-feature-branch-workflow.md) — defines the `release/vX.Y.Z` branch this ADR's recipe drives.
+- [`docs/dev/releases.md`](../dev/releases.md) — operational recipe (the §4 code block above lives there too; this ADR holds the rationale and Amendment history).
 
 ## Amendments
 
 - **2026-05-12** — Promoted `gh release create` to the primary release command and demoted the `curl` form to a fallback. The original §4 (in `v0.0.0`'s ADR) claimed `gh` was unavailable because it was logged into the user's org account — that was incorrect at the time of writing. Both `SanchitB23` (personal) and `SQB6461_YUMGHCP` (org) are logged in on this machine, with `SanchitB23` set as the active account, and `gh release create` works against this repo. The `v0.0.0` release was itself created via `gh release create`, demonstrating the path. §4 was rewritten accordingly, and a "verify `gh auth status` first" step was prepended to guard against accidentally operating under the org identity.
 
 - **2026-05-12 (post-v0.0.2)** — Flipped the promotion mechanic from "`git merge qa --ff-only`, no PR" to **"PR with a real merge commit"**. The original convention optimized for a linear `main` history; in practice that cost us the PR record as a durable phase marker, and a GitHub Release alone isn't as discoverable when you're scanning history six months later. New convention: each `qa → main` promotion goes through a PR (description reuses the release notes), merged via GitHub's "Create a merge commit" — squash and rebase are explicitly disallowed because they lose either the per-sub-task commits or the phase boundary. `git log --graph main` now shows one merge bubble per release. Releases `v0.0.0`, `v0.0.1`, and `v0.0.2` predate this amendment and shipped via the ff-only path — they remain as-is on `main`, with GitHub Releases serving as their history markers. Starting Phase 2, every promotion follows the PR-based steps in CLAUDE.md "Releases."
+
+- **2026-05-12 (post-v0.0.4)** — Reworked §4 release steps to drive the release through a dedicated `release/vX.Y.Z` branch and create the tag on GitHub rather than locally. Three concrete changes:
+  1. **Source branch for the release PR is now `release/vX.Y.Z` (cut from `qa`), not `qa` directly.** This isolates the version-bump commit on a disposable branch — if the release is aborted, `qa` doesn't carry a half-cooked bump that has to be reverted.
+  2. **`pnpm version` runs with `--no-git-tag-version`.** No local tag is ever created. The version commit lands as a plain `chore(release): vX.Y.Z` commit on the release branch. The tag is created on GitHub via `gh release create --target main` once the release PR is merged, so it points at the actual `main` merge commit and the GitHub Release page is the tag's source of truth.
+  3. **The release branch is also PR'd back into `qa` (squash-merge).** This brings the version bump into `qa` so `main` and `qa` don't diverge on `package.json` between releases.
+  v0.0.4 ([#4](https://github.com/SanchitB23/meetthefam/pull/4)) was the first release to use a `release/vX.Y.Z` branch — but as an ad-hoc workaround around the `main` ruleset rejecting the `pnpm version patch` push, not as a codified flow. This amendment codifies it. Combined with [ADR 0010](0010-feature-branch-workflow.md) (per-sub-task feature branches into `qa`), the overall flow is now `feat/* → qa → release/vX.Y.Z → main`. Releases `v0.0.0`–`v0.0.4` keep their existing tags as-is; starting v0.0.5 every release follows the new §4 recipe.

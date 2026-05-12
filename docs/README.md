@@ -10,6 +10,9 @@ docs/
 ├── architecture/     System shape, data model, auth/RLS, photo upload, share links
 ├── ux/               Page-by-page UX, gestures, family-chart integration
 ├── adrs/             Architecture Decision Records (why each non-obvious call was made)
+├── dev/              Operational guides: git workflow, release recipe (the how)
+├── setup/            Environment setup notes (MCP servers, Dependabot config)
+├── qa/               QA smoke-flow catalog
 └── tasks/            Living task tracker for the current phase
 ```
 
@@ -18,6 +21,8 @@ docs/
 | If you're working on… | Read first |
 |---|---|
 | Anything | [`tasks/current-phase.md`](tasks/current-phase.md) — know what phase we're in. Cross-check [`tasks/phase-backlog.md`](tasks/phase-backlog.md) for phase-specific TODOs (Next.js 16 idioms, View Transitions, Devtools MCP). |
+| Cutting a feature branch / opening a PR | [`dev/git-workflow.md`](dev/git-workflow.md) (recipe) + [`adrs/0010-feature-branch-workflow.md`](adrs/0010-feature-branch-workflow.md) (rationale). |
+| Cutting a release | [`dev/releases.md`](dev/releases.md) (recipe) + [`adrs/0009-versioning-and-releases.md`](adrs/0009-versioning-and-releases.md) (rationale). |
 | Next.js 16 conventions (async params, `proxy.ts`, `updateTag()`, `refresh()`) | [`adrs/0007-nextjs-16-and-async-idioms.md`](adrs/0007-nextjs-16-and-async-idioms.md) |
 | The DB schema, migrations, RLS | [`architecture/data-model.md`](architecture/data-model.md) + [`architecture/auth-and-rls.md`](architecture/auth-and-rls.md) |
 | Auth flows | [`architecture/auth-and-rls.md`](architecture/auth-and-rls.md) |
