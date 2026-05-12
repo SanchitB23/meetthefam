@@ -18,7 +18,7 @@ import { DeletePersonDialog } from './DeletePersonDialog'
 import { PersonForm } from './PersonForm'
 import { PersonPicker } from './PersonPicker'
 import { SetParentsDialog } from './SetParentsDialog'
-import type { PersonRow } from './PersonCard'
+import type { PersonRow } from '../_lib/types'
 
 // Phase 3 sub-task 4 + 5 — per-card "..." menu.
 //

@@ -28,7 +28,7 @@ import {
   type PersonInput,
 } from '../actions'
 import { DeletePersonDialog } from './DeletePersonDialog'
-import type { PersonRow } from './PersonCard'
+import type { PersonRow } from '../_lib/types'
 import type { Tone } from '@/components/ui/avatar'
 
 // Form-state strategy decision (Phase 3 sub-task 2): **react-hook-form**.
