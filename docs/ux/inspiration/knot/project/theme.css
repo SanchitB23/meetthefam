@@ -1,0 +1,47 @@
+/* meetTheFam — design tokens
+ * Drop into Tailwind v4 @theme block, or use directly via CSS variables.
+ * Light + dark variants included; .dark class flips them.
+ * See tokens.json for the canonical, machine-readable source.
+ */
+
+@theme {
+  /* Brand colors — light */
+  --color-ink:    oklch(33.5% 0.04  158);
+  --color-accent: oklch(64%   0.10  39);
+  --color-cream:  oklch(95%   0.015 80);
+  --color-paper:  oklch(98.7% 0.01  85);
+  --color-mid:    oklch(46%   0.015 70);
+
+  /* Tone palette — branch accents */
+  --color-tone-sage:    #E4ECDD;
+  --color-tone-rose:    #F1DAD0;
+  --color-tone-indigo:  #DDE0EC;
+  --color-tone-amber:   #F2E3C5;
+  --color-tone-green:   #CFE0CD;
+
+  /* Radii */
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 24px;
+  --radius-pill: 999px;
+
+  /* Shadows */
+  --shadow-card:       0 1px 2px rgba(60,40,20,.03), 0 8px 28px rgba(60,40,20,.05);
+  --shadow-node:       0 1px 2px rgba(60,40,20,.04), 0 4px 12px rgba(60,40,20,.05);
+  --shadow-node-hover: 0 0 0 3px rgba(45,74,62,.12), 0 8px 24px rgba(60,40,20,.10);
+
+  /* Type */
+  --font-display: "Cormorant Garamond", Georgia, serif;
+  --font-body:    "Manrope", system-ui, sans-serif;
+}
+
+/* Dark mode — warm-shifted, NOT a desaturated invert */
+.dark {
+  --color-ink:    #E8DFD0;
+  --color-accent: #E09376;
+  --color-cream:  #1B1814;
+  --color-paper:  #241F18;
+  --color-mid:    #9A9081;
+}
