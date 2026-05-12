@@ -6,14 +6,21 @@ For Next.js 16 idiom rationale, see [`../adrs/0007-nextjs-16-and-async-idioms.md
 
 ---
 
+## Standing rules
+
+Not phase-specific TODOs — discipline reminders for every session. These never get a `[x]` because they apply to all new code that crosses the relevant boundary.
+
+- **`await cookies()` and `await headers()`** in every server-side `@supabase/ssr` client. In Next.js 16, `cookies()` and `headers()` from `next/headers` are async — every new Supabase server client must `await` them when wiring the cookie adapter. Pull the current snippet via Context7 MCP (`/supabase/supabase`) before writing one from memory; older guides have the synchronous form. Current code is in compliance (audit `src/lib/supabase/server.ts`, `src/app/login/actions.ts`, `src/app/auth/callback/route.ts`, `src/proxy.ts`).
+
+---
+
 ## Phase 0 — Foundation (close-out)
 
 - [x] **Wire Vercel Analytics + Speed Insights** — `@vercel/analytics@2` + `@vercel/speed-insights@2` installed; `<Analytics />` and `<SpeedInsights />` mounted inside `<body>` in [`src/app/layout.tsx`](../../src/app/layout.tsx). Both packages are zero-config on Vercel and capture data from first deploy. Verify in the Vercel dashboard → Analytics tab after the next deploy.
-- [ ] **Drop `--turbopack` flag** from `package.json` scripts — Turbopack is the default in Next.js 16; the flag is a no-op. Per the [v16 upgrade guide](https://nextjs.org/docs/app/guides/upgrading/version-16).
-- [ ] **Add `engines.node`** to `package.json` (`>=24.15.0` matching `.nvmrc`).
-- [ ] **Add Next.js Devtools MCP** to project `.mcp.json` once `pnpm dev` is wired — see [Next.js MCP docs](https://nextjs.org/docs/app/guides/mcp). Bumps Tier 1 MCPs from 4 → 5; update [`CLAUDE.md`](../../CLAUDE.md) and [`docs/setup/mcp-servers.md`](../setup/mcp-servers.md) when added.
-- [ ] **Set `images.remotePatterns`** in `next.config.ts` for `*.supabase.co/storage/v1/object/public/photos/**` (deferred to Phase 5 if cleaner).
-- [ ] **Palette refinement to match Kintree** (per [ADR 0008](../adrs/0008-design-system.md)) — done at `src/app/globals.css` in the same commit as ADR 0008. Verifies `pnpm typecheck` + `pnpm lint` still pass.
+- [x] **Drop `--turbopack` flag** from `package.json` scripts — Turbopack is the default in Next.js 16; the flag is a no-op. *(never added — landed clean in `34d1aa4`)*
+- [x] **Add `engines.node`** to `package.json` (`>=24.15.0` matching `.nvmrc`). *(landed in `34d1aa4`)*
+- [x] **Add Next.js Devtools MCP** to project `.mcp.json` once `pnpm dev` is wired — see [Next.js MCP docs](https://nextjs.org/docs/app/guides/mcp). Bumps Tier 1 MCPs from 4 → 5; update [`CLAUDE.md`](../../CLAUDE.md) and [`docs/setup/mcp-servers.md`](../setup/mcp-servers.md) when added. *(landed in `f107e7b`)*
+- [x] **Palette refinement to match Kintree** (per [ADR 0008](../adrs/0008-design-system.md)) — `globals.css` migrated to two-tone + 5 TONES CSS vars. *(landed in `472df7b`)*
 - [x] **Sub-task 3 follow-up — `.gitignore`**: `supabase/seed.local.sql` added to root `.gitignore` so the maintainer's personal-tree seed never gets committed (see [ADR 0008](../adrs/0008-design-system.md) → "Seed data"). *(landing in the sub-task 3 commit)*
 - [x] **Sub-task 4 follow-up — Smith Family Demo seed**: ship `supabase/seed.sql` with the [`docs/ux/inspiration/kintree/project/data.jsx`](../ux/inspiration/kintree/project/data.jsx) shape (sanitized Smith / Anderson, 4 generations, 13 people). Production: do NOT run this seed (`supabase/seed.sql` is local-only by Supabase convention). *(landed in sub-task 4 commit)*
 - [x] **Sub-task 4 follow-up — `tone` column + trigger**: add the `tone` column on `people` per [`../architecture/data-model.md`](../architecture/data-model.md) and a `BEFORE INSERT` trigger that auto-assigns via `hash(full_name) % 5` when null. See [`../ux/avatars-and-tones.md`](../ux/avatars-and-tones.md) for the algorithm. *(landed in sub-task 4 commit, uses `abs(hashtext(full_name)) % 5`)*
@@ -21,9 +28,10 @@ For Next.js 16 idiom rationale, see [`../adrs/0007-nextjs-16-and-async-idioms.md
 ## Phase 1 — Auth
 
 - [x] **Use `proxy.ts`, not `middleware.ts`**, for the auth boundary. Export `proxy`, run on Node runtime. See [`../architecture/auth-and-rls.md`](../architecture/auth-and-rls.md) → "Auth boundary." *(landed in sub-task 2, commit `3f1cee8` — lives at `src/proxy.ts` per Next.js 16 location convention)*
-- [ ] **`await cookies()` and `await headers()`** in every server-side `@supabase/ssr` client. Pull the snippet via Context7 MCP — do not copy from older guides.
 - [x] Add Supabase magic-link + Google OAuth callback as a Route Handler at `/auth/callback/route.ts` — single PKCE `exchangeCodeForSession` path serves both providers.
 - [x] Protect `/dashboard`, `/tree/*` via `proxy.ts` matcher; explicitly skip `/share/[token]`. *(landed in sub-task 2, commit `3f1cee8` — `/tree/*` is covered by the matcher once the route lands)*
+
+> The `await cookies()` / `await headers()` discipline has moved to the **Standing rules** section at the top of this file — it's an ongoing rule, not a one-shot.
 
 ## Phase 2 — Tree CRUD + dashboard
 
