@@ -4,6 +4,11 @@ import { createClient } from '@/lib/supabase/server'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 
+async function getOrigin() {
+  const headersList = await headers()
+  return headersList.get('origin') ?? 'http://localhost:3000'
+}
+
 export async function signInWithMagicLink(formData: FormData) {
   const email = formData.get('email')
   if (!email || typeof email !== 'string') {
@@ -11,8 +16,7 @@ export async function signInWithMagicLink(formData: FormData) {
   }
 
   const supabase = await createClient()
-  const headersList = await headers()
-  const origin = headersList.get('origin') ?? 'http://localhost:3000'
+  const origin = await getOrigin()
 
   const { error } = await supabase.auth.signInWithOtp({
     email,
@@ -24,4 +28,22 @@ export async function signInWithMagicLink(formData: FormData) {
   }
 
   redirect(`/login?sent=true&email=${encodeURIComponent(email)}`)
+}
+
+export async function signInWithGoogle() {
+  const supabase = await createClient()
+  const origin = await getOrigin()
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: `${origin}/auth/callback` },
+  })
+
+  if (error || !data?.url) {
+    redirect(
+      `/login?error=${encodeURIComponent(error?.message ?? 'Google sign-in failed')}`
+    )
+  }
+
+  redirect(data.url)
 }

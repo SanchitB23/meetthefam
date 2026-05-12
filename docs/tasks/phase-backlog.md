@@ -22,7 +22,7 @@ For Next.js 16 idiom rationale, see [`../adrs/0007-nextjs-16-and-async-idioms.md
 
 - [x] **Use `proxy.ts`, not `middleware.ts`**, for the auth boundary. Export `proxy`, run on Node runtime. See [`../architecture/auth-and-rls.md`](../architecture/auth-and-rls.md) → "Auth boundary." *(landed in sub-task 2, commit `3f1cee8` — lives at `src/proxy.ts` per Next.js 16 location convention)*
 - [ ] **`await cookies()` and `await headers()`** in every server-side `@supabase/ssr` client. Pull the snippet via Context7 MCP — do not copy from older guides.
-- [ ] Add Supabase magic-link + Google OAuth callback as a Route Handler at `/auth/callback/route.ts`.
+- [x] Add Supabase magic-link + Google OAuth callback as a Route Handler at `/auth/callback/route.ts` — single PKCE `exchangeCodeForSession` path serves both providers.
 - [x] Protect `/dashboard`, `/tree/*` via `proxy.ts` matcher; explicitly skip `/share/[token]`. *(landed in sub-task 2, commit `3f1cee8` — `/tree/*` is covered by the matcher once the route lands)*
 
 ## Phase 2 — Tree CRUD + dashboard

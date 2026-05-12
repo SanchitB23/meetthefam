@@ -329,6 +329,21 @@ skip_nonce_check = false
 # If enabled, it will allow the user to successfully authenticate when the provider does not return an email address.
 email_optional = false
 
+[auth.external.google]
+enabled = true
+client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
+# DO NOT commit your OAuth provider secret to git. Use environment variable substitution instead:
+secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
+# Must match the "Authorized redirect URI" registered in Google Cloud Console for this OAuth
+# client. The local Supabase auth server lives on 127.0.0.1:54321, so the callback URL is
+# 127.0.0.1:54321/auth/v1/callback. GoTrue rejects the request as "missing redirect URI" if
+# this is left empty.
+redirect_uri = "http://127.0.0.1:54321/auth/v1/callback"
+# Required for local Google sign-in — the Supabase auth server cannot verify Google's nonce
+# without exposing the local instance to Google. Safe to leave on locally; production validates
+# the nonce server-side anyway.
+skip_nonce_check = true
+
 # Allow Solana wallet holders to sign in to your project via the Sign in with Solana (SIWS, EIP-4361) standard.
 # You can configure "web3" rate limit in the [auth.rate_limit] section and set up [auth.captcha] if self-hosting.
 [auth.web3.solana]

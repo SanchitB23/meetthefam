@@ -3,12 +3,23 @@
 import { useFormStatus } from 'react-dom'
 import { Button } from '@/components/ui/button'
 
-export function SubmitButton({ children }: { children: React.ReactNode }) {
+type Props = {
+  children: React.ReactNode
+  pendingText?: string
+  variant?: 'default' | 'outline'
+}
+
+export function SubmitButton({
+  children,
+  pendingText = 'Loading…',
+  variant = 'default',
+}: Props) {
   const { pending } = useFormStatus()
 
   return (
     <Button
       type="submit"
+      variant={variant}
       className="w-full"
       disabled={pending}
       aria-busy={pending}
@@ -36,7 +47,7 @@ export function SubmitButton({ children }: { children: React.ReactNode }) {
               d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
             />
           </svg>
-          Sending magic link…
+          {pendingText}
         </>
       ) : (
         children
