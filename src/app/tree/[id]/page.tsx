@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 import { FamilyTree } from './_components/FamilyTree'
 import type { PersonRow } from './_lib/types'
-import { AddPersonControls } from './_components/AddPersonControls'
+import { AddRelativeFab } from './_components/AddRelativeFab'
 
 type TreeRow = {
   id: string
@@ -13,17 +13,22 @@ type TreeRow = {
 }
 
 export default async function TreePage(props: PageProps<'/tree/[id]'>) {
+  // Phase 4 sub-task 5 — await both async APIs per ADR 0007. `?p=<uuid>`
+  // seeds the tree's initial focus person; the FamilyTree client picks
+  // a `#p=<uuid>` hash over this on mount when present (hash is the
+  // single source of truth at runtime).
   const { id } = await props.params
+  const sp = await props.searchParams
+  const rawFocus = sp?.p
+  const initialFocusId =
+    typeof rawFocus === 'string' && rawFocus.length > 0 ? rawFocus : null
 
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  // proxy.ts already gates /tree/*, but mirror the dashboard's defensive
-  // redirect — keeps the page self-contained if matchers ever drift.
   if (!user) redirect('/login')
 
-  // RLS gates membership: non-members see no row → notFound() below.
   const { data: tree } = await supabase
     .from('trees')
     .select('id, name, description')
@@ -46,9 +51,6 @@ export default async function TreePage(props: PageProps<'/tree/[id]'>) {
   const people = peopleRows ?? []
 
   return (
-    // Phase 4: the tree canvas wants full-bleed width on desktop (per
-    // docs/ux/tree-view.md). The header + empty state are still constrained
-    // to `max-w-4xl` for readability — only the chart breaks out.
     <main className="px-4 py-8">
       <div className="flex items-center gap-3 mb-6 max-w-4xl mx-auto">
         <Link
@@ -64,9 +66,6 @@ export default async function TreePage(props: PageProps<'/tree/[id]'>) {
       </div>
 
       {people.length === 0 ? (
-        // family-chart can't render an empty dataset, so the empty-state
-        // branch stays — same shape Phase 3 shipped, with the CTA wired to
-        // the existing create form.
         <div className="max-w-4xl mx-auto text-center py-16 border border-dashed border-border rounded-lg bg-card/50">
           <p className="font-serif text-xl text-foreground/70 mb-2">
             No people yet
@@ -74,13 +73,18 @@ export default async function TreePage(props: PageProps<'/tree/[id]'>) {
           <p className="text-sm text-foreground/50 mb-6">
             Start by adding the first person in this family.
           </p>
-          <AddPersonControls treeId={tree.id} showEmptyStateCta />
+          <AddRelativeFab
+            treeId={tree.id}
+            focusPerson={null}
+            variant="empty-state"
+          />
         </div>
       ) : (
-        <>
-          <FamilyTree treeId={tree.id} people={people} />
-          <AddPersonControls treeId={tree.id} />
-        </>
+        <FamilyTree
+          treeId={tree.id}
+          people={people}
+          initialFocusId={initialFocusId}
+        />
       )}
     </main>
   )
