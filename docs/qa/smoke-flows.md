@@ -168,6 +168,38 @@ Tests: the Phase 3 ship gate — add / edit / delete people, set spouse / parent
 
 ---
 
+---
+
+### Phase 4 — tree visualization flows
+
+All Phase 4 flows assume the agent is already signed in (use `signin-magic-link` first on local, or a `pre-authed-cookie` on QA). The flow creates and tears down its own tree so it can run idempotently.
+
+#### `phase-4-tree-visualization` *(env: local | qa)*
+
+Tests: the Phase 4 ship gate — family-chart renders a real tree from real data, custom PersonNode card, tap → detail sheet, long-press → action menu, "Re-center here" updates the URL hash, context-aware FAB.
+
+1. From `/dashboard`, click `+ New tree`. Fill name `Phase 4 E2E ${randomId}`, submit. Wait for the new card.
+2. Click the new tree card. Land on `/tree/<id>`. Assert empty state ("No people yet" + "+ Add the first person" CTA visible).
+3. Click "+ Add the first person". Add `Grandma Smith` (gender `f`, birth year `1930`). Submit.
+4. Click the floating `+` FAB (bottom-right). Aria-label reads `Add a person` (no focus yet). Add `Grandpa Smith` (gender `m`, birth year `1928`). Submit.
+5. Long-press Grandma's node for ~600 ms. Assert: action menu opens; haptic vibration fires (no-op on Safari iOS — acceptable). Click "Set spouse" → PersonPicker → pick Grandpa → confirm. Snapshot — assert Grandma's node and Grandpa's node now sit horizontally adjacent in the canvas (family-chart's spouse layout).
+6. Long-press Grandma → "Add relative…" → form pre-seeds "Child of Grandma Smith". Add `Mom Smith` (gender `f`, birth year `1955`). Submit. Assert Mom appears below the spouse pair.
+7. Tap Mom's node (single tap, < 500 ms). Assert: PersonDetailSheet slides in (bottom on mobile, right on desktop). Header shows large avatar + serif `Mom Smith` + dates `b. 1955`. Relations summary reads `Child of Grandma Smith` (or `& Grandpa Smith` if both parents set). Click the "Edit" button. The detail sheet closes; PersonForm opens prefilled. Cancel.
+8. Tap Mom's three-dot icon (top-right corner of the card). Same action menu opens — assert it appears at the icon's position (not at the long-press point).
+9. From the menu: click "Re-center here". Assert: (a) tree pans + animates to center on Mom; (b) URL hash updates to `#p=<mom-uuid>`; (c) FAB aria-label changes to `Add a relative to Mom Smith`.
+10. Copy the current URL (with the hash). Open it in a new tab. Assert the chart paints **already centered on Mom Smith** (SSR `?p=` mirror via `searchParams` would do the same; the hash test exercises the runtime path).
+11. Pan with a one-finger drag across the canvas. Assert the canvas pans. Scroll-wheel (or pinch) to zoom — assert zoom works. Tap an empty area of the canvas — assert any open sheet closes.
+12. Long-press Grandpa → "Delete" → confirm in the destructive dialog. Assert: Grandpa's node disappears; Grandma's spouse-pair link is gone (inbound spouse_id nulled); Mom's relations summary loses Grandpa.
+13. **Cleanup:** navigate back to `/dashboard`. Open the `…` menu on the `Phase 4 E2E ${randomId}` card → Delete → confirm. The tree disappears.
+
+**Pass:** all 13 steps complete; tap vs. long-press differentiation observable at steps 5–8; URL hash sync visible at steps 9–10; FAB context-awareness visible at steps 4 & 9; spouse-symmetry-on-delete visible at step 12; no console errors; no orphan tree on dashboard.
+
+**Skip rules:**
+- Running on `local` without `supabase start` → SKIP with reason "needs-local-supabase".
+- `e2e-smoke-tester` agent tools-grant fix (Phase 3 close-out captured this as a Tooling backlog item) still unresolved → SKIP with reason "needs-tools-grant-fix"; manual QA on the QA preview stands in until the agent can drive Playwright reliably.
+
+---
+
 ## Adding a new flow
 
 When closing out a phase:
