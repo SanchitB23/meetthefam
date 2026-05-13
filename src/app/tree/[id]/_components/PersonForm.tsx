@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { Controller, useForm, type SubmitHandler } from 'react-hook-form'
 import { Trash2 } from 'lucide-react'
 
@@ -23,13 +23,16 @@ import { useIsDesktop } from '@/components/ui/use-is-desktop'
 
 import {
   createPerson,
+  removePersonPhoto,
   updatePerson,
+  uploadPersonPhoto,
   type LinkSpecInput,
   type PersonInput,
 } from '../actions'
 import { DeletePersonDialog } from './DeletePersonDialog'
 import type { PersonRow } from '../_lib/types'
-import type { Tone } from '@/components/ui/avatar'
+import { Avatar, type Tone } from '@/components/ui/avatar'
+import { ImageDecodeError, resizeToJpeg } from '@/lib/image/resize'
 
 // Form-state strategy decision (Phase 3 sub-task 2): **react-hook-form**.
 //
@@ -211,6 +214,75 @@ export function PersonForm({
   const [deleteOpen, setDeleteOpen] = useState(false)
   const deceased = watch('deceased')
   const birthYear = watch('birth_year')
+  const fullNameWatch = watch('full_name')
+
+  // ---- Phase 5 sub-task 3: photo-picker state ----
+  //
+  // Locked decision in the plan: photo state lives OUTSIDE react-hook-form
+  // so the rest of the form's `isDirty` tracking isn't perturbed by photo
+  // changes. We juggle three pieces of state:
+  //
+  //   pendingPhotoRef         — Blob held in memory during create flow,
+  //                             flushed to Storage after createPerson
+  //                             returns the new personId.
+  //   pendingPhotoBlobUrlRef  — object URL string for the Blob above,
+  //                             tracked separately so the cleanup effect
+  //                             and the setPendingBlob helper can revoke
+  //                             the previous URL without re-reading from
+  //                             pendingPhotoRef.
+  //   previewObjectUrl        — same value as pendingPhotoBlobUrlRef but
+  //                             held in state so the avatar re-renders.
+  //   localPhotoUrl           — edit-mode override for the row's photo_url
+  //                             once the immediate upload / remove
+  //                             succeeds. Set to a string after upload,
+  //                             null after remove, undefined to fall back
+  //                             to person.photo_url.
+  //   photoError              — inline error rendered next to the avatar.
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const pendingPhotoRef = useRef<Blob | null>(null)
+  const pendingPhotoBlobUrlRef = useRef<string | null>(null)
+  const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null)
+  const [localPhotoUrl, setLocalPhotoUrl] = useState<string | null | undefined>(
+    undefined,
+  )
+  const [photoError, setPhotoError] = useState<string | null>(null)
+
+  // Stash a new Blob, revoking the previous object URL (if any). Pass null
+  // to clear. Centralises the URL.revokeObjectURL bookkeeping so onPick /
+  // onRemove / Clear / submit-handler-flush all funnel through one path.
+  const setPendingBlob = (blob: Blob | null) => {
+    if (pendingPhotoBlobUrlRef.current) {
+      URL.revokeObjectURL(pendingPhotoBlobUrlRef.current)
+      pendingPhotoBlobUrlRef.current = null
+    }
+    pendingPhotoRef.current = blob
+    if (blob) {
+      const url = URL.createObjectURL(blob)
+      pendingPhotoBlobUrlRef.current = url
+      setPreviewObjectUrl(url)
+    } else {
+      setPreviewObjectUrl(null)
+    }
+  }
+  const clearPendingBlob = () => setPendingBlob(null)
+
+  // ---- Resolve the avatar's photoUrl + tone ----
+  //
+  // Priority: local object URL (just-picked blob) → edit-mode local override
+  // (post-upload / post-remove) → row's persisted photo_url → null (Avatar
+  // shows initials). Create mode has no row, so the chain falls through to
+  // the object URL or null.
+  const previewUrl: string | null = previewObjectUrl
+    ?? (localPhotoUrl !== undefined ? localPhotoUrl : (person?.photo_url ?? null))
+  // Tone is purely cosmetic for the avatar background; in create mode the
+  // DB trigger picks the real tone after insert. 'sage' is the neutral
+  // default that matches DEFAULT_VALUES.tone.
+  const previewTone: Tone = person?.tone ?? 'sage'
+  // The Avatar's `fullName` only feeds the initials fallback when there's
+  // no photo, but we still want it to track the typed name in real time so
+  // create-mode users see their initials before picking a photo.
+  const previewName =
+    (fullNameWatch && fullNameWatch.trim()) || person?.full_name || '—'
 
   // Temporal-field clamps (Fix 3 — block future dates and impossible
   // birth_year < death_year combos). The `max` HTML attrs give mobile
@@ -226,8 +298,125 @@ export function PersonForm({
     if (open) {
       reset(formDefaults)
       setSubmitError(null)
+      // Photo state lives outside RHF so reset() doesn't touch it. Reset
+      // by hand on (re)open so a closed-without-save create session
+      // doesn't leak a pending Blob into the next session.
+      setPhotoError(null)
+      setLocalPhotoUrl(undefined)
+      // setPendingBlob(null) handles the URL.revokeObjectURL bookkeeping.
+      setPendingBlob(null)
     }
+    // setPendingBlob / setLocalPhotoUrl / setPhotoError are stable
+    // per-render but identity-unstable across renders. We deliberately
+    // only re-run this effect when `open` flips — including them in the
+    // dep list would re-run on every keystroke and reset the form.
   }, [open, reset, formDefaults])
+
+  // Revoke any lingering object URL on unmount. Belt-and-braces — the
+  // reset-on-open path above already revokes when the form is reused for
+  // a different person, but the component might unmount while a Blob is
+  // still held (e.g. the parent removes the dialog from the tree).
+  useEffect(() => {
+    return () => {
+      if (pendingPhotoBlobUrlRef.current) {
+        URL.revokeObjectURL(pendingPhotoBlobUrlRef.current)
+        pendingPhotoBlobUrlRef.current = null
+      }
+    }
+  }, [])
+
+  // ---- Photo picker handlers ----
+  //
+  // onPick handles both modes:
+  //   - Edit: resize → uploadPersonPhoto immediately. On success, switch
+  //     the preview to the returned server URL and drop the local Blob.
+  //   - Create: resize → stash the Blob in pendingPhotoRef. The submit
+  //     handler flushes it after createPerson returns the new personId.
+  //
+  // Resetting fileInputRef.current.value to '' lets the user pick the same
+  // file twice in a row (the native input dedupes by file path otherwise).
+  const onPickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setPhotoError(null)
+
+    let resized
+    try {
+      resized = await resizeToJpeg(file)
+    } catch (err) {
+      if (err instanceof ImageDecodeError) {
+        setPhotoError('Please choose a JPEG or PNG photo.')
+      } else {
+        setPhotoError("Couldn't process the photo. Try a different one.")
+      }
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      return
+    }
+
+    if (isEdit && person) {
+      // Show the local preview immediately so the user sees feedback
+      // while the upload is in-flight; we'll swap to the server URL on
+      // success (or revert on failure).
+      setPendingBlob(resized.blob)
+      startTransition(async () => {
+        const fd = new FormData()
+        fd.append('file', resized.blob, 'avatar.jpg')
+        const result = await uploadPersonPhoto(treeId, person.id, fd)
+        if (result.ok) {
+          // Server has the file + photo_url is updated. Drop the local
+          // Blob and switch the preview to the server URL — this also
+          // wins over person.photo_url for the rest of the form's life
+          // (server `refresh()` will eventually update the prop too).
+          clearPendingBlob()
+          setLocalPhotoUrl(result.photoUrl)
+        } else {
+          // Revert the optimistic preview.
+          clearPendingBlob()
+          setPhotoError(result.error)
+        }
+      })
+    } else {
+      // Create mode: hold the Blob in memory until createPerson lands.
+      setPendingBlob(resized.blob)
+    }
+
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  // Edit-mode "Remove photo" — clears the row's photo_url and deletes the
+  // Storage file. Only renders when the row currently has a photo (i.e.
+  // localPhotoUrl is a string OR person.photo_url is set and not yet
+  // overridden by localPhotoUrl).
+  const onRemovePhoto = () => {
+    if (!isEdit || !person) return
+    setPhotoError(null)
+    startTransition(async () => {
+      const result = await removePersonPhoto(treeId, person.id)
+      if (result.ok) {
+        // Override to null so the Avatar falls back to initials. The
+        // server `refresh()` will also clear person.photo_url shortly.
+        setLocalPhotoUrl(null)
+        // Belt and braces — should already be null in edit mode.
+        clearPendingBlob()
+      } else {
+        setPhotoError(result.error)
+      }
+    })
+  }
+
+  // Create-mode "Clear" — discard the in-memory Blob without contacting
+  // the server (no person row exists yet).
+  const onClearPendingPhoto = () => {
+    setPhotoError(null)
+    clearPendingBlob()
+  }
+
+  // Which photo controls to render. In edit mode "Remove" appears when a
+  // photo is in play; in create mode "Clear" appears only while a Blob is
+  // stashed.
+  const editHasPhoto =
+    isEdit && (localPhotoUrl !== undefined ? localPhotoUrl != null : Boolean(person?.photo_url))
+  const createHasPending = !isEdit && previewObjectUrl != null
 
   const onSubmit: SubmitHandler<PersonFormValues> = (values) => {
     setSubmitError(null)
@@ -280,6 +469,32 @@ export function PersonForm({
         setSubmitError(result.error)
         return
       }
+
+      // Two-step create-then-photo flow. The row exists; if the photo
+      // upload fails we surface an inline error but keep the row (the
+      // user can re-attach via edit mode). Don't auto-delete — mirrors
+      // the Phase 3 sub-task 5 "orphan-on-link-failure" ergonomics.
+      if (pendingPhotoRef.current) {
+        const fd = new FormData()
+        fd.append('file', pendingPhotoRef.current, 'avatar.jpg')
+        const photoResult = await uploadPersonPhoto(
+          treeId,
+          result.personId,
+          fd,
+        )
+        clearPendingBlob()
+        if (!photoResult.ok) {
+          setSubmitError(
+            `Person saved, but the photo didn't upload: ${photoResult.error}. Try editing this person to attach it.`,
+          )
+          // The row exists — still fire onSaved + dismiss so the parent
+          // sees the new person on the tree.
+          onSaved?.(result.personId)
+          onOpenChange(false)
+          return
+        }
+      }
+
       onSaved?.(result.personId)
       onOpenChange(false)
     })
@@ -355,6 +570,79 @@ export function PersonForm({
           />
         </div>
       )}
+
+      {/*
+       * Phase 5 sub-task 3 — photo picker.
+       *
+       * Layout: 96-px circular avatar on the left, buttons stacked on the
+       * right. Mirrors the heirloom-form chrome (border-border, rounded
+       * buttons) without claiming any of the Phase 8 visual-polish budget
+       * — sub-task 3 is functional only.
+       *
+       * Photo state lives outside react-hook-form by design (see hook
+       * comments above). The hidden file input is the canonical way to
+       * trigger the OS picker via a styled button; accept="" restricts to
+       * JPEG/PNG (HEIC support deferred — locked decision 6 in the plan).
+       */}
+      <div className="flex flex-col gap-1">
+        <span className="text-sm font-medium text-foreground">
+          Photo <span className="text-foreground/40 font-normal">(optional)</span>
+        </span>
+        <div className="flex items-center gap-3 mt-1">
+          <Avatar
+            fullName={previewName}
+            tone={previewTone}
+            photoUrl={previewUrl}
+            size={96}
+          />
+          <div className="flex flex-col gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png"
+              className="hidden"
+              onChange={onPickPhoto}
+              aria-hidden="true"
+              tabIndex={-1}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isPending}
+            >
+              {previewUrl ? 'Change photo' : 'Add photo'}
+            </Button>
+            {editHasPhoto && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={onRemovePhoto}
+                disabled={isPending}
+                className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+              >
+                Remove photo
+              </Button>
+            )}
+            {createHasPending && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onClearPendingPhoto}
+                disabled={isPending}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
+        </div>
+        {photoError && (
+          <p className="text-xs text-destructive mt-1">{photoError}</p>
+        )}
+      </div>
 
       <div className="flex flex-col gap-1">
         <label htmlFor="pf-full-name" className="text-sm font-medium text-foreground">
