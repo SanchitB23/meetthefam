@@ -83,13 +83,17 @@ DELETE  → caller is deleting their own row
 ### Storage (the `photos` bucket)
 
 ```
-SELECT (read)   → public reads (the photo URL itself is unguessable; we accept that trade-off)
-INSERT          → caller is owner or editor on the tree referenced in the path prefix
-UPDATE          → same
-DELETE          → same
+SELECT (row-level, storage.objects)   → caller is owner or editor on the tree referenced in the path prefix
+INSERT                                → same
+UPDATE                                → same
+DELETE                                → same
 ```
 
-The path convention `trees/<tree_id>/people/<person_id>/avatar.jpg` lets the storage policy parse the tree_id from the path and check membership. See [`photo-upload.md`](photo-upload.md).
+**Two layers of SELECT.** The `photos` bucket has `public = true`, which means anyone with the file URL can GET the file via storage-api's HTTP path — that's the "public photo URL" property the product needs. That public-read happens at the HTTP layer and bypasses `storage.objects` RLS entirely.
+
+The row-level SELECT policy above is separate: it controls who can SELECT rows from the `storage.objects` table over Postgres / the REST API. It's needed because `supabase-js`'s `storage.from('photos').upload(...)` runs `INSERT ... RETURNING` under the hood, and PostgreSQL requires a permissive SELECT policy for the RETURNING clause even on a successful INSERT. The tighter (per-tree-membership) shape — vs a broad `bucket_id = 'photos'` shape — clears the Supabase advisor's `public_bucket_allows_listing` warning by blocking cross-tree listing, while still letting the upload-and-return path succeed (the just-inserted row is on a tree the user is an editor of).
+
+The path convention `trees/<tree_id>/people/<person_id>/avatar.jpg` lets every policy parse the tree_id from the path and check membership via `public.is_tree_editor(((storage.foldername(name))[2])::uuid)`. See [`photo-upload.md`](photo-upload.md).
 
 ## Read-only share link — bypasses RLS
 
