@@ -38,6 +38,31 @@
 
 import type { PersonRow } from './types'
 
+/**
+ * Are two persons bidirectionally linked as spouses?
+ *
+ * Used by `<FamilyTree>`'s after-update hook to decide whether the
+ * parent-bar above a child should render as the default family-chart
+ * "marriage-style" stepped bar (when the parents really are married) or
+ * as two independent vertical drops (when they are merely co-parents).
+ *
+ * Requires BIDIRECTIONAL spouse linkage — a one-sided `spouse_id` (which
+ * the data transform tolerates as the "kinder failure mode"; see note (3)
+ * below) does NOT count as married for the connector geometry. Same-id
+ * and missing-row inputs return false.
+ */
+export function arePartnersMarried(
+  aId: string,
+  bId: string,
+  peopleById: Map<string, PersonRow>,
+): boolean {
+  if (aId === bId) return false
+  const a = peopleById.get(aId)
+  const b = peopleById.get(bId)
+  if (!a || !b) return false
+  return a.spouse_id === b.id && b.spouse_id === a.id
+}
+
 export type FamilyChartDatum = {
   id: string
   data: {
