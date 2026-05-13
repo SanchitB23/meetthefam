@@ -61,7 +61,7 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 
 - [x] On upload Server Action, call `refresh()` to update the avatar without busting cached tree shells. See [`../architecture/photo-upload.md`](../architecture/photo-upload.md) → "End-to-end flow." *(landed in sub-task 2; first use of `refresh()` in the project. Rationale + the FamilyTree dependency-chain note live in the sub-task 2 entry.)*
 - [x] Set `images.remotePatterns`, `images.qualities: [75]`, `images.minimumCacheTTL: 14400` in `next.config.ts`. See `photo-upload.md` → "next/image config." *(landed in sub-task 2; `<Avatar>` stays on plain `<img>` per locked decision 4, swap to `<Image>` deferred to Phase 8.)*
-- [ ] Test: upload a photo, verify the avatar URL updates without a full page reload.
+- [x] Test: upload a photo, verify the avatar URL updates without a full page reload. *(Sub-task 5 — `phase-5-photo-upload` smoke flow at [`../qa/smoke-flows.md`](../qa/smoke-flows.md) step 6 asserts the avatar flips from optimistic-blob preview → Supabase public URL within ~2 s via `refresh()` alone, no page reload. The Vitest action suite `src/__tests__/actions/uploadPersonPhoto.test.ts` covers the server-side photo_url write end of the same path.)*
 
 ## Phase 6 — Collaboration
 
