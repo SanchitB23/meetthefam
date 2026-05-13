@@ -19,7 +19,7 @@ Stack: Next.js 16 (App Router, Turbopack default) on Vercel, Supabase (Postgres 
 - [`docs/architecture/photo-upload.md`](docs/architecture/photo-upload.md) — client-side resize + Storage paths
 - [`docs/architecture/share-link.md`](docs/architecture/share-link.md) — token mechanics
 - [`docs/ux/`](docs/ux/) — page-by-page UX details
-- [`docs/dev/`](docs/dev/) — operational recipes: git workflow, releases (the *how*)
+- [`docs/dev/`](docs/dev/) — operational recipes: git workflow, releases, migrations (the *how*)
 - [`docs/adrs/`](docs/adrs/) — Architecture Decision Records (the *why*)
 - [`docs/tasks/current-phase.md`](docs/tasks/current-phase.md) — what we're working on right now
 
@@ -29,10 +29,11 @@ When unsure, read `docs/tasks/current-phase.md` first to know what phase we're i
 
 For focused work, prefer these subagents over a generic agent:
 
-- **`supabase-engineer`** — schema, migrations, RLS policies, DB-touching server actions
+- **`supabase-engineer`** — schema, migrations, RLS policies, DB-touching server actions (**authors**)
+- **`supabase-validator`** — post-commit verification + live diagnosis of Supabase / DB errors (**validates**). Sibling to `supabase-engineer`; read-only by design (no `apply_migration` / `Edit` / `Write` grants). **Auto-nudged after DB-touching commits** by the `db-commit-detector` PostToolUse hook (see [`.claude/hooks/db-commit-detector.sh`](.claude/hooks/db-commit-detector.sh)); also invoke manually whenever the user reports a DB error in any environment.
 - **`frontend-engineer`** — React components, family-chart wrapper, mobile gestures
 - **`test-engineer`** — Vitest (RLS + server-action tests), Playwright (E2E happy paths)
-- **`task-doc-keeper`** — keeps `docs/tasks/current-phase.md` + `docs/tasks/phase-backlog.md` in sync with work about to land. **Invoke before every feature commit** so doc ticks land in the same commit as the code (per the standing memory rule). Also drives phase close-outs (mark current phase ✅ closed, open the next phase stub). It only edits the docs — the controller still stages + commits.
+- **`task-doc-keeper`** — keeps `docs/tasks/current-phase.md` + `docs/tasks/phase-backlog.md` in sync with work about to land. **Invoke before every feature commit** so doc ticks land in the same commit as the code (per the standing memory rule). **Auto-nudged before sub-task commits** by the `task-doc-tick-detector` PreToolUse hook (see [`.claude/hooks/task-doc-tick-detector.sh`](.claude/hooks/task-doc-tick-detector.sh)) — fires when staging `src/` / migration changes on a `feat/phase-N/sub-task-M-*` branch without a `current-phase.md` tick. Also drives phase close-outs (mark current phase ✅ closed, open the next phase stub). It only edits the docs — the controller still stages + commits.
 
 Definitions live in [`.claude/agents/`](.claude/agents/).
 

@@ -200,6 +200,40 @@ Tests: the Phase 4 ship gate — family-chart renders a real tree from real data
 
 ---
 
+### Phase 5 — photo upload flows
+
+All Phase 5 flows assume the agent is already signed in (use `signin-magic-link` first on local, or a `pre-authed-cookie` on QA). The flow creates and tears down its own tree so it can run idempotently.
+
+#### `phase-5-photo-upload` *(env: local | qa)*
+
+Tests: the Phase 5 ship gate — client-side resize, upload to the `photos` bucket via the `uploadPersonPhoto` Server Action, avatar refresh in both the tree canvas and the detail sheet, "Remove photo" path, and best-effort Storage cleanup on delete-person + delete-tree.
+
+The flow needs a fixture JPEG ≥5 MB (a phone-photo-sized file) so the client-side resize path actually has work to do. On `local`, place one at `tmp/fixtures/phone-photo.jpg` before the run; on `qa`, the caller provides the file via Playwright's `setInputFiles`.
+
+1. From `/dashboard`, click `+ New tree`. Fill name `Phase 5 E2E ${randomId}`, submit. Wait for the new card.
+2. Click the new tree card. Land on `/tree/<id>`. Assert empty state ("No people yet").
+3. Click "+ Add the first person". Add `Mom Smith` (gender `f`, birth year `1955`). Submit. Assert Mom's tree-canvas node renders **tone-tinted initials** (no `<img>` inside the avatar wrapper).
+4. Tap Mom's node → detail sheet opens → click "Edit". Assert PersonForm opens with the photo section visible above the name field (avatar + "Add photo" button).
+5. Click "Add photo" → file picker → select the ≥5 MB fixture JPEG.
+   - **(a)** Within ~300 ms, the form's avatar updates to an object-URL preview (no network round-trip yet — this is the optimistic local-blob preview from sub-task 3).
+   - **(b)** Within ~2 s, the avatar URL flips to a `*.supabase.co/storage/v1/object/public/photos/trees/<treeId>/people/<momId>/avatar.jpg` URL (the upload completed and `refresh()` re-fetched).
+   - **(c)** Open DevTools → Network tab → confirm the resized payload size is **under 200 KB** (sanity check on `resizeToJpeg`; ~150 KB target per the spec).
+6. Submit the form. Form closes. Assert the tree-canvas node's avatar AND a re-tapped detail sheet's avatar both show the photo (not initials).
+7. Click the FAB (`+`) → "Add a person" or "Add a relative to Mom Smith" depending on focus state. Before submit, click "Add photo" → pick the same fixture JPEG → preview shows → submit. Assert the new person row appears with the photo already visible (no second click required — the create-then-upload sequencing from sub-task 3).
+8. Long-press Mom's node → "Edit" → "Remove photo" → form's avatar reverts to initials immediately → submit. Assert tree-canvas + detail-sheet both fall back to initials. **Storage check (manual / Studio):** the file `trees/<treeId>/people/<momId>/avatar.jpg` is gone from the Storage browser.
+9. Re-upload a photo on Mom (steps 4–6 abbreviated). Long-press Mom → "Delete" → confirm in the destructive dialog. Assert Mom's node disappears. **Storage check:** `trees/<treeId>/people/<momId>/avatar.jpg` is gone (sub-task 4 cleanup).
+10. Back on `/dashboard`. Open the `…` menu on the `Phase 5 E2E ${randomId}` card → Delete → confirm. The tree disappears. **Storage check:** the entire `trees/<treeId>/` prefix is empty (the second person from step 7 still had a photo — sub-task 4's `deleteTree` purge proves the batch path).
+11. **Cross-tenant negative (manual, optional on QA):** in a new private tab signed in as a different user, attempt to fetch the now-deleted-tree's `photos/trees/<treeId>/...` path. Expect 404. Also attempt to PUT to a stranger's `photos/trees/<some_other_tree>/people/<...>/avatar.jpg` — expect 403 (RLS `photos_insert_editor` rejects).
+
+**Pass:** all 10 steps complete; resize keeps the upload under 200 KB; the avatar refresh in step 6 visibly updates without a full page reload; Storage state matches DB state after both delete paths; no console errors.
+
+**Skip rules:**
+- Running on `local` without `supabase start` → SKIP with reason "needs-local-supabase".
+- Fixture JPEG missing → SKIP with reason "needs-large-jpeg-fixture".
+- `e2e-smoke-tester` agent tools-grant fix still unresolved → SKIP with reason "needs-tools-grant-fix"; manual QA on the QA preview stands in.
+
+---
+
 ## Adding a new flow
 
 When closing out a phase:
