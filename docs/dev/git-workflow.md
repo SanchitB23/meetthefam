@@ -62,6 +62,8 @@ gh pr merge --repo SanchitB23/meetthefam --squash --delete-branch <pr-number>
 git checkout qa && git pull --ff-only && git fetch --prune
 ```
 
+> PR body is pre-filled from [`.github/pull_request_template.md`](../../.github/pull_request_template.md). Fill every section before marking the PR ready for review — the checklist (typecheck, lint, task-doc tick, supabase-validator if DB-touched, manual walkthrough) is intentionally strict.
+
 ## Hotfix exception
 
 When production is broken AND `qa` has un-shipped work that can't ride the fix, branch off `main` instead of `qa`:
