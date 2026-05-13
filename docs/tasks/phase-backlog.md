@@ -59,8 +59,8 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 
 ## Phase 5 — Photo upload
 
-- [ ] On upload Server Action, call `refresh()` to update the avatar without busting cached tree shells. See [`../architecture/photo-upload.md`](../architecture/photo-upload.md) → "End-to-end flow."
-- [ ] Set `images.remotePatterns`, `images.qualities: [75]`, `images.minimumCacheTTL: 14400` in `next.config.ts`. See `photo-upload.md` → "next/image config."
+- [x] On upload Server Action, call `refresh()` to update the avatar without busting cached tree shells. See [`../architecture/photo-upload.md`](../architecture/photo-upload.md) → "End-to-end flow." *(landed in sub-task 2; first use of `refresh()` in the project. Rationale + the FamilyTree dependency-chain note live in the sub-task 2 entry.)*
+- [x] Set `images.remotePatterns`, `images.qualities: [75]`, `images.minimumCacheTTL: 14400` in `next.config.ts`. See `photo-upload.md` → "next/image config." *(landed in sub-task 2; `<Avatar>` stays on plain `<img>` per locked decision 4, swap to `<Image>` deferred to Phase 8.)*
 - [ ] Test: upload a photo, verify the avatar URL updates without a full page reload.
 
 ## Phase 6 — Collaboration
