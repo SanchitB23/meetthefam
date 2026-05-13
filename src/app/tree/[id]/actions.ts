@@ -579,6 +579,11 @@ export async function removePersonPhoto(
 // migration). The RPC nulls any inbound father_id/mother_id/spouse_id FKs
 // then deletes the row — all in a single transaction. `SECURITY INVOKER`
 // keeps the RLS gate honest.
+//
+// Storage cleanup is best-effort: after the row delete we attempt to remove
+// the canonical avatar object. A failure is logged but does NOT fail the
+// action — the row is already gone and a leftover file is harmless (nothing
+// references it). Matches the discipline in `removePersonPhoto`.
 
 export type DeletePersonResult =
   | { ok: true; error?: never }
@@ -600,6 +605,16 @@ export async function deletePerson(
   })
 
   if (error) return { ok: false, error: error.message }
+
+  const avatarPath = personPhotoPath(treeId, personId)
+  const { error: storageError } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .remove([avatarPath])
+  if (storageError) {
+    console.warn(
+      `deletePerson: storage remove failed for ${avatarPath}: ${storageError.message}`,
+    )
+  }
 
   revalidatePath(`/tree/${treeId}`)
   return { ok: true }
