@@ -147,3 +147,21 @@
     @apply font-sans;
   }
 }
+
+/*
+ * family-chart 0.9.0 hard-codes `stroke="#fff"` on `.link` SVG paths
+ * (`node_modules/family-chart/dist/family-chart.esm.js:1268`), assuming
+ * the library's dark default theme. On our cream heirloom background the
+ * connecting lines disappear. CSS beats SVG presentation attributes, so
+ * this override colours the parent-child + spouse links.
+ *
+ * `--border` (L≈0.88) sits a hair below `--background`/`--card` (cream)
+ * and is essentially invisible at typical zoom levels — the v0.0.5 QA
+ * caught this. Use color-mix to render the foreground charcoal at 35%
+ * for a subtle-but-visible heirloom line. `currentColor` doesn't work
+ * here because the library doesn't set color on the SVG container.
+ */
+.f3 .link {
+  stroke: color-mix(in oklch, var(--foreground) 35%, transparent);
+  stroke-width: 1.5px;
+}

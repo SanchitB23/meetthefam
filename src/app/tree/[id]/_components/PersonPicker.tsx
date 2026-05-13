@@ -26,7 +26,7 @@ import {
 import { Avatar } from '@/components/ui/avatar'
 import { useIsDesktop } from '@/components/ui/use-is-desktop'
 
-import type { PersonRow } from './PersonCard'
+import type { PersonRow } from '../_lib/types'
 
 // Phase 3 sub-task 4 — searchable person selector.
 //
