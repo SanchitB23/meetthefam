@@ -29,7 +29,8 @@ When unsure, read `docs/tasks/current-phase.md` first to know what phase we're i
 
 For focused work, prefer these subagents over a generic agent:
 
-- **`supabase-engineer`** — schema, migrations, RLS policies, DB-touching server actions
+- **`supabase-engineer`** — schema, migrations, RLS policies, DB-touching server actions (**authors**)
+- **`supabase-validator`** — post-commit verification + live diagnosis of Supabase / DB errors (**validates**). Sibling to `supabase-engineer`; read-only by design (no `apply_migration` / `Edit` / `Write` grants). **Auto-nudged after DB-touching commits** by the `db-commit-detector` PostToolUse hook (see [`.claude/hooks/db-commit-detector.sh`](.claude/hooks/db-commit-detector.sh)); also invoke manually whenever the user reports a DB error in any environment.
 - **`frontend-engineer`** — React components, family-chart wrapper, mobile gestures
 - **`test-engineer`** — Vitest (RLS + server-action tests), Playwright (E2E happy paths)
 - **`task-doc-keeper`** — keeps `docs/tasks/current-phase.md` + `docs/tasks/phase-backlog.md` in sync with work about to land. **Invoke before every feature commit** so doc ticks land in the same commit as the code (per the standing memory rule). Also drives phase close-outs (mark current phase ✅ closed, open the next phase stub). It only edits the docs — the controller still stages + commits.
