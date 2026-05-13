@@ -19,7 +19,7 @@ Stack: Next.js 16 (App Router, Turbopack default) on Vercel, Supabase (Postgres 
 - [`docs/architecture/photo-upload.md`](docs/architecture/photo-upload.md) — client-side resize + Storage paths
 - [`docs/architecture/share-link.md`](docs/architecture/share-link.md) — token mechanics
 - [`docs/ux/`](docs/ux/) — page-by-page UX details
-- [`docs/dev/`](docs/dev/) — operational recipes: git workflow, releases (the *how*)
+- [`docs/dev/`](docs/dev/) — operational recipes: git workflow, releases, migrations (the *how*)
 - [`docs/adrs/`](docs/adrs/) — Architecture Decision Records (the *why*)
 - [`docs/tasks/current-phase.md`](docs/tasks/current-phase.md) — what we're working on right now
 
