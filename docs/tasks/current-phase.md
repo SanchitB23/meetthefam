@@ -2,19 +2,26 @@
 
 Spec → [`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → Phase 6 row.
 
-**Ship gate** *(placeholder — to be expanded at planning step)*:
+**Ship gate**:
 
-- Owner invites an editor by email — Supabase magic-link invite delivers; the invitee accepts via the link and lands on the target tree with edit rights wired through RLS.
+- Owner enters editor's email → server mints a single-use 7-day-TTL token → owner gets a copy-paste invite URL. Invitee opens the URL while logged in as the matching email → confirms → lands on the tree with editor role wired through RLS.
+- Owner can revoke an editor's access; revoked editors immediately lose RLS-gated reads + writes on next request.
 - Editor can perform every Phase 3–5 mutation (add / edit / delete person, link spouse, set parents, add child, upload + remove photo) on the shared tree; non-editor (anon or other-account) attempts are still rejected at the DB layer.
-- Owner can change an editor's role and revoke access; revoked editors lose all `tree_members`-gated reads + writes immediately.
-- UI permission-gates correctly — non-owners don't see destructive owner-only affordances (delete tree, manage members) on the dashboard or tree page.
-- `pnpm typecheck && pnpm lint && pnpm test` clean (RLS + Server-Action coverage for the invite / role-change / revoke paths).
+- UI permission-gates correctly — tree-page top-bar exposes a Members entry for both roles; owner sees the invite form + revoke actions, editor sees the members list read-only. Dashboard `TreeCardMenu` stays as Rename + Delete (no Manage Members entry — tree-page only).
+- `pnpm typecheck && pnpm lint && pnpm test` clean (RLS + Server-Action coverage for the invite / accept / revoke paths).
+- Release: `v0.2.0` cut from `qa` per the existing recipe (first minor bump after v0.1.0 per [ADR 0009 §1](../adrs/0009-versioning-and-releases.md)).
 
 **Sub-tasks**:
 
-- [ ] **Sub-task 1** — TBD at planning.
+- [ ] **Sub-task 1** — `tree_invites` migration + RLS + `accept_invite` `SECURITY DEFINER` RPC. Branch: `feat/phase-6/sub-task-1-tree-invites-migration`.
+- [ ] **Sub-task 2** — Server Actions (`inviteEditor` / `revokeInvite` / `resendInvite` / `revokeMember`) in `src/app/tree/[id]/members/actions.ts` + flag-gated `sendInviteEmail` stub at `src/lib/email/inviteEmail.ts`. Branch: `feat/phase-6/sub-task-2-invite-actions`.
+- [ ] **Sub-task 3** — `/invite/[token]` accept-confirm Server Component + thin `acceptInvite` Server Action wrapper + `src/proxy.ts` matcher update. Branch: `feat/phase-6/sub-task-3-accept-route`.
+- [ ] **Sub-task 4** — `MembersSheet` UI (owner + editor views) + tree-page top-bar Members entry + role-based view branching + invite-result copy-paste UX. Branch: `feat/phase-6/sub-task-4-members-sheet`.
+- [ ] **Sub-task 5** — 4 Vitest suites (`tree_invites` RLS, `inviteEditor`, `acceptInvite`, `revokeMember`) + smoke flow `phase-6-collaboration` + Phase 6 close-out + release `v0.2.0` cut. Branch: `feat/phase-6/sub-task-5-tests-and-closeout`.
 
-> **Workflow note** — Phase 6 continues under the feature-branch workflow ([ADR 0010](../adrs/0010-feature-branch-workflow.md)). Each sub-task lands on its own Conventional-Commit-prefixed branch PR'd into `qa` with squash-merge; release at the end of the phase rides a `release/vX.Y.Z` branch from `qa` into `main` per [ADR 0009 §4](../adrs/0009-versioning-and-releases.md). Phase 6 opens the v1.0 multi-tenant track — per [ADR 0009 §1](../adrs/0009-versioning-and-releases.md) the next named release after `v0.1.0` is `v0.2.0` (Phase 6 alone, `pnpm version minor`).
+> Sub-task 1 dispatched to `supabase-engineer` @ Opus on 2026-05-14 (see plan file).
+
+> **Workflow note** — Phase 6 deviates from the default [ADR 0010](../adrs/0010-feature-branch-workflow.md) sub-task-→-`qa` flow to enable parallel sub-agent development. We cut a **phase branch** `feat/phase-6-collaboration` from `qa`; each sub-task branch is cut from the phase branch and squash-merged back into it; when all five sub-tasks have landed, one PR `feat/phase-6-collaboration` → `qa` squash-merges the whole phase. The release at the end of the phase still rides a `release/v0.2.0` branch from `qa` per [ADR 0009 §4](../adrs/0009-versioning-and-releases.md). A one-paragraph amendment on [ADR 0010](../adrs/0010-feature-branch-workflow.md) documenting this "phase-branch escape hatch for parallel sub-agent dev" is queued for Sub-task 5's close-out.
 
 ---
 
