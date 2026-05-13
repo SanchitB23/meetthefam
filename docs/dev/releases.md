@@ -79,6 +79,8 @@ git fetch --tags --prune
 git tag -l vX.Y.Z                        # should print vX.Y.Z
 ```
 
+> Use `--template release.md` on step 4 (or replace `--body-file` with it for an empty starting body) to pre-load the release-specific checklist from [`.github/PULL_REQUEST_TEMPLATE/release.md`](../../.github/PULL_REQUEST_TEMPLATE/release.md): bump rationale, release notes, pre-merge + post-merge rituals, manual smoke flows, rollback readiness.
+
 ## Fallback for environments without `gh`
 
 CI, or a fresh machine before `gh auth login`: curl to the GitHub REST API using `$GITHUB_PERSONAL_ACCESS_TOKEN` from `.env.local` (loaded by direnv, fine-grained-scoped to this repo). See [ADR 0009 §4](../adrs/0009-versioning-and-releases.md) for the payload shape.
