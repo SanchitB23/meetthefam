@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>MeetMyFamily — Logo Explorations</title>
+<meta name="viewport" content="width=1320"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --ink:    #2D4A3E;
+    --ink-2:  #3A5A4D;
+    --accent: #C77B5C;
+    --accent-2: #B0653F;
+    --cream:  #F5EFE3;
+    --paper:  #FFFCF5;
+    --mid:    #6B6358;
+    --line:   rgba(60,40,20,.08);
+    --line-2: rgba(60,40,20,.14);
+    --display: "Cormorant Garamond", Georgia, serif;
+    --body:    "Manrope", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--cream); color: var(--ink); font-family: var(--body); }
+  body {
+    background-image:
+      radial-gradient(ellipse 70% 50% at 50% 0%, rgba(199,123,92,.06), transparent 70%),
+      radial-gradient(circle at 10% 90%, rgba(45,74,62,.04), transparent 60%);
+    min-height: 100vh;
+    padding: 64px 56px 96px;
+  }
+
+  /* ---------- masthead ---------- */
+  .masthead { max-width: 1200px; margin: 0 auto 56px; display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; }
+  .masthead h1 { font-family: var(--display); font-weight: 500; font-size: 56px; line-height: 1.02; letter-spacing: -0.014em; margin: 0 0 8px; max-width: 720px; }
+  .masthead h1 em { font-style: italic; color: var(--accent); font-weight: 500; }
+  .masthead .kicker { font-size: 11px; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); margin-bottom: 16px; display: inline-flex; align-items: center; gap: 10px;}
+  .masthead .kicker::before { content:""; display:inline-block; width:28px; height:1px; background: currentColor; }
+  .masthead p { color: var(--mid); font-size: 14.5px; line-height: 1.55; max-width: 480px; margin: 0; }
+  .masthead .meta { font-size: 11.5px; color: var(--mid); text-align: right; letter-spacing: 0.06em; }
+  .masthead .meta b { display:block; color: var(--ink); font-family: var(--display); font-weight: 500; font-size: 16px; letter-spacing: 0; font-style: italic; }
+
+  /* ---------- grid ---------- */
+  .grid {
+    max-width: 1200px; margin: 0 auto;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px;
+  }
+  .card {
+    background: var(--paper); border-radius: 22px;
+    border: 1px solid var(--line);
+    box-shadow: 0 1px 2px rgba(60,40,20,.03), 0 12px 36px rgba(60,40,20,.06);
+    overflow: hidden; display: flex; flex-direction: column;
+    transition: transform .25s ease, box-shadow .25s ease;
+  }
+  .card:hover { transform: translateY(-3px); box-shadow: 0 1px 2px rgba(60,40,20,.04), 0 20px 48px rgba(60,40,20,.10); }
+
+  /* index ribbon */
+  .card .ribbon {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 18px; border-bottom: 1px solid var(--line);
+    font-size: 10.5px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--mid); font-weight: 600;
+  }
+  .card .ribbon .num {
+    font-family: var(--display); font-style: italic; font-weight: 500;
+    font-size: 22px; letter-spacing: 0; text-transform: none;
+    color: var(--ink); line-height: 1;
+  }
+
+  /* canvas where the mark lives */
+  .stage {
+    height: 220px; position: relative;
+    display: flex; align-items: center; justify-content: center;
+    background:
+      radial-gradient(circle at 50% 35%, rgba(199,123,92,.04), transparent 60%),
+      var(--paper);
+  }
+  .stage::before, .stage::after {
+    content:""; position: absolute; left: 18px; right: 18px; height: 1px;
+    background: repeating-linear-gradient(90deg, var(--line-2) 0 4px, transparent 4px 8px);
+    opacity: .45;
+  }
+  .stage::before { top: 18px; }
+  .stage::after  { bottom: 18px; }
+
+  /* lockup */
+  .lockup { padding: 8px 22px 26px; text-align: center; }
+  .lockup .wm {
+    font-family: var(--display); font-weight: 500;
+    font-size: 26px; letter-spacing: -0.005em; line-height: 1; color: var(--ink);
+    display: inline-flex; align-items: baseline; gap: 0;
+  }
+  .lockup .wm em { font-style: italic; font-weight: 500; }
+  .lockup .tagline {
+    margin-top: 9px; font-size: 10px; letter-spacing: 0.32em; text-transform: uppercase;
+    color: var(--mid); font-weight: 600;
+  }
+
+  /* concept blurb */
+  .blurb {
+    border-top: 1px solid var(--line);
+    padding: 16px 22px 20px;
+    background: linear-gradient(180deg, transparent, rgba(60,40,20,.018));
+  }
+  .blurb h3 {
+    margin: 0 0 6px; font-family: var(--display); font-weight: 600; font-size: 19px;
+    color: var(--ink);
+  }
+  .blurb p { margin: 0; font-size: 12.5px; color: var(--mid); line-height: 1.55; }
+
+  /* footer note */
+  .foot { max-width: 1200px; margin: 56px auto 0; display: flex; align-items: center; gap: 16px; color: var(--mid); font-size: 12px;}
+  .foot .rule { flex: 1; height: 1px; background: var(--line-2); }
+  .foot em { font-family: var(--display); font-style: italic; font-size: 14px; color: var(--ink); }
+
+  /* ---------- 1: Branch & seed (refined current) ---------- */
+  .mark { width: 124px; height: 124px; display: block; }
+  .mark.big { width: 140px; height: 140px; }
+
+  /* ---------- 6: Three figures custom ---------- */
+  .figs { display: flex; align-items: flex-end; gap: 10px; }
+
+  /* ---------- 7 typographic ---------- */
+  .typo-wm {
+    font-family: var(--display); font-style: italic; font-weight: 500;
+    font-size: 56px; color: var(--ink); line-height: 1; letter-spacing: -0.012em;
+    position: relative;
+  }
+  .typo-wm .amp { color: var(--accent); font-style: italic; font-weight: 500; padding: 0 .04em;}
+  .typo-wm::after {
+    content:""; position: absolute; left: 50%; bottom: -10px; transform: translateX(-50%);
+    width: 32px; height: 1px; background: var(--accent);
+  }
+
+  /* ---------- 9 ampersand ---------- */
+  .big-amp {
+    font-family: var(--display); font-style: italic; font-weight: 500;
+    font-size: 132px; line-height: .8; color: var(--ink); position: relative;
+  }
+  .big-amp::before {
+    content: ""; position: absolute; left: 50%; top: -10px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); transform: translateX(-50%);
+  }
+
+  /* ---------- 3 MM monogram ---------- */
+  .mono {
+    font-family: var(--display); font-weight: 500;
+    font-size: 110px; line-height: 1; color: var(--ink); letter-spacing: -0.08em;
+    display: inline-flex; align-items: center;
+  }
+  .mono .m1, .mono .m2 { display: inline-block; }
+  .mono .m2 { color: var(--accent); margin-left: -.22em; }
+
+  /* ---------- 5 wax seal ---------- */
+  .seal {
+    width: 160px; height: 160px; border-radius: 50%;
+    border: 1.5px solid var(--ink);
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(circle at 35% 30%, rgba(199,123,92,.06), transparent 60%);
+  }
+  .seal::before {
+    content:""; position: absolute; inset: 6px; border-radius: 50%;
+    border: 1px solid var(--line-2);
+  }
+  .seal svg.circleText { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .seal .core {
+    font-family: var(--display); font-style: italic; font-weight: 500;
+    font-size: 38px; color: var(--ink); line-height: 1;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    text-align: center;
+  }
+  .seal .core small {
+    font-family: var(--body); font-size: 8px; letter-spacing: 0.32em;
+    color: var(--accent); font-weight: 600; text-transform: uppercase; margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <div>
+    <div class="kicker">Identity · Round 01</div>
+    <h1>Nine directions for <em>MeetMyFamily</em>.</h1>
+    <p>A first look at marks across nine conceptual territories — from the literal (tree, branch, family figures) to the typographic and emblematic. Tell me which feel right, and I'll evolve a tighter set.</p>
+  </div>
+  <div class="meta">
+    Round 01 · May 2026<br/>
+    <b>9 marks · single weight</b>
+  </div>
+</div>
+
+<div class="grid">
+
+  <!-- 1 · Branch & seed -->
+  <div class="card">
+    <div class="ribbon"><span>The current mark, refined</span><span class="num">01</span></div>
+    <div class="stage">
+      <svg class="mark" viewBox="0 0 120 120" aria-label="Branch and seed">
+        <defs>
+          <linearGradient id="leaf1" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#3A5A4D"/>
+            <stop offset="100%" stop-color="#2D4A3E"/>
+          </linearGradient>
+        </defs>
+        <!-- stem -->
+        <path d="M60 64 V94" stroke="#2D4A3E" stroke-width="1.6" stroke-linecap="round"/>
+        <!-- left leaf -->
+        <path d="M60 60 C40 60 30 46 32 28 C 50 30 60 42 60 60 Z" fill="url(#leaf1)"/>
+        <!-- right leaf -->
+        <path d="M60 60 C80 60 90 46 88 28 C 70 30 60 42 60 60 Z" fill="url(#leaf1)" opacity=".88"/>
+        <!-- spine -->
+        <path d="M60 60 V32" stroke="#F5EFE3" stroke-width="1.2" stroke-linecap="round"/>
+        <!-- berries -->
+        <circle cx="56" cy="82" r="3.5" fill="#C77B5C"/>
+        <circle cx="64" cy="86" r="3.5" fill="#C77B5C" opacity=".92"/>
+      </svg>
+    </div>
+    <div class="lockup">
+      <div class="wm">Meet<em>My</em>Family</div>
+      <div class="tagline">two leaves · two seeds</div>
+    </div>
+    <div class="blurb">
+      <h3>Branch &amp; seed</h3>
+      <p>An evolution of the current mark — same DNA, with a clearer stem, balanced leaves, and the terracotta berries tightened into a pair. Reads as "two parents, growing fruit."</p>
+    </div>
+  </div>
+
+  <!-- 2 · Trinity knot -->
+  <div class="card">
+    <div class="ribbon"><span>Three lives, one knot</span><span class="num">02</span></div>
+    <div class="stage">
+      <svg class="mark big" viewBox="0 0 140 140" aria-label="Family knot">
+        <g fill="none" stroke="#2D4A3E" stroke-width="2.2" stroke-linecap="round">
+          <circle cx="70" cy="56" r="26"/>
+          <circle cx="54" cy="84" r="26"/>
+          <circle cx="86" cy="84" r="26"/>
+        </g>
+        <!-- accent dot in center where they overlap -->
+        <circle cx="70" cy="75" r="4" fill="#C77B5C"/>
+      </svg>
+    </div>
+    <div class="lockup">
+      <div class="wm">Meet<em>My</em>Family</div>
+      <div class="tagline">overlap · belonging</div>
+    </div>
+    <div class="blurb">
+      <h3>The family knot</h3>
+      <p>Three rings overlapping — generations, partners, siblings. The terracotta dot at the center is the heart of the household. Geometric and timeless; works at 16&times;16.</p>
+    </div>
+  </div>
+
+  <!-- 3 · MM monogram -->
+  <div class="card">
+    <div class="ribbon"><span>A wedding-card monogram</span><span class="num">03</span></div>
+    <div class="stage">
+      <div class="mono"><span class="m1">M</span><span class="m2">M</span></div>
+    </div>
+    <div class="lockup">
+      <div class="wm">Meet<em>My</em>Family</div>
+      <div class="tagline">monogram lockup</div>
+    </div>
+    <div class="blurb">
+      <h3>Double M monogram</h3>
+      <p>Two Cormorant M's, kerned to share a leg. Reads as a wedding monogram — exactly the formal-but-warm register the rest of the product carries. Cheapest to render anywhere.</p>
+    </div>
+  </div>
+
+  <!-- 4 · Hearth -->
+  <div class="card">
+    <div class="ribbon"><span>The home with a tree</span><span class="num">04</span></div>
+    <div class="stage">
+      <svg class="mark big" viewBox="0 0 140 140" aria-label="Hearth">
+        <!-- house outline -->
+        <path d="M30 70 L70 36 L110 70 V108 H30 Z"
+              fill="none" stroke="#2D4A3E" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+        <!-- door -->
+        <path d="M62 108 V86 a8 8 0 0 1 16 0 V108" fill="none" stroke="#2D4A3E" stroke-width="2" stroke-linecap="round"/>
+        <!-- tree growing out of chimney -->
+        <path d="M70 36 V18" stroke="#2D4A3E" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="70" cy="16" r="9" fill="#C77B5C"/>
+        <circle cx="62" cy="20" r="5" fill="#C77B5C" opacity=".55"/>
+        <circle cx="78" cy="22" r="4" fill="#C77B5C" opacity=".7"/>
+      </svg>
+    </div>
+    <div class="lockup">
+      <div class="wm">Meet<em>My</em>Family</div>
+      <div class="tagline">shelter · roots</div>
+    </div>
+    <div class="blurb">
+      <h3>The hearth</h3>
+      <p>A simple house with a tree sprouting from the rooftop — what grows when you stay long enough to call it home. Slightly more literal, but very approachable.</p>
+    </div>
+  </div>
+
+  <!-- 5 · Wax seal -->
+  <div class="card">
+    <div class="ribbon"><span>An heirloom emblem</span><span class="num">05</span></div>
+    <div class="stage">
+      <div class="seal">
+        <svg class="circleText" viewBox="0 0 160 160">
+          <defs>
+            <path id="topArc" d="M 22 80 a 58 58 0 0 1 116 0" fill="none"/>
+            <path id="botArc" d="M 22 80 a 58 58 0 0 0 116 0" fill="none"/>
+          </defs>
+          <text font-family="Manrope" font-size="9" font-weight="600" letter-spacing="3.2" fill="#6B6358">
+            <textPath href="#topArc" startOffset="50%" text-anchor="middle">MEET · MY · FAMILY</textPath>
+          </text>
+          <text font-family="Manrope" font-size="8" font-weight="600" letter-spacing="3" fill="#C77B5C">
+            <textPath href="#botArc" startOffset="50%" text-anchor="middle">EST · MMXXVI</textPath>
+          </text>
+        </svg>
+        <div class="core">
+          M<small>·</small>F
+        </div>
+      </div>
+    </div>
+    <div class="lockup">
+      <div class="wm">Meet<em>My</em>Family</div>
+      <div class="tagline">est. mmxxvi</div>
+    </div>
+    <div class="blurb">
+      <h3>The seal</h3>
+      <p>A circular emblem like a wax stamp on a family deed. Most ceremonial of the set. Works beautifully embossed on a share card or PDF cover; needs care at small sizes.</p>
+    </div>
+  </div>
+
+  <!-- 6 · Three figures -->
+  <div class="card">
+    <div class="ribbon"><span>A family in silhouette</span><span class="num">06</span></div>
+    <div class="stage">
+      <svg class="mark big" viewBox="0 0 140 140" aria-label="Three figures">
+        <!-- tallest -->
+        <g fill="#2D4A3E">
+          <circle cx="38" cy="46" r="10"/>
+          <path d="M22 102 c0 -16 7 -32 16 -32 s16 16 16 32 z"/>
+        </g>
+        <!-- mid -->
+        <g fill="#3A5A4D">
+          <circle cx="70" cy="56" r="9"/>
+          <path d="M56 102 c0 -14 6 -28 14 -28 s14 14 14 28 z"/>
+        </g>
+        <!-- smallest, terracotta -->
+        <g fill="#C77B5C">
+          <circle cx="100" cy="68" r="7"/>
+          <path d="M88 102 c0 -10 5 -22 12 -22 s12 12 12 22 z"/>
+        </g>
+        <!-- ground line -->
+        <path d="M16 110 H124" stroke="#2D4A3E" stroke-width="1" opacity=".25" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="lockup">
+      <div class="wm">Meet<em>My</em>Family</div>
+      <div class="tagline">three generations</div>
+    </div>
+    <div class="blurb">
+      <h3>Three figures</h3>
+      <p>Stepped silhouettes — grandparent, parent, child — in descending scale. The youngest in terracotta. The most directly "family" of all the marks; least mysterious.</p>
+    </div>
+  </div>
+
+  <!-- 7 · Typographic -->
+  <div class="card">
+    <div class="ribbon"><span>Words alone</span><span class="num">07</span></div>
+    <div class="stage">
+      <div class="typo-wm">meet<span class="amp">·</span>my<span class="amp">·</span>family</div>
+    </div>
+    <div class="lockup">
+      <div class="wm">no mark — wordmark is the mark</div>
+      <div class="tagline">cormorant italic · dotted</div>
+    </div>
+    <div class="blurb">
+      <h3>The wordmark</h3>
+      <p>No icon — just italic Cormorant with terracotta separator dots, like an old book cover. Confident, editorial, and the easiest to read in a row of app icons after the user remembers what the dots are.</p>
+    </div>
+  </div>
+
+  <!-- 8 · Generation rings -->
+  <div class="card">
+    <div class="ribbon"><span>Tree rings · generations</span><span class="num">08</span></div>
+    <div class="stage">
+      <svg class="mark big" viewBox="0 0 140 140" aria-label="Generation rings">
+        <g fill="none" stroke="#2D4A3E" stroke-linecap="round">
+          <circle cx="70" cy="70" r="46" stroke-width="2" opacity=".25"/>
+          <circle cx="70" cy="70" r="34" stroke-width="2" opacity=".45"/>
+          <circle cx="70" cy="70" r="22" stroke-width="2" opacity=".7"/>
+        </g>
+        <circle cx="70" cy="70" r="9" fill="#C77B5C"/>
+        <!-- one tick mark indicating "now" -->
+        <path d="M70 18 V8" stroke="#C77B5C" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="lockup">
+      <div class="wm">Meet<em>My</em>Family</div>
+      <div class="tagline">four generations</div>
+    </div>
+    <div class="blurb">
+      <h3>Generation rings</h3>
+      <p>Concentric circles, fading inward — the literal rings of a tree, the metaphorical rings of a family. The terracotta center is you; the notch at top is the present day.</p>
+    </div>
+  </div>
+
+  <!-- 9 · The ampersand -->
+  <div class="card">
+    <div class="ribbon"><span>The connector</span><span class="num">09</span></div>
+    <div class="stage">
+      <div class="big-amp">&amp;</div>
+    </div>
+    <div class="lockup">
+      <div class="wm">Meet<em>My</em>Family</div>
+      <div class="tagline">the &amp; that binds</div>
+    </div>
+    <div class="blurb">
+      <h3>The ampersand</h3>
+      <p>The most reduced mark possible — a single italic ampersand. Family is everyone joined by an "&". Punchy and confident; depends entirely on a beautiful glyph.</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="foot">
+  <span class="rule"></span>
+  <em>Mark your favourites — I'll evolve the top two or three into a tighter system with logotypes, monochrome variants, and app-icon studies.</em>
+  <span class="rule"></span>
+</div>
+
+</body>
+</html>

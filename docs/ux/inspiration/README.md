@@ -27,6 +27,16 @@ A 10-screen interactive prototype produced by [Claude Design](https://claude.ai/
 
 > **Note**: because the screen `.jsx` files aren't vendored, [`Family Tree Prototype.html`](kintree/project/Family%20Tree%20Prototype.html) **will not render** in a browser as-is. That's intentional — this is a code reference, not a runnable mockup. To view the original prototype, re-fetch the source bundle at `https://api.anthropic.com/v1/design/h/hVKZ3pFfyYxtkMv_fFQoUA?open_file=Family+Tree+Prototype.html`.
 
+### `knot/` — Claude Design handoff (second-pass refinement, candidate brand name)
+
+A second design pass dropped on 2026-05-13, proposing **"Knot"** as the candidate brand/logo direction and refining the heirloom token system. Subset-vendored alongside Kintree — see [`knot/README.md`](knot/README.md) for the full file inventory + adoption-candidate stubs. **Nothing here is adopted yet** — Phase 8 picks the cherry-list at kick-off (per the same ADR 0008 discipline applied to Kintree).
+
+Notable additions vs. the Kintree bundle:
+- A documented `tokens.json` with OKLCH pinpoints + a WCAG contrast matrix.
+- A `theme.css` with `.dark` warm-shifted dark-mode tokens (we currently use shadcn defaults).
+- A `logo.svg` (96×96, ~400 B — three overlapping rings + a terracotta dot).
+- Per-component `handoff.md` callouts (e.g. wrapping `PersonNode` inside the family-chart layout engine).
+
 ## Per-screen → phase mapping
 
 Each Kintree screen maps to a phase where the equivalent meetthefam surface gets built. The prototype acts as the visual target; the implementation lives in `src/`.
