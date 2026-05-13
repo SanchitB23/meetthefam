@@ -46,6 +46,8 @@ supabase/seed.local.sql
 .claude/settings.local.json
 # Claude Code runtime artifacts (ScheduleWakeup lockfile etc.)
 .claude/*.lock
+# Claude Code worktree-subagent isolation checkouts (per-machine, never committed)
+.claude/worktrees/
 
 # Logs
 *.log
