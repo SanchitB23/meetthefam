@@ -48,6 +48,7 @@ import {
   transformToFamilyChartShape,
   type FamilyChartDatum,
 } from '../_lib/family-chart-data'
+import { attachNonSpouseParentLinkRewriter } from '../_lib/non-spouse-parent-links'
 import { personNodeHtml } from '../_lib/person-node-html'
 import { usePressActions } from '../_lib/usePressActions'
 import type { PersonRow } from '../_lib/types'
@@ -142,6 +143,19 @@ function FamilyTreeImpl({ treeId, people, initialFocusId }: Props) {
       .setProgenyDepth(20)
       .setSingleParentEmptyCard(false)
 
+    // v0.0.5 hotfix — family-chart draws a single midpoint-anchored
+    // ancestry link for every child, which produces a horizontal bar
+    // joining both parents that looks identical to its dedicated "spouse"
+    // link. For co-parents who aren't actually married this reads as a
+    // marriage. We rewrite those specific links to two independent
+    // stepped vertical paths after each update. A MutationObserver keeps
+    // the override applied across d3's transition window. See
+    // `../_lib/non-spouse-parent-links.ts` for full rationale.
+    const linkRewriter = attachNonSpouseParentLinkRewriter(cont, peopleByIdRef)
+    chart.setAfterUpdate(() => {
+      linkRewriter.kick()
+    })
+
     chart
       .setCardHtml()
       .setCardDim({ w: 158, h: 110 })
@@ -180,6 +194,7 @@ function FamilyTreeImpl({ treeId, people, initialFocusId }: Props) {
     chartRef.current = chart
 
     return () => {
+      linkRewriter.dispose()
       chartRef.current = null
       cont.innerHTML = ''
     }
