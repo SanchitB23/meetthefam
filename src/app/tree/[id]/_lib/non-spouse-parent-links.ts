@@ -61,6 +61,18 @@ type AncestryLinkDatum = {
   target?: TreeNodeLike[] // [p1, p2]; p2 falls back to p1 for single-parent
 }
 
+// family-chart emits a SECOND ancestry path per parent-pair: a horizontal
+// bar joining the two parents at their y-level. Its datum carries a `spouse`
+// key, `target` is a SINGLE TreeNode (the other parent — NOT an array), and
+// `d=` is a flat horizontal line. We need this distinct from the parent →
+// children link so we can suppress it for unmarried co-parents.
+type CoupleBarDatum = {
+  is_ancestry?: boolean
+  spouse?: unknown // sentinel — its presence is what marks this datum
+  source?: TreeNodeLike // one parent
+  target?: TreeNodeLike // the other parent (object, not array)
+}
+
 // `path.__data__` is the d3-bound datum. Type-narrowed at the call site.
 type PathWithData = SVGPathElement & {
   __data__?: unknown
@@ -91,6 +103,28 @@ function isAncestryLinkDatum(value: unknown): value is AncestryLinkDatum {
   if (!value || typeof value !== 'object') return false
   const v = value as { is_ancestry?: unknown; target?: unknown; source?: unknown }
   return v.is_ancestry === true && Array.isArray(v.target) && !!v.source
+}
+
+function isCoupleBarDatum(value: unknown): value is CoupleBarDatum {
+  if (!value || typeof value !== 'object') return false
+  const v = value as {
+    is_ancestry?: unknown
+    spouse?: unknown
+    target?: unknown
+    source?: unknown
+  }
+  // Distinguishing features:
+  //   - is_ancestry: true (same as parent→children link)
+  //   - `spouse` key present on the datum (only on the bar, not on parent→child)
+  //   - target is a non-null object but NOT an array (single TreeNode)
+  return (
+    v.is_ancestry === true &&
+    'spouse' in v &&
+    !!v.target &&
+    typeof v.target === 'object' &&
+    !Array.isArray(v.target) &&
+    !!v.source
+  )
 }
 
 /**
@@ -126,6 +160,41 @@ function computeCoparentPathD(
 }
 
 /**
+ * Decide whether a path is the horizontal couple-bar between two adjacent
+ * parents AND those parents are not married. Returns `''` (degenerate
+ * empty path) to suppress, or null to leave the path alone (married pair,
+ * single-parent layout, non-bar link).
+ *
+ * Why this exists: family-chart paints the parent-bar as a separate link
+ * from the parent→children path. The `computeCoparentPathD` rewrite above
+ * only touched the parent→children link; this rewrite suppresses the bar
+ * itself. Without it, two vertical lines correctly drop to the child but
+ * a horizontal bar still spans the parents (the v0.0.5 QA finding).
+ */
+function computeCoupleBarSuppression(
+  path: SVGPathElement,
+  peopleById: Map<string, PersonRow>,
+): string | null {
+  const datum = (path as PathWithData).__data__
+  if (!isCoupleBarDatum(datum)) return null
+
+  const a = datum.source
+  const b = datum.target
+  if (!a || !b) return null
+
+  const aId = a.data?.id
+  const bId = b.data?.id
+  if (typeof aId !== 'string' || typeof bId !== 'string') return null
+  if (aId === bId) return null
+  if (arePartnersMarried(aId, bId, peopleById)) return null
+
+  // Degenerate "moveTo origin, no line" — SVG renders nothing, the path
+  // node stays in the DOM (so d3's data join is unaffected) and re-application
+  // is idempotent.
+  return 'M0,0'
+}
+
+/**
  * Walk every `.link` path in the chart's links_view and, for ancestry links
  * connecting an unmarried parent pair, replace the joint stepped bar with
  * two independent stepped vertical paths (one per parent). Idempotent.
@@ -136,20 +205,32 @@ function rewriteOnce(
 ): void {
   const paths = linksView.querySelectorAll<SVGPathElement>('path.link')
   paths.forEach((path) => {
-    const wanted = computeCoparentPathD(path, peopleById)
-    if (wanted === null) {
-      // Not our concern. Make sure we haven't accidentally tagged it from
-      // a previous run that has since changed shape (e.g. after a spouse
-      // link was added in-session).
-      if (path.dataset.coparent === 'true') {
-        delete path.dataset.coparent
+    // 1. Parent → children link with two unmarried co-parents: split into
+    //    two stepped verticals (the original v0.0.5 hotfix scope).
+    const parentChildD = computeCoparentPathD(path, peopleById)
+    if (parentChildD !== null) {
+      if (path.getAttribute('d') !== parentChildD) {
+        path.setAttribute('d', parentChildD)
       }
+      path.dataset.coparent = 'true'
       return
     }
-    if (path.getAttribute('d') !== wanted) {
-      path.setAttribute('d', wanted)
+    // 2. Horizontal couple-bar between two unmarried adjacent parents:
+    //    suppress with a degenerate `M0,0` path. Without this the bar
+    //    still renders even though the verticals are correct.
+    const barSuppression = computeCoupleBarSuppression(path, peopleById)
+    if (barSuppression !== null) {
+      if (path.getAttribute('d') !== barSuppression) {
+        path.setAttribute('d', barSuppression)
+      }
+      path.dataset.coparent = 'true'
+      return
     }
-    path.dataset.coparent = 'true'
+    // Neither case applies — leave the path alone. Clear our tag if
+    // it lingered from a prior shape that has since changed.
+    if (path.dataset.coparent === 'true') {
+      delete path.dataset.coparent
+    }
   })
 }
 
