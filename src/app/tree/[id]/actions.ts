@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
+import { refresh, revalidatePath } from 'next/cache'
 
 // Phase 3 sub-task 3 adds `updatePerson` + `deletePerson` on top of
 // sub-task 2's `createPerson`. Sub-task 4 adds `setSpouse`, `setParents`,
@@ -415,6 +415,161 @@ export async function updatePerson(
   if (error) return { ok: false, error: error.message }
 
   revalidatePath(`/tree/${treeId}`)
+  return { ok: true }
+}
+
+// ---- Phase 5 sub-task 2: photo upload + remove ----
+//
+// Two Server Actions sitting alongside createPerson / updatePerson:
+//
+//   uploadPersonPhoto(treeId, personId, formData)
+//     formData carries `file` (a Blob — the JPEG output of resizeToJpeg).
+//     Uploads to photos/trees/<treeId>/people/<personId>/avatar.jpg with
+//     upsert=true (same path on replace) and writes the resulting public
+//     URL to people.photo_url. If the DB write fails after a successful
+//     upload, best-effort removes the just-uploaded file so we don't
+//     leave an orphan referenced by a stale URL.
+//
+//   removePersonPhoto(treeId, personId)
+//     Deletes the avatar file (silent on 404 — file may already be gone)
+//     and nulls people.photo_url. Both operations are best-effort
+//     atomic enough that a partial state still lets the user retry.
+//
+// Both call `refresh()` from next/cache instead of `revalidatePath`
+// (per ADR 0007 line 53 — first use of `refresh()` in the project).
+// `refresh()` is the Next.js 16 Server-Action-only API that re-fetches
+// the page's dynamic data via the client router without invalidating
+// any cache shells. We don't have `"use cache"` segments yet (deferred
+// post-v0.1), so the page is fully dynamic and `refresh()` alone
+// re-fetches the updated photo_url. FamilyTree.tsx's chart-init
+// useEffect has `[people]` in its deps, so the new array reference
+// from the re-fetch triggers a chart rebuild that picks up the new URL.
+
+const STORAGE_BUCKET = 'photos'
+const STORAGE_MIME = 'image/jpeg'
+
+// Mirrors the photos bucket's file_size_limit (524288 = 512 KB) from
+// the sub-task 1 migration. Defense in depth: a client that skipped
+// resizeToJpeg would otherwise blow through the bucket's lid only when
+// the upload hits Storage. Catching it here gives a friendlier error.
+const STORAGE_MAX_BYTES = 524288
+
+function personPhotoPath(treeId: string, personId: string): string {
+  return `trees/${treeId}/people/${personId}/avatar.jpg`
+}
+
+export type UploadPersonPhotoResult =
+  | { ok: true; photoUrl: string; error?: never }
+  | { ok: false; error: string; photoUrl?: never }
+
+export async function uploadPersonPhoto(
+  treeId: string,
+  personId: string,
+  formData: FormData,
+): Promise<UploadPersonPhotoResult> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: 'Not signed in' }
+
+  const file = formData.get('file')
+  if (!(file instanceof Blob)) {
+    return { ok: false, error: 'No file provided' }
+  }
+  if (file.size === 0) {
+    return { ok: false, error: 'The selected file is empty' }
+  }
+  if (file.size > STORAGE_MAX_BYTES) {
+    return {
+      ok: false,
+      error: `Photo is too large (max ${Math.floor(STORAGE_MAX_BYTES / 1024)} KB after resize)`,
+    }
+  }
+
+  const path = personPhotoPath(treeId, personId)
+
+  const { error: uploadError } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(path, file, {
+      upsert: true,
+      contentType: STORAGE_MIME,
+    })
+  if (uploadError) {
+    return { ok: false, error: uploadError.message }
+  }
+
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path)
+
+  const { error: dbError } = await supabase
+    .from('people')
+    .update({ photo_url: publicUrl })
+    .eq('id', personId)
+
+  if (dbError) {
+    // Best-effort orphan cleanup: the file is up but the row didn't
+    // pick up the URL. Leaving the file would tie an unreferenced
+    // ~150 KB to a person row that doesn't know about it.
+    const { error: cleanupError } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .remove([path])
+    if (cleanupError) {
+      console.warn(
+        `uploadPersonPhoto: orphan cleanup failed for ${path}: ${cleanupError.message}`,
+      )
+    }
+    return { ok: false, error: dbError.message }
+  }
+
+  refresh()
+  return { ok: true, photoUrl: publicUrl }
+}
+
+export type RemovePersonPhotoResult =
+  | { ok: true; error?: never }
+  | { ok: false; error: string }
+
+export async function removePersonPhoto(
+  treeId: string,
+  personId: string,
+): Promise<RemovePersonPhotoResult> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: 'Not signed in' }
+
+  const path = personPhotoPath(treeId, personId)
+
+  // Order matters: clear the URL on the row first so the avatar UI
+  // falls back to initials immediately on the refresh-driven re-render,
+  // then remove the file. If the file delete fails the avatar already
+  // looks correct; we just have an orphan to GC manually if it matters
+  // (it won't — the row's URL is gone, so nothing references it).
+  const { error: dbError } = await supabase
+    .from('people')
+    .update({ photo_url: null })
+    .eq('id', personId)
+  if (dbError) {
+    return { ok: false, error: dbError.message }
+  }
+
+  const { error: storageError } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .remove([path])
+  if (storageError) {
+    // Don't fail the action — the row is already nulled. A leftover
+    // file is harmless because no row points to it.
+    console.warn(
+      `removePersonPhoto: storage remove failed for ${path}: ${storageError.message}`,
+    )
+  }
+
+  refresh()
   return { ok: true }
 }
 
