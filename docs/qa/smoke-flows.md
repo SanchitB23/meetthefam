@@ -196,7 +196,6 @@ Tests: the Phase 4 ship gate — family-chart renders a real tree from real data
 
 **Skip rules:**
 - Running on `local` without `supabase start` → SKIP with reason "needs-local-supabase".
-- `e2e-smoke-tester` agent tools-grant fix (Phase 3 close-out captured this as a Tooling backlog item) still unresolved → SKIP with reason "needs-tools-grant-fix"; manual QA on the QA preview stands in until the agent can drive Playwright reliably.
 
 ---
 
@@ -230,7 +229,6 @@ The flow needs a fixture JPEG ≥5 MB (a phone-photo-sized file) so the client-s
 **Skip rules:**
 - Running on `local` without `supabase start` → SKIP with reason "needs-local-supabase".
 - Fixture JPEG missing → SKIP with reason "needs-large-jpeg-fixture".
-- `e2e-smoke-tester` agent tools-grant fix still unresolved → SKIP with reason "needs-tools-grant-fix"; manual QA on the QA preview stands in.
 
 ---
 

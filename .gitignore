@@ -8,6 +8,8 @@ node_modules/
 coverage/
 playwright-report/
 test-results/
+# @playwright/mcp runtime output (console logs, page snapshots from e2e-smoke-tester dispatches)
+.playwright-mcp/
 
 # Next.js
 .next/
