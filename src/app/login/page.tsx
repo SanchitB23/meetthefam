@@ -1,14 +1,28 @@
 import { signInWithGoogle, signInWithMagicLink } from './actions'
-import { SubmitButton } from './submit-button'
+import { SubmitButton } from '@/components/ui/submit-button'
 
-type SearchParams = Promise<{ sent?: string; error?: string; email?: string }>
+type SearchParams = Promise<{
+  sent?: string
+  error?: string
+  email?: string
+  next?: string
+}>
+
+// Same-origin relative-path allowlist — mirrors `safeNextPath` in actions.ts so
+// a hostile `?next=//evil.com` can't slip through into the form's hidden input.
+function safeNext(value: string | undefined): string | null {
+  if (!value) return null
+  if (!value.startsWith('/') || value.startsWith('//')) return null
+  return value
+}
 
 export default async function LoginPage({
   searchParams,
 }: {
   searchParams: SearchParams
 }) {
-  const { sent, error, email } = await searchParams
+  const { sent, error, email, next: nextParam } = await searchParams
+  const next = safeNext(nextParam)
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
@@ -35,6 +49,7 @@ export default async function LoginPage({
             {error && <p className="text-sm text-destructive">{error}</p>}
 
             <form action={signInWithGoogle}>
+              {next && <input type="hidden" name="next" value={next} />}
               <SubmitButton variant="outline" pendingText="Redirecting…">
                 <GoogleLogo />
                 Continue with Google
@@ -50,6 +65,7 @@ export default async function LoginPage({
             </div>
 
             <form action={signInWithMagicLink} className="space-y-4">
+              {next && <input type="hidden" name="next" value={next} />}
               <div className="space-y-1.5">
                 <label
                   htmlFor="email"
