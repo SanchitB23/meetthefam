@@ -1,5 +1,5 @@
 import { signInWithGoogle, signInWithMagicLink } from './actions'
-import { SubmitButton } from './submit-button'
+import { SubmitButton } from '@/components/ui/submit-button'
 
 type SearchParams = Promise<{
   sent?: string

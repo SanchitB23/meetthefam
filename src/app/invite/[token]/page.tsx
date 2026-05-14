@@ -18,6 +18,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service'
 import { acceptInvite } from '@/app/tree/[id]/members/actions'
+import { SubmitButton } from '@/components/ui/submit-button'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -297,12 +298,7 @@ function renderCard({
 
       <form action={acceptInviteAction}>
         <input type="hidden" name="token" value={token} />
-        <button
-          type="submit"
-          className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-        >
-          Accept invite
-        </button>
+        <SubmitButton pendingText="Joining…">Accept invite</SubmitButton>
       </form>
 
       <div className="text-center">
