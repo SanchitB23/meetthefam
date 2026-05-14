@@ -65,8 +65,8 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 
 ## Phase 6 — Collaboration
 
-- [ ] On invite-accept / role-change / revoke Server Actions, call `updateTag('tree:<treeId>')` AND `updateTag('user-trees:<invitedUserId>')`.
-- [ ] No `middleware.ts` workarounds for permission checks — RLS + the existing `proxy.ts` auth gate are sufficient.
+- [x] ~~On invite-accept / role-change / revoke Server Actions, call `updateTag('tree:<treeId>')` AND `updateTag('user-trees:<invitedUserId>')`.~~ **Deferred** per [ADR 0007](../adrs/0007-nextjs-16-and-async-idioms.md) — project stays on `revalidatePath` until `"use cache"` adoption post-v0.1. Phase 6's `inviteEditor` / `revokeInvite` / `resendInvite` / `revokeMember` / `acceptInvite` actions all use `revalidatePath` for cache invalidation; `updateTag` revisit deferred to the same `"use cache"` adoption window as Phases 2/3/5.
+- [x] No `middleware.ts` workarounds for permission checks — RLS + the existing `proxy.ts` auth gate are sufficient. *(Sub-task 3 — `src/proxy.ts` matcher extended to cover `/invite/*` with `?next=` round-trip through `/login`; all invite / accept / revoke paths are RLS-gated at the DB layer plus the `accept_invite` `SECURITY DEFINER` RPC for the role-flip itself.)*
 
 ## Phase 7 — Share link
 
