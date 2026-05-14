@@ -23,6 +23,11 @@ export default async function TreePage(props: PageProps<'/tree/[id]'>) {
   const rawFocus = sp?.p
   const initialFocusId =
     typeof rawFocus === 'string' && rawFocus.length > 0 ? rawFocus : null
+  // Dashboard's TreeCardMenu → "Manage members" navigates here with
+  // ?openMembers=1; we pass it through to MembersSheet which auto-opens
+  // and then cleans the URL via history.replaceState. Any truthy string
+  // counts so the menu can use '1', 'true', etc. interchangeably.
+  const openMembersOnMount = sp?.openMembers != null && sp.openMembers !== ''
 
   const supabase = await createClient()
   const {
@@ -184,6 +189,7 @@ export default async function TreePage(props: PageProps<'/tree/[id]'>) {
           members={members}
           pendingInvites={pendingInvites}
           trigger={membersTrigger}
+          defaultOpen={openMembersOnMount}
         />
       </div>
 

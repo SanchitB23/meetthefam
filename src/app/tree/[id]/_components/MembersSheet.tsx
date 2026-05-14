@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import { useForm } from 'react-hook-form'
 import {
   RotateCcw,
@@ -63,6 +63,15 @@ type Props = {
   members: MemberRow[]
   pendingInvites: PendingInviteRow[]
   trigger: React.ReactNode
+  /**
+   * When true, auto-opens the sheet on mount. Used by the dashboard
+   * `TreeCardMenu`'s "Manage members" entry, which navigates to
+   * `/tree/<id>?openMembers=1`. The Server Component reads the
+   * searchParam and passes it through here. The sheet then cleans
+   * the URL via `history.replaceState` so the param doesn't linger
+   * and trigger a re-open on subsequent navigations.
+   */
+  defaultOpen?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -530,11 +539,26 @@ export function MembersSheet({
   members,
   pendingInvites,
   trigger,
+  defaultOpen = false,
 }: Props) {
   const desktop = useIsDesktop()
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(defaultOpen)
 
   const isOwner = currentUserRole === 'owner'
+
+  // When the dashboard's "Manage members" menu navigates here with
+  // ?openMembers=1, the sheet opens automatically on mount. Clean the
+  // searchParam from the URL afterwards so back/forward + refresh don't
+  // keep re-opening it.
+  useEffect(() => {
+    if (!defaultOpen) return
+    if (typeof window === 'undefined') return
+    const url = new URL(window.location.href)
+    if (url.searchParams.has('openMembers')) {
+      url.searchParams.delete('openMembers')
+      window.history.replaceState(null, '', url.toString())
+    }
+  }, [defaultOpen])
 
   const body = (
     <div className="flex flex-col gap-4 px-4 pb-4 sm:px-0 sm:pb-0 sm:mt-2 overflow-y-auto">

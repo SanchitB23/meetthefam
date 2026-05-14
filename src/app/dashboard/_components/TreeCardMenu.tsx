@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Ellipsis } from 'lucide-react'
 import {
   DropdownMenu,
@@ -16,6 +17,7 @@ import type { TreeRow } from './TreeCard'
 type Props = { tree: TreeRow }
 
 export function TreeCardMenu({ tree }: Props) {
+  const router = useRouter()
   const [renaming, setRenaming] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -40,6 +42,15 @@ export function TreeCardMenu({ tree }: Props) {
               auto-closes on click by default (`closeOnClick` defaults true). */}
           <DropdownMenuItem onClick={() => setRenaming(true)}>
             Rename
+          </DropdownMenuItem>
+          {/* Routes into the tree page with ?openMembers=1; the tree
+              page reads the searchParam and passes `defaultOpen` to
+              MembersSheet, which auto-opens + cleans the URL on mount.
+              Single source of truth for member management lives on the
+              tree page (your earlier brainstorm decision); this is just
+              a deep-link convenience from the dashboard. */}
+          <DropdownMenuItem onClick={() => router.push(`/tree/${tree.id}?openMembers=1`)}>
+            Manage members
           </DropdownMenuItem>
           <DropdownMenuItem
             variant="destructive"
