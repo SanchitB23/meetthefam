@@ -232,6 +232,37 @@ The flow needs a fixture JPEG ≥5 MB (a phone-photo-sized file) so the client-s
 
 ---
 
+---
+
+### Phase 6 — collaboration flows
+
+All Phase 6 flows assume local dev server (`pnpm dev`) running at `http://localhost:3000` and local Supabase stack (`pnpm exec supabase start`).  An incognito / private-browsing window is used to simulate the invited editor.  Mailpit at `http://localhost:54324` is needed only if magic-link sign-up is used for the second account.
+
+#### `phase-6-collaboration` *(env: local)*
+
+Tests: the Phase 6 ship gate — owner mints invite → copy URL → second account accepts in incognito → editor adds a person → owner sees it → owner revokes → ex-editor loses access.
+
+1. **Pre-condition** — local dev server + local Supabase running.  Owner account A is signed in (normal browser window).  A second incognito / private-browsing window is open and not signed in.  Two test email addresses ready: `owner-a@local.test` and `editor-b@local.test`.
+2. As A: open the Smith demo tree (or any tree on the dashboard).  In the top bar, click the `Users2` icon button.  Assert: the MembersSheet panel opens.  The Members section shows the owner (A) as the sole member.
+3. As A: in the MembersSheet invite form at the bottom, enter `editor-b@local.test`.  Click **Invite**.  Assert: an invite URL renders inline with a **Copy** button next to it.  No page reload occurs.
+4. Copy the invite URL (click the Copy button).  Open the incognito window and paste the URL into the address bar.  Assert: the browser is redirected to `/login?next=/invite/<token>` (the proxy's auth boundary fires because the user is not signed in).
+5. In the incognito window: sign up / sign in as `editor-b@local.test` (magic-link via Mailpit, or password if the account already exists).  After successful auth, the browser follows the `next=` redirect and lands on `/invite/<token>`.  Assert: a confirm card renders showing the tree name and invited-by name.
+6. As B (incognito): click **Accept**.  Assert: the browser redirects to `/tree/<id>`.  The tree page loads.  The top-bar Members icon is visible.  Opening the MembersSheet shows two members: A (owner) and B (editor, read-only list in editor view).
+7. As B (incognito): open the FAB (floating `+` button).  Select **Add a person**.  Fill `Full name = B's Test Person`.  Submit.  Assert: the new person appears on the canvas without a full page reload.
+8. In the original browser (as A): reload / revalidate the tree page.  Assert: `B's Test Person` appears on the canvas (the `revalidatePath('/tree/<id>')` call from B's insert propagated).
+9. As A: open the MembersSheet.  The Members section shows B with an editor badge and a trash/remove icon.  Click the trash icon on B's row.  Confirm the removal in the confirmation prompt.  Assert: B's row disappears from the Members list.
+10. As B (incognito): refresh the tree page.  Assert: B no longer has access — the page shows a 404 / access-denied state (the `notFound()` guard for non-members fires).  Additionally, if B attempts a write (e.g. via DevTools → `fetch('/tree/<id>/people', { method:'POST', ... })`), the Server Action returns an RLS rejection (no row written).
+11. **(Negative / re-invite)** As A: in the MembersSheet invite form, enter `editor-b@local.test` again (the original invite is consumed; the partial unique index on open invites allows a new row).  Click Invite.  Assert: a NEW invite URL renders (different token from step 3).  As B: open the new URL → accept → land on the tree → B's editor row reappears in the Members list.
+
+**Pass:** all 11 steps complete; step 8 proves read-your-writes across accounts; step 10 proves immediate RLS revocation; step 11 proves re-invite works after revocation; no console errors; no orphan data left after cleanup.
+
+**Skip rules:**
+- Running on `local` without `supabase start` → SKIP with reason "needs-local-supabase".
+- Mailpit not accessible at `:54324` and no password-based test accounts pre-created → SKIP with reason "needs-local-mailpit".
+- `e2e-smoke-tester` agent tools-grant fix still unresolved → SKIP with reason "needs-tools-grant-fix"; manual QA on the local preview stands in.
+
+---
+
 ## Adding a new flow
 
 When closing out a phase:
