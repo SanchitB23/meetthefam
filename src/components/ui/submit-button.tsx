@@ -6,13 +6,25 @@ import { Button } from '@/components/ui/button'
 type Props = {
   children: React.ReactNode
   pendingText?: string
-  variant?: 'default' | 'outline'
+  variant?: 'default' | 'outline' | 'destructive'
+  className?: string
 }
 
+/**
+ * Submit button that auto-renders a spinner + disables itself while the
+ * surrounding `<form action={...}>`'s Server Action is in flight. Reads
+ * its pending state from `useFormStatus()`, which only works when the
+ * component is rendered INSIDE a `<form>` — that's the React contract.
+ *
+ * Use this for any Server Action form where the action does meaningful
+ * server work (DB roundtrip, redirect, RPC). Without it, the user sees
+ * the button as idle during the in-flight window and double-clicks.
+ */
 export function SubmitButton({
   children,
   pendingText = 'Loading…',
   variant = 'default',
+  className = 'w-full',
 }: Props) {
   const { pending } = useFormStatus()
 
@@ -20,7 +32,7 @@ export function SubmitButton({
     <Button
       type="submit"
       variant={variant}
-      className="w-full"
+      className={className}
       disabled={pending}
       aria-busy={pending}
     >

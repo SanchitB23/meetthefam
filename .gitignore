@@ -8,6 +8,8 @@ node_modules/
 coverage/
 playwright-report/
 test-results/
+# @playwright/mcp runtime output (console logs, page snapshots from e2e-smoke-tester dispatches)
+.playwright-mcp/
 
 # Next.js
 .next/
@@ -44,6 +46,8 @@ supabase/seed.local.sql
 .claude/settings.local.json
 # Claude Code runtime artifacts (ScheduleWakeup lockfile etc.)
 .claude/*.lock
+# Claude Code worktree-subagent isolation checkouts (per-machine, never committed)
+.claude/worktrees/
 
 # Logs
 *.log
