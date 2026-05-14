@@ -279,6 +279,85 @@ export async function resendInvite(
 }
 
 // ============================================================================
+// acceptInvite
+// ============================================================================
+
+export type AcceptInviteResult =
+  | { ok: true; treeId: string; error?: never }
+  | {
+      ok: false
+      error:
+        | 'not_found'
+        | 'revoked'
+        | 'expired'
+        | 'email_mismatch'
+        | 'already_accepted'
+        | 'not_signed_in'
+        | 'unknown'
+      treeId?: never
+    }
+
+// The RPC raises P0001 for all five error states; the message IS the tag.
+const INVITE_RPC_ERROR_TAGS = new Set([
+  'not_found',
+  'revoked',
+  'expired',
+  'email_mismatch',
+  'already_accepted',
+] as const)
+type InviteRpcErrorTag = (typeof INVITE_RPC_ERROR_TAGS extends Set<infer T>
+  ? T
+  : never)
+
+function isInviteRpcErrorTag(msg: string): msg is InviteRpcErrorTag {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return INVITE_RPC_ERROR_TAGS.has(msg as any)
+}
+
+/**
+ * Any authenticated user.  Wraps the `accept_invite` SECURITY DEFINER RPC.
+ *
+ * The RPC raises `P0001` with the error tag as the message text for all five
+ * failure states.  We pattern-match on `error.message` (NOT `error.code` —
+ * code is `P0001` for every case).
+ *
+ * On success the RPC returns `{ tree_id }`.  We call
+ *   revalidatePath('/dashboard')         — so the new tree appears in the list
+ *   revalidatePath('/tree/' + treeId)    — so the tree page re-fetches membership
+ */
+export async function acceptInvite(token: string): Promise<AcceptInviteResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: 'not_signed_in' }
+
+  const { data, error } = await supabase.rpc('accept_invite', {
+    p_token: token,
+  })
+
+  if (error) {
+    const msg = error.message ?? ''
+    if (isInviteRpcErrorTag(msg)) {
+      return { ok: false, error: msg }
+    }
+    console.error('acceptInvite: unexpected RPC error', error)
+    return { ok: false, error: 'unknown' }
+  }
+
+  // The RPC returns a single row `{ tree_id }`.
+  const treeId = (data as { tree_id: string } | null)?.tree_id
+  if (!treeId) {
+    console.error('acceptInvite: RPC returned no tree_id', data)
+    return { ok: false, error: 'unknown' }
+  }
+
+  revalidatePath('/dashboard')
+  revalidatePath('/tree/' + treeId)
+  return { ok: true, treeId }
+}
+
+// ============================================================================
 // revokeMember
 // ============================================================================
 
