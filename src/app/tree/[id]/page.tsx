@@ -53,21 +53,14 @@ export default async function TreePage(props: PageProps<'/tree/[id]'>) {
 
   const currentUserRole = myMembership.role
 
-  // Phase 6 sub-task 4 — fetch all members for this tree (joined with profiles).
-  // Supabase embedded joins: `profiles!tree_members_user_id_fkey` would be ideal
-  // but the FK name might differ; use a two-step query to keep it straightforward
-  // and match what the select columns need.
+  // Phase 6 sub-task 4 — fetch all members for this tree, then their profiles.
+  // Two queries instead of a PostgREST embed because `tree_members.user_id`
+  // references `auth.users(id)`, NOT `profiles(id)` — PostgREST can't resolve
+  // the embed and silently returns null for the joined object (or errors out),
+  // producing an empty Members section. Same trap as the invite-page lookup.
   const { data: memberRows } = await supabase
     .from('tree_members')
-    .select(`
-      user_id,
-      role,
-      joined_at,
-      profiles (
-        display_name,
-        avatar_url
-      )
-    `)
+    .select('user_id, role, joined_at')
     .eq('tree_id', id)
     .order('joined_at', { ascending: true })
 
@@ -75,18 +68,42 @@ export default async function TreePage(props: PageProps<'/tree/[id]'>) {
     user_id: string
     role: 'owner' | 'editor'
     joined_at: string
-    profiles: { display_name: string | null; avatar_url: string | null } | null
   }
 
-  const members: MemberRow[] = (memberRows as RawMemberRow[] | null ?? []).map(
-    (m) => ({
+  const rawMembers = (memberRows as RawMemberRow[] | null) ?? []
+
+  // Bulk-fetch profiles for the visible members. RLS on `profiles` allows
+  // anyone to read display_name + avatar_url, so the caller's session works.
+  const memberUserIds = rawMembers.map((m) => m.user_id)
+  const profilesByUserId = new Map<
+    string,
+    { display_name: string | null; avatar_url: string | null }
+  >()
+  if (memberUserIds.length > 0) {
+    const { data: profileRows } = await supabase
+      .from('profiles')
+      .select('id, display_name, avatar_url')
+      .in('id', memberUserIds)
+    for (const p of (profileRows as
+      | { id: string; display_name: string | null; avatar_url: string | null }[]
+      | null) ?? []) {
+      profilesByUserId.set(p.id, {
+        display_name: p.display_name,
+        avatar_url: p.avatar_url,
+      })
+    }
+  }
+
+  const members: MemberRow[] = rawMembers.map((m) => {
+    const p = profilesByUserId.get(m.user_id)
+    return {
       user_id: m.user_id,
       role: m.role,
       joined_at: m.joined_at,
-      display_name: m.profiles?.display_name ?? null,
-      avatar_url: m.profiles?.avatar_url ?? null,
-    }),
-  )
+      display_name: p?.display_name ?? null,
+      avatar_url: p?.avatar_url ?? null,
+    }
+  })
 
   // Phase 6 sub-task 4 — fetch pending invites (owner only).
   // `expires_at > now()` filtering: Supabase JS v2 does not have a built-in
