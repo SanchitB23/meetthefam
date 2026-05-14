@@ -401,3 +401,131 @@ export async function revokeMember(
   revalidatePath('/tree/' + treeId)
   return { ok: true }
 }
+
+// ============================================================================
+// getMembersAndInvites — lazy read for the dashboard's inline Members modal
+// ============================================================================
+//
+// The dashboard renders a `<MembersSheet>` inline from the tree-card 3-dots
+// menu (no navigation). To avoid pre-fetching members for every tree on
+// dashboard render — wasteful for users with many trees — we lazy-fetch the
+// data on menu-click via this Server Action. The action mirrors the same
+// two-query shape the tree-page Server Component uses (member rows + bulk
+// profile lookup + open invites for owners).
+//
+// Returns a discriminated union so the dashboard can render a "loading"
+// state immediately on click and swap to the real body once the action
+// returns. RLS still gates this — non-members get `not_authorized`.
+
+export type GetMembersAndInvitesResult =
+  | {
+      ok: true
+      members: Array<{
+        user_id: string
+        role: 'owner' | 'editor'
+        joined_at: string
+        display_name: string | null
+        avatar_url: string | null
+      }>
+      pendingInvites: Array<{
+        id: string
+        email: string
+        token: string
+        created_at: string
+        expires_at: string
+      }>
+      currentUserId: string
+      currentUserRole: 'owner' | 'editor'
+    }
+  | { ok: false; error: 'not_signed_in' | 'not_authorized' | 'unknown' }
+
+export async function getMembersAndInvites(
+  treeId: string,
+): Promise<GetMembersAndInvitesResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: 'not_signed_in' }
+
+  // Caller's membership row — authorizes the read AND tells us the role.
+  const { data: membership } = await supabase
+    .from('tree_members')
+    .select('role')
+    .eq('tree_id', treeId)
+    .eq('user_id', user.id)
+    .maybeSingle<{ role: 'owner' | 'editor' }>()
+
+  if (!membership) return { ok: false, error: 'not_authorized' }
+
+  // Members + profiles via two queries (same trap as the InvitePage embed —
+  // `tree_members.user_id` references `auth.users`, not `profiles`, so the
+  // PostgREST embed pattern silently fails. See commit 4da1c2c).
+  const { data: memberRows } = await supabase
+    .from('tree_members')
+    .select('user_id, role, joined_at')
+    .eq('tree_id', treeId)
+    .order('joined_at', { ascending: true })
+
+  const rawMembers = (memberRows ?? []) as Array<{
+    user_id: string
+    role: 'owner' | 'editor'
+    joined_at: string
+  }>
+
+  const userIds = rawMembers.map((m) => m.user_id)
+  const profilesByUserId = new Map<
+    string,
+    { display_name: string | null; avatar_url: string | null }
+  >()
+  if (userIds.length > 0) {
+    const { data: profileRows } = await supabase
+      .from('profiles')
+      .select('id, display_name, avatar_url')
+      .in('id', userIds)
+    for (const p of ((profileRows ?? []) as Array<{
+      id: string
+      display_name: string | null
+      avatar_url: string | null
+    }>)) {
+      profilesByUserId.set(p.id, {
+        display_name: p.display_name,
+        avatar_url: p.avatar_url,
+      })
+    }
+  }
+
+  const members = rawMembers.map((m) => {
+    const p = profilesByUserId.get(m.user_id)
+    return {
+      user_id: m.user_id,
+      role: m.role,
+      joined_at: m.joined_at,
+      display_name: p?.display_name ?? null,
+      avatar_url: p?.avatar_url ?? null,
+    }
+  })
+
+  // Pending invites: owners only.
+  let pendingInvites: GetMembersAndInvitesResult extends { ok: true; pendingInvites: infer T } ? T : never =
+    [] as never
+  if (membership.role === 'owner') {
+    const { data: inviteRows } = await supabase
+      .from('tree_invites')
+      .select('id, email, token, created_at, expires_at')
+      .eq('tree_id', treeId)
+      .is('accepted_at', null)
+      .is('revoked_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+    pendingInvites = (inviteRows ?? []) as typeof pendingInvites
+  }
+
+  return {
+    ok: true,
+    members,
+    pendingInvites,
+    currentUserId: user.id,
+    currentUserRole: membership.role,
+  }
+}

@@ -1,7 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useTransition } from 'react'
 import { Ellipsis } from 'lucide-react'
 import {
   DropdownMenu,
@@ -12,14 +11,56 @@ import {
 import { Button } from '@/components/ui/button'
 import { RenameTreeModal } from './RenameTreeModal'
 import { DeleteTreeDialog } from './DeleteTreeDialog'
+import { MembersSheet, type MemberRow, type PendingInviteRow } from '@/app/tree/[id]/_components/MembersSheet'
+import {
+  getMembersAndInvites,
+  type GetMembersAndInvitesResult,
+} from '@/app/tree/[id]/members/actions'
 import type { TreeRow } from './TreeCard'
 
 type Props = { tree: TreeRow }
 
+type MembersData = {
+  currentUserId: string
+  currentUserRole: 'owner' | 'editor'
+  members: MemberRow[]
+  pendingInvites: PendingInviteRow[]
+}
+
 export function TreeCardMenu({ tree }: Props) {
-  const router = useRouter()
   const [renaming, setRenaming] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [managing, setManaging] = useState(false)
+  const [data, setData] = useState<MembersData | null>(null)
+  const [, startTransition] = useTransition()
+
+  // Open the MembersSheet IN the dashboard — no navigation to /tree/<id>.
+  // The Server Action fetches members + pendingInvites lazily; the sheet
+  // opens immediately with a loading skeleton, then swaps to real data
+  // once the action returns. Single source of truth still lives in
+  // `<MembersSheet>` — this is just a second mount point.
+  const handleManageMembers = () => {
+    setManaging(true)
+    setData(null)
+    startTransition(async () => {
+      const res = (await getMembersAndInvites(tree.id)) as GetMembersAndInvitesResult
+      if (res.ok) {
+        setData({
+          currentUserId: res.currentUserId,
+          currentUserRole: res.currentUserRole,
+          members: res.members,
+          pendingInvites: res.pendingInvites,
+        })
+      } else {
+        // Surface as a closed sheet with a TODO comment — Phase 8 polish
+        // could render an inline error card. For now, RLS / not-signed-in
+        // are unreachable from this code path (menu is owner-gated).
+        setManaging(false)
+      }
+    })
+  }
+
+  const loading = managing && data === null
 
   return (
     <>
@@ -43,13 +84,7 @@ export function TreeCardMenu({ tree }: Props) {
           <DropdownMenuItem onClick={() => setRenaming(true)}>
             Rename
           </DropdownMenuItem>
-          {/* Routes into the tree page with ?openMembers=1; the tree
-              page reads the searchParam and passes `defaultOpen` to
-              MembersSheet, which auto-opens + cleans the URL on mount.
-              Single source of truth for member management lives on the
-              tree page (your earlier brainstorm decision); this is just
-              a deep-link convenience from the dashboard. */}
-          <DropdownMenuItem onClick={() => router.push(`/tree/${tree.id}?openMembers=1`)}>
+          <DropdownMenuItem onClick={handleManageMembers}>
             Manage members
           </DropdownMenuItem>
           <DropdownMenuItem
@@ -72,6 +107,25 @@ export function TreeCardMenu({ tree }: Props) {
         treeName={tree.name}
         open={deleting}
         onClose={() => setDeleting(false)}
+      />
+      {/* Controlled-mode MembersSheet — no internal trigger; the
+          parent (this component) owns open-state. The TreeCardMenu
+          itself is owner-only-gated by the dashboard (m.role === 'owner'),
+          so the role passed here is always 'owner' once data lands.
+          During loading we pass owner + empty arrays as placeholders;
+          the `loading` prop swaps the body to a spinner skeleton. */}
+      <MembersSheet
+        treeId={tree.id}
+        currentUserId={data?.currentUserId ?? ''}
+        currentUserRole={data?.currentUserRole ?? 'owner'}
+        members={data?.members ?? []}
+        pendingInvites={data?.pendingInvites ?? []}
+        open={managing}
+        onOpenChange={(next) => {
+          setManaging(next)
+          if (!next) setData(null)
+        }}
+        loading={loading}
       />
     </>
   )

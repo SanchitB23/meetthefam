@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { useForm } from 'react-hook-form'
 import {
   RotateCcw,
@@ -9,6 +9,7 @@ import {
   Copy,
   Check,
   Users2,
+  LoaderCircle,
 } from 'lucide-react'
 
 import {
@@ -62,16 +63,33 @@ type Props = {
   currentUserRole: 'owner' | 'editor'
   members: MemberRow[]
   pendingInvites: PendingInviteRow[]
-  trigger: React.ReactNode
   /**
-   * When true, auto-opens the sheet on mount. Used by the dashboard
-   * `TreeCardMenu`'s "Manage members" entry, which navigates to
-   * `/tree/<id>?openMembers=1`. The Server Component reads the
-   * searchParam and passes it through here. The sheet then cleans
-   * the URL via `history.replaceState` so the param doesn't linger
-   * and trigger a re-open on subsequent navigations.
+   * Optional click target that opens the sheet. When omitted, the sheet
+   * has no own trigger — the parent controls open-state via the
+   * `open` / `onOpenChange` controlled-mode props. Used by the dashboard's
+   * `TreeCardMenu`, which fires the open from a `DropdownMenuItem` and
+   * doesn't need its own visible trigger inside the sheet's JSX.
+   */
+  trigger?: React.ReactNode
+  /**
+   * Controlled-mode open state. When provided alongside `onOpenChange`,
+   * the parent owns the open state. When omitted, the sheet manages its
+   * own internal open state (uncontrolled mode — current tree-page usage).
+   */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  /**
+   * Uncontrolled-mode initial-open. Ignored when `open` is provided.
    */
   defaultOpen?: boolean
+  /**
+   * When true, render a small "Loading members…" skeleton in place of the
+   * Members section + pending-invites section + invite form. Used by the
+   * dashboard's inline-open path while the `getMembersAndInvites` Server
+   * Action is in flight. The chrome (header, title, description, close
+   * button) renders normally so the user sees the sheet open immediately.
+   */
+  loading?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -539,28 +557,34 @@ export function MembersSheet({
   members,
   pendingInvites,
   trigger,
+  open: openProp,
+  onOpenChange,
   defaultOpen = false,
+  loading = false,
 }: Props) {
   const desktop = useIsDesktop()
-  const [open, setOpen] = useState(defaultOpen)
+  const [internalOpen, setInternalOpen] = useState(defaultOpen)
+
+  // Controlled-mode vs uncontrolled-mode pattern: when the parent passes
+  // both `open` and `onOpenChange`, the parent owns the state. Otherwise,
+  // we manage it ourselves (existing tree-page usage).
+  const isControlled = openProp !== undefined
+  const open = isControlled ? openProp : internalOpen
+  const setOpen = (next: boolean) => {
+    if (isControlled) onOpenChange?.(next)
+    else setInternalOpen(next)
+  }
 
   const isOwner = currentUserRole === 'owner'
 
-  // When the dashboard's "Manage members" menu navigates here with
-  // ?openMembers=1, the sheet opens automatically on mount. Clean the
-  // searchParam from the URL afterwards so back/forward + refresh don't
-  // keep re-opening it.
-  useEffect(() => {
-    if (!defaultOpen) return
-    if (typeof window === 'undefined') return
-    const url = new URL(window.location.href)
-    if (url.searchParams.has('openMembers')) {
-      url.searchParams.delete('openMembers')
-      window.history.replaceState(null, '', url.toString())
-    }
-  }, [defaultOpen])
-
-  const body = (
+  const body = loading ? (
+    <div className="flex flex-col gap-4 px-4 pb-4 sm:px-0 sm:pb-0 sm:mt-2">
+      <div className="flex items-center justify-center gap-2 py-10 text-sm text-foreground/50">
+        <LoaderCircle className="h-4 w-4 animate-spin" />
+        Loading members…
+      </div>
+    </div>
+  ) : (
     <div className="flex flex-col gap-4 px-4 pb-4 sm:px-0 sm:pb-0 sm:mt-2 overflow-y-auto">
       {/* Members section */}
       <div className="flex flex-col gap-0.5">
@@ -638,22 +662,26 @@ export function MembersSheet({
 
   return (
     <>
-      {/* Wrap trigger — clicking it opens the sheet/dialog */}
-      <span
-        role="button"
-        tabIndex={0}
-        onClick={() => setOpen(true)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault()
-            setOpen(true)
-          }
-        }}
-        aria-label="Manage members"
-        className="contents"
-      >
-        {trigger}
-      </span>
+      {/* Trigger is optional — in controlled mode the parent owns open-state
+          and doesn't need a built-in click target (e.g. the dashboard fires
+          open from a DropdownMenuItem). */}
+      {trigger && (
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={() => setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              setOpen(true)
+            }
+          }}
+          aria-label="Manage members"
+          className="contents"
+        >
+          {trigger}
+        </span>
+      )}
       {surface}
     </>
   )
