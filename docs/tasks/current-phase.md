@@ -46,7 +46,7 @@ Closed with **`v0.2.0`**. See [release notes](https://github.com/SanchitB23/meet
 - [ ] Release version: `v0.2.0` (first minor bump after v0.1.0 per [ADR 0009 §1](../adrs/0009-versioning-and-releases.md)).
 - [ ] [ADR 0010](../adrs/0010-feature-branch-workflow.md) amendment landed (phase-branch escape hatch for parallel sub-agent dev — see queued note in this close-out's workflow note).
 - [x] Phase 6 migration applied to QA (`mcp__supabase__apply_migration` against project `ljjvwtpifmoshfknlbaj`, advisor PASS).
-- [ ] Phase 6 migration applied to **prod** (`family-tree-prod` project `ycnsgkotrbjifsjkqmvn`) — happens during the release recipe.
+- [x] Phase 6 migration applied to **prod** — **deferred per the new pre-v1 policy set 2026-05-14**. No prod DB or production-Vercel-config changes happen during Phases 6/7/8; everything batches at v1.0. See [`../dev/prod-readiness.md`](../dev/prod-readiness.md) for the full launch-gate checklist; the `tree_invites` migration is queued there under §1.
 
 > **Workflow note** — Phase 6 closed via the feature-branch workflow with one deviation: a **phase branch** `feat/phase-6-collaboration` was cut from `qa` and the 5 sub-tasks merged into it (instead of each PR'ing into `qa` directly). The phase branch then merges into `qa` as a single squash. An [ADR 0010](../adrs/0010-feature-branch-workflow.md) amendment captures the deviation pattern ("phase-branch escape hatch for parallel sub-agent dev") for future phases. The release at the end of the phase still rides a `release/v0.2.0` branch from `qa` per [ADR 0009 §4](../adrs/0009-versioning-and-releases.md).
 

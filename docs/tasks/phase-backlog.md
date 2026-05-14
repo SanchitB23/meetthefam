@@ -11,6 +11,7 @@ For Next.js 16 idiom rationale, see [`../adrs/0007-nextjs-16-and-async-idioms.md
 Not phase-specific TODOs — discipline reminders for every session. These never get a `[x]` because they apply to all new code that crosses the relevant boundary.
 
 - **`await cookies()` and `await headers()`** in every server-side `@supabase/ssr` client. In Next.js 16, `cookies()` and `headers()` from `next/headers` are async — every new Supabase server client must `await` them when wiring the cookie adapter. Pull the current snippet via Context7 MCP (`/supabase/supabase`) before writing one from memory; older guides have the synchronous form. Current code is in compliance (audit `src/lib/supabase/server.ts`, `src/app/login/actions.ts`, `src/app/auth/callback/route.ts`, `src/proxy.ts`).
+- **No production DB or production-Vercel-config changes during Phases 6–8** (set 2026-05-14, during Phase 6 close-out). Per-phase migrations apply to **local + QA only**; the `mcp__supabase__apply_migration` step against `family-tree-prod` is **skipped** in the v0.2.0 / v0.3.0 / v0.4.0 release recipes. All accumulated migrations batch-apply at v1.0. The consolidated launch-gate checklist lives at [`../dev/prod-readiness.md`](../dev/prod-readiness.md); every phase that lands a prod-relevant item adds a checkbox there.
 
 ---
 
