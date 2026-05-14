@@ -32,8 +32,6 @@ type InviteRow = {
   revoked_at: string | null
   expires_at: string
   trees: { name: string } | null
-  // joined via invited_by FK; aliased in the query below
-  inviter: { display_name: string | null } | null
 }
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>
@@ -124,8 +122,7 @@ export default async function InvitePage({ params, searchParams }: InvitePagePro
     .from('tree_invites')
     .select(
       `id, email, tree_id, invited_by, accepted_at, revoked_at, expires_at,
-       trees ( name ),
-       inviter:profiles!tree_invites_invited_by_fkey ( display_name )`,
+       trees ( name )`,
     )
     .eq('token', token)
     .maybeSingle<InviteRow>()
@@ -134,8 +131,21 @@ export default async function InvitePage({ params, searchParams }: InvitePagePro
     console.error('InvitePage: service-role lookup failed', fetchError)
   }
 
+  // Separate profile lookup — `tree_invites.invited_by` references `auth.users(id)`,
+  // not `profiles(id)`, so PostgREST can't resolve an embedded join. Two queries
+  // is the simplest correct shape.
+  let inviterDisplayName: string | null = null
+  if (invite?.invited_by) {
+    const { data: inviterProfile } = await service
+      .from('profiles')
+      .select('display_name')
+      .eq('id', invite.invited_by)
+      .maybeSingle<{ display_name: string | null }>()
+    inviterDisplayName = inviterProfile?.display_name ?? null
+  }
+
   const treeName = invite?.trees?.name ?? 'a family tree'
-  const inviterName = invite?.inviter?.display_name ?? 'Someone'
+  const inviterName = inviterDisplayName ?? 'Someone'
 
   // --- Render wrapper ---
   return (
