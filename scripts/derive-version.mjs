@@ -37,6 +37,15 @@ function git(args) {
 }
 
 function deriveVersion() {
+  // Vercel's build container does a shallow clone WITHOUT tags by default,
+  // which would force-feed every build into case 4 ("0.0.0-dev.<sha>")
+  // instead of the more informative case 3 ("<latest-tag>-dev.<sha>").
+  // Explicitly fetching tags here costs ~1s on Vercel and is a no-op on
+  // a complete local clone. Failures (no origin, no network) are silent
+  // — the wrapped git() returns empty on error, and we fall through to
+  // case 4 as before.
+  git('fetch --tags --depth=1 origin')
+
   const shortSha =
     git('rev-parse --short HEAD') ||
     process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ||
