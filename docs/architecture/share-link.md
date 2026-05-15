@@ -28,13 +28,13 @@ const token = crypto.randomBytes(32).toString('base64url')  // 43 chars, URL-saf
 
 256 bits of entropy. Brute-forcing a valid token is computationally infeasible.
 
-## `/share/[token]` Route Handler
+## `/share/[token]` Server Component
 
 ```
 GET /share/<token>
   │
   ▼
-Server-side handler with createClient using SUPABASE_SERVICE_ROLE_KEY
+Server Component using createServiceRoleClient() (service_role)
   │
   ▼
 SELECT id, name, description FROM trees WHERE share_token = $1
@@ -56,7 +56,7 @@ Render <FamilyTree readOnly={true} /> + signup banner
 - **anon key** is RLS-checked. The viewer has no session, so `auth.uid() IS NULL`, and the `trees` SELECT policy fails. Nothing returns.
 - **service_role** bypasses RLS entirely. We can SELECT any tree in the table.
 
-Trade-off: this Route Handler is the *only* place service_role runs against the people / trees tables. The token check is the gate. Any code path that uses service_role must verify a token before returning data.
+Trade-off: this Server Component is the *only* place service_role runs against the people / trees tables. The token check is the gate. Any code path that uses service_role must verify a token before returning data.
 
 This is documented in [`../adrs/0005-three-environments.md`](../adrs/0005-three-environments.md) — the service_role secret is environment-scoped and never crosses the browser.
 
