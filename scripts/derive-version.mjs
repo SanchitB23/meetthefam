@@ -44,7 +44,10 @@ function deriveVersion() {
   // a complete local clone. Failures (no origin, no network) are silent
   // — the wrapped git() returns empty on error, and we fall through to
   // case 4 as before.
-  git('fetch --tags --depth=1 origin')
+  //
+  // Note: --depth=1 was tried initially but seems to interact poorly with
+  // --tags on Vercel's shallow clone; using a plain --tags fetch instead.
+  git('fetch --tags origin')
 
   const shortSha =
     git('rev-parse --short HEAD') ||
@@ -70,6 +73,15 @@ function deriveVersion() {
   const allTags = git('tag --list --sort=-v:refname')
     .split('\n')
     .filter(Boolean)
+
+  // Diagnostic — confirms whether case 3 has tags to work with. Visible
+  // in Vercel build logs; harmless on local builds.
+  console.log(
+    `[derive-version] discovered ${allTags.length} tag(s)${
+      allTags.length > 0 ? `; latest = ${allTags[0]}` : ''
+    }`,
+  )
+
   if (allTags.length > 0) {
     return `${allTags[0].replace(/^v/, '')}-dev.${shortSha || 'unknown'}`
   }
