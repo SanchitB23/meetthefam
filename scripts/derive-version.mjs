@@ -1,6 +1,7 @@
 // Release-flow divergence fix — build-time version derivation.
 //
-// Runs as `prebuild`. Reads git state and writes `src/lib/generated/version.ts`
+// Runs as `prebuild`. Reads git state (with a GitHub API fallback for
+// Vercel's tag-less shallow clone) and writes `src/lib/generated/version.ts`
 // exporting an APP_VERSION constant.
 //
 // Format rules (locked decision #6 in
@@ -8,15 +9,15 @@
 //
 //   1. At a tagged commit (e.g., prod build of vX.Y.Z):  "X.Y.Z"
 //   2. On a release/vX.Y.Z branch (preview rc build):    "X.Y.Z-rc.<short-sha>"
-//   3. Anywhere else with tags available:                "<latest-tag>-dev.<short-sha>"
-//   4. No tags / shallow clone fallback:                 "0.0.0-dev.<short-sha>" (or "0.0.0-dev" if no sha)
+//   3. Anywhere else with a known latest tag:            "<latest-tag>-dev.<short-sha>"
+//   4. No tags / shallow clone fallback:                 "0.0.0-dev.<short-sha>"
 //
-// Note on case 3: we deliberately use the latest tag GLOBALLY
-// (`git tag --list --sort=-v:refname`), not `git describe --tags --abbrev=0`
-// which only reads tags reachable from HEAD. Reason: the v0.3.0 tag lives on
-// main's merge commit (not an ancestor of qa), so describe-reachable would
-// return a stale tag on qa. The global lookup is the right read for "what's
-// the latest version we've shipped" regardless of branch divergence.
+// Sources for "latest tag" (in order):
+//   a. Local `git tag --list` — fastest; works locally + non-shallow CI.
+//   b. GitHub API `/releases/latest` — fallback for Vercel's shallow clone
+//      (Vercel doesn't persist git creds beyond the initial clone, so
+//      `git fetch --tags origin` silently fails; the public REST API is
+//      auth-free at 60 req/hr per IP, well within build-time budgets).
 //
 // See ADR 0009 Amendment 4 for full rationale.
 
@@ -25,6 +26,8 @@ import { writeFileSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 
 const OUTPUT = 'src/lib/generated/version.ts'
+const REPO_OWNER = process.env.VERCEL_GIT_REPO_OWNER || 'SanchitB23'
+const REPO_NAME = process.env.VERCEL_GIT_REPO_SLUG || 'meetthefam'
 
 function git(args) {
   try {
@@ -36,27 +39,36 @@ function git(args) {
   }
 }
 
-function deriveVersion() {
-  // Vercel's build container does a shallow clone WITHOUT tags by default,
-  // which would force-feed every build into case 4 ("0.0.0-dev.<sha>")
-  // instead of the more informative case 3 ("<latest-tag>-dev.<sha>").
-  // Explicitly fetching tags here costs ~1s on Vercel and is a no-op on
-  // a complete local clone. Failures (no origin, no network) are silent
-  // — the wrapped git() returns empty on error, and we fall through to
-  // case 4 as before.
-  //
-  // Note: --depth=1 was tried initially but seems to interact poorly with
-  // --tags on Vercel's shallow clone; using a plain --tags fetch instead.
-  git('fetch --tags origin')
+async function latestTagFromGitHub() {
+  // /releases/latest EXCLUDES prereleases. Pre-v1.0 all our releases are
+  // flagged as prereleases per ADR 0009, so that endpoint 404s for us.
+  // /releases (plural, with per_page=1) returns the most-recent release
+  // regardless of prerelease flag.
+  try {
+    const r = await fetch(
+      `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases?per_page=1`,
+      { headers: { 'User-Agent': 'meetthefam-derive-version' } },
+    )
+    if (!r.ok) return ''
+    const data = await r.json()
+    return Array.isArray(data) && data[0]?.tag_name ? data[0].tag_name : ''
+  } catch {
+    return ''
+  }
+}
 
+async function deriveVersion() {
   const shortSha =
     git('rev-parse --short HEAD') ||
     process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ||
     ''
 
-  // Case 1: HEAD is at a tagged commit (e.g., prod build of a vX.Y.Z release).
+  // Case 1: HEAD is at a tagged commit (only detectable via local git).
   const exactTag = git('describe --tags --exact-match HEAD')
-  if (exactTag) return exactTag.replace(/^v/, '')
+  if (exactTag) {
+    console.log(`[derive-version] source=git-exact; APP_VERSION = ${exactTag.replace(/^v/, '')}`)
+    return exactTag.replace(/^v/, '')
+  }
 
   // Case 2: on a release/vX.Y.Z branch.
   const branch =
@@ -65,36 +77,37 @@ function deriveVersion() {
     ''
   const releaseBranchMatch = branch.match(/^release\/v(\d+\.\d+\.\d+)$/)
   if (releaseBranchMatch) {
-    return `${releaseBranchMatch[1]}-rc.${shortSha || 'unknown'}`
+    const v = `${releaseBranchMatch[1]}-rc.${shortSha || 'unknown'}`
+    console.log(`[derive-version] source=release-branch; APP_VERSION = ${v}`)
+    return v
   }
 
-  // Case 3: dev build (qa / feature / chore / etc.). Use the latest tag in the
-  // repo globally, not just what's reachable from HEAD.
-  const allTags = git('tag --list --sort=-v:refname')
-    .split('\n')
-    .filter(Boolean)
-
-  // Diagnostic — confirms whether case 3 has tags to work with. Visible
-  // in Vercel build logs; harmless on local builds.
-  console.log(
-    `[derive-version] discovered ${allTags.length} tag(s)${
-      allTags.length > 0 ? `; latest = ${allTags[0]}` : ''
-    }`,
-  )
-
-  if (allTags.length > 0) {
-    return `${allTags[0].replace(/^v/, '')}-dev.${shortSha || 'unknown'}`
+  // Case 3: dev build. Find the latest tag globally — local git first
+  // (fast path), then GitHub API (fallback for Vercel's tag-less shallow
+  // clone).
+  let latestTag = git('tag --list --sort=-v:refname').split('\n').filter(Boolean)[0] || ''
+  let source = 'git-local'
+  if (!latestTag) {
+    latestTag = await latestTagFromGitHub()
+    if (latestTag) source = 'github-api'
   }
 
-  // Case 4: no tags at all (fresh repo or shallow clone without tags).
-  return shortSha ? `0.0.0-dev.${shortSha}` : '0.0.0-dev'
+  if (latestTag) {
+    const v = `${latestTag.replace(/^v/, '')}-dev.${shortSha || 'unknown'}`
+    console.log(`[derive-version] source=${source}; latestTag=${latestTag}; APP_VERSION = ${v}`)
+    return v
+  }
+
+  // Case 4: no tag info available anywhere.
+  const v = shortSha ? `0.0.0-dev.${shortSha}` : '0.0.0-dev'
+  console.log(`[derive-version] source=fallback; APP_VERSION = ${v}`)
+  return v
 }
 
-const version = deriveVersion()
+const version = await deriveVersion()
 const content = `// Generated by scripts/derive-version.mjs at build time. Do not edit.
 export const APP_VERSION = ${JSON.stringify(version)}
 `
 
 mkdirSync(dirname(OUTPUT), { recursive: true })
 writeFileSync(OUTPUT, content)
-console.log(`[derive-version] APP_VERSION = ${version}`)
