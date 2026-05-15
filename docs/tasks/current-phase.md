@@ -1,8 +1,59 @@
-# Current phase: 7 — Share link
+# Current phase: 8 — Visual polish + landing
+
+Spec → [`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → Phase 8 row. Phase 8 design (brainstorm output) → [`../superpowers/specs/2026-05-16-phase-8-visual-polish-design.md`](../superpowers/specs/2026-05-16-phase-8-visual-polish-design.md).
+
+**Ship gate** (brainstormed 2026-05-16 — full rationale in the design spec above):
+
+- **8a — Brand foundations**: Knot brand-guide pull-review + decisions doc landed; warm-shifted `.dark` tokens map verified; logo + favicon + metadata wired; brand icon set (`Branch`, `Leaf`, `Quote`, `Family`, `Sparkle`, `Heart`) shipped.
+- **8b — Person + tree polish**: gender-shape avatar variation + deceased treatment + `<Memoriam>` component ship together; tree-overview / zoom-to-fit control + floating "+" hover affordance land; duplicate-card visual marker shipped (option 2 — dashed border + `↑` badge + tooltip + tap-to-jump; **NOT** opacity-based, composes cleanly with deceased treatment); QA feedback gate on duplicate marker before phase close.
+- **8c — Landing + nav + animations**: shared `(app)` route group closes [#45](https://github.com/SanchitB23/meetthefam/issues/45); real landing screen replaces `create-next-app` scaffold and closes [#44](https://github.com/SanchitB23/meetthefam/issues/44); heirloom skeletons + `<Suspense>` + `useLinkStatus()` + React 19.2 `<ViewTransition>` (cross-page only, ≤ 200 ms) collectively close [#50](https://github.com/SanchitB23/meetthefam/issues/50); revoke-member confirm copy + italic-Cormorant whitelist audit complete; `APP_VERSION` footer micro-version is the first consumer of [ADR 0009 Amendment 4](../adrs/0009-versioning-and-releases.md)'s build-time-derived version.
+- `pnpm typecheck && pnpm lint && pnpm test` clean.
+- e2e-smoke-tester passes Phase 1–7 flows against the QA preview (no regressions in the `(app)` route group refactor).
+
+**Sub-tasks** (14 total — 8a (4) + 8b (3) + 8c (7)):
+
+**8a — Brand foundations**
+
+- [ ] **Sub-task 8a-1** — Knot brand-guide pull-review + decisions doc. No code.
+- [ ] **Sub-task 8a-2** — Warm-shifted dark-mode tokens in `globals.css`; WCAG re-verify.
+- [ ] **Sub-task 8a-3** — Logo / logomark adoption into top-nav + favicon + metadata.
+- [ ] **Sub-task 8a-4** — Brand icon set (`Branch`, `Leaf`, `Quote`, `Family`, `Sparkle`, `Heart`) at `src/components/icons/`.
+
+**8b — Person + tree canvas polish**
+
+- [ ] **Sub-task 8b-1** — Gender-shape avatar variation + deceased treatment + `<Memoriam>` component.
+- [ ] **Sub-task 8b-2** — Tree-overview / zoom-to-fit control + floating "+" hover affordance.
+- [ ] **Sub-task 8b-3** — Duplicate-card visual marker (option 2 — dashed border + `↑` badge + tooltip + tap-to-jump). QA feedback gate before close-out.
+
+**8c — Landing + nav + animations**
+
+- [ ] **Sub-task 8c-1** — Shared `(app)` route group for chrome (closes [#45](https://github.com/SanchitB23/meetthefam/issues/45)).
+- [ ] **Sub-task 8c-2** — Replace `src/app/page.tsx` with real landing screen (closes [#44](https://github.com/SanchitB23/meetthefam/issues/44)).
+- [ ] **Sub-task 8c-3** — Heirloom palette pass on empty / loading / error states (closes [#50](https://github.com/SanchitB23/meetthefam/issues/50) 1/3).
+- [ ] **Sub-task 8c-4** — Slow-nav loading affordance: `<Suspense>` + `useLinkStatus()` (closes [#50](https://github.com/SanchitB23/meetthefam/issues/50) 2/3).
+- [ ] **Sub-task 8c-5** — React 19.2 `<ViewTransition>` for cross-page animations (closes [#50](https://github.com/SanchitB23/meetthefam/issues/50) 3/3).
+- [ ] **Sub-task 8c-6** — Revoke-member confirm copy + italic-Cormorant whitelist audit.
+- [ ] **Sub-task 8c-7** — `APP_VERSION` footer micro-version (first consumer of Amendment 4).
+
+**Out of scope** (per the brainstorm — see spec §"Out of scope"):
+
+- Task 14 (`useEffectEvent` polish) — dropped; revisit v0.5+.
+- Task 18 (Tree-settings unified sheet refactor) — deferred to v0.5 brainstorm.
+- Tree-nav within-canvas animations — deferred unless 8c-5 reveals a boundary issue.
+- Issue [#49](https://github.com/SanchitB23/meetthefam/issues/49) — standalone `fix/login-redirect-authed-user` hotfix outside Phase 8.
+- Issue [#25](https://github.com/SanchitB23/meetthefam/issues/25) — `post-v1.0` labeled; Phase 9 / pre-launch.
+
+> **Workflow note** — Phase 8 continues under the phase-branch-as-default workflow (`feedback_feature_branch_workflow.md`). All 14 sub-tasks land as separate commits on `feat/phase-8-visual-polish-landing`; one PR at phase end squash-merges into `qa`. Closes with `v0.4.0` per [ADR 0009 §1](../adrs/0009-versioning-and-releases.md) — **first release using [Amendment 4](../adrs/0009-versioning-and-releases.md)'s zero-commit release-branch + fast-forward-push recipe.** Pre-v1 policy still applies (no prod-DB / prod-Vercel-config changes until v1.0 launch gate).
+
+---
+
+## Previous phase: 7 — Share link (✅ closed)
+
+Closed with **`v0.3.0`**. See [release notes](https://github.com/SanchitB23/meetthefam/releases/tag/v0.3.0).
 
 Spec → [`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → Phase 7 row.
 
-**Ship gate** *(placeholder — Phase 7 has not been brainstormed yet; refine at plan time)*:
+**Ship gate (met)**:
 
 - Anonymous read-only share link works end-to-end: owner toggles the `share_token` on the tree → owner shares the `/share/<token>` URL → a logged-out visitor opens the URL → reads the tree (people + photos via `service_role` lookup, no RLS round-trip) without seeing edit affordances.
 - Owner can rotate the share token (invalidates the old URL).
@@ -20,13 +71,13 @@ Spec → [`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-famil
 - [x] All five sub-tasks ticked above.
 - [x] Per-sub-task docs ticks landed in `current-phase.md` in the same commit as each feature commit (per the standing memory rule).
 - [x] Vitest suite passing: **17 new Phase 7 tests** (9 `shareLink` actions + 4 RLS `share_token` + 4 share-page data lookup) — total suite now **164 tests** on Node 22 (`engines.node` is `≥24.15.0` but the local runner reports an "Unsupported engine" WARN on 22 and proceeds; CI runs the pinned LTS).
-- [ ] `e2e-smoke-tester` agent ran the `phase-7-share-link` smoke flow — still blocked by the `needs-tools-grant-fix` Tooling-backlog item (same block Phase 5 + 6 close-outs flagged); manual QA on the local preview stands in.
-- [ ] Manual QA pass on the QA preview — to be performed during the phase→qa PR review.
-- [ ] Release version: **`v0.3.0`** (second minor bump after v0.2.0 per [ADR 0009 §1](../adrs/0009-versioning-and-releases.md)). Release recipe runs after the phase-branch PR merges into `qa`.
+- [ ] `e2e-smoke-tester` agent ran the `phase-7-share-link` smoke flow — still blocked by the `needs-tools-grant-fix` Tooling-backlog item (same block Phase 5 + 6 close-outs flagged); manual QA on the QA preview stood in.
+- [x] Manual QA pass on the QA preview — user walked the pre-merge smoke checklist during the [PR #48](https://github.com/SanchitB23/meetthefam/pull/48) review before marking it ready.
+- [x] Release version: **`v0.3.0`** (second minor bump after v0.2.0 per [ADR 0009 §1](../adrs/0009-versioning-and-releases.md)). Release rode `release/v0.3.0` per [ADR 0009 §4](../adrs/0009-versioning-and-releases.md) — [PR #51](https://github.com/SanchitB23/meetthefam/pull/51) merged to `main` with merge commit `2797a5f`, GitHub Release [v0.3.0](https://github.com/SanchitB23/meetthefam/releases/tag/v0.3.0) created (prerelease, `--target main`), forward-[PR #52](https://github.com/SanchitB23/meetthefam/pull/52) squash-merged back into `qa` to return the bump.
 - n/a Phase 7 migration applied to QA — **no migration this phase** (the existing `trees.share_token` column + `trees_update_owner` RLS policy from Phase 0 already cover Phase 7's needs).
 - n/a Phase 7 migration applied to **prod** — no migration this phase + pre-v1 policy (no prod DB changes during Phases 6/7/8; everything batches at v1.0 per [`../dev/prod-readiness.md`](../dev/prod-readiness.md)).
 
-> **Workflow note** — Phase 7 will return to the default [ADR 0010](../adrs/0010-feature-branch-workflow.md) sub-task-→-`qa` flow unless brainstorming uncovers parallel-agent scope similar to Phase 6's UI fan-out. Closes with `v0.3.0` per [ADR 0009 §1](../adrs/0009-versioning-and-releases.md).
+> **Workflow note** — Phase 7 was the first phase under the phase-branch-as-default workflow (memory rule `feedback_feature_branch_workflow.md` inverted 2026-05-15; ADR 0010 needs amendment). All 5 sub-tasks landed as separate commits on `feat/phase-7-share-link`, then a single PR `#48` squash-merged into `qa` (commit `92bf861`). Release rode `release/v0.3.0` per [ADR 0009 §4](../adrs/0009-versioning-and-releases.md).
 
 ---
 
