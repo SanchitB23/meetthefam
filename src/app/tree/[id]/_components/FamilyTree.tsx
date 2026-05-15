@@ -61,6 +61,12 @@ type Props = {
   people: PersonRow[]
   /** SSR-derived focus from `?p=<id>` searchParams. May be overridden by `#p=<id>` on mount. */
   initialFocusId?: string | null
+  /**
+   * Phase 7 sub-task 3 — typed-only stub so /share/[token]/page.tsx can pass
+   * `readOnly` ahead of the actual chrome-lockdown behavior. Wired in
+   * sub-task 4 (hides FAB, action menu, and the detail-sheet Edit button).
+   */
+  readOnly?: boolean
 }
 
 type Chart = ReturnType<typeof f3.createChart>
