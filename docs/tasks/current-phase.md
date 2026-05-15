@@ -1,24 +1,49 @@
 # Current phase: 8 — Visual polish + landing
 
-Spec → [`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → Phase 8 row.
+Spec → [`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → Phase 8 row. Phase 8 design (brainstorm output) → [`../superpowers/specs/2026-05-16-phase-8-visual-polish-design.md`](../superpowers/specs/2026-05-16-phase-8-visual-polish-design.md).
 
-**Ship gate** *(placeholder — Phase 8 has not been brainstormed yet; refine at plan time)*:
+**Ship gate** (brainstormed 2026-05-16 — full rationale in the design spec above):
 
-- Knot brand-guide pull-review lands (logomark + wordmark adoption candidates picked, palette + typography overlap/conflicts vs. existing heirloom OKLCH tokens reconciled). See [`phase-backlog.md`](phase-backlog.md) → Phase 8 "Knot brand-guide review" entry for cherry-pick discipline.
-- Warm-shifted dark-mode tokens mapped from the Knot bundle into `globals.css` `.dark` (currently shadcn defaults); WCAG contrast re-verified against the bundle's a11y matrix.
-- React 19.2 `<ViewTransition>` wired for cross-page animations (landing → dashboard, dashboard → tree page) — keep ≤200 ms.
-- Gender-shape avatar variation + deceased treatment (avatar desaturate + `†` badge + `<Memoriam>` name prefix + softened card chrome) ship together per the 2026-05-12 Claude Design brainstorm.
-- Tree-overview / zoom-to-fit control lands (top-right of the tree canvas, sibling to the FAB) — closes the missing return-path from Phase 4's tap-to-recenter UX.
-- Duplicate-card handling decision made + shipped (option 1 fold-via-`setDuplicateBranchToggle` OR option 2 visual marker — not both).
-- Create-next-app `src/app/page.tsx` replaced with the actual landing screen (heirloom palette, Cormorant hero copy, branch/leaf decorative motifs per ADR 0008's italic-Cormorant whitelist).
-- Slow-nav loading affordance lands: `<Suspense>` skeleton fallbacks for `/dashboard` + `/tree/[id]` plus `useLinkStatus()` progress indicators on the most-traversed links (Phase 6 smoke-walk follow-up).
+- **8a — Brand foundations**: Knot brand-guide pull-review + decisions doc landed; warm-shifted `.dark` tokens map verified; logo + favicon + metadata wired; brand icon set (`Branch`, `Leaf`, `Quote`, `Family`, `Sparkle`, `Heart`) shipped.
+- **8b — Person + tree polish**: gender-shape avatar variation + deceased treatment + `<Memoriam>` component ship together; tree-overview / zoom-to-fit control + floating "+" hover affordance land; duplicate-card visual marker shipped (option 2 — dashed border + `↑` badge + tooltip + tap-to-jump; **NOT** opacity-based, composes cleanly with deceased treatment); QA feedback gate on duplicate marker before phase close.
+- **8c — Landing + nav + animations**: shared `(app)` route group closes [#45](https://github.com/SanchitB23/meetthefam/issues/45); real landing screen replaces `create-next-app` scaffold and closes [#44](https://github.com/SanchitB23/meetthefam/issues/44); heirloom skeletons + `<Suspense>` + `useLinkStatus()` + React 19.2 `<ViewTransition>` (cross-page only, ≤ 200 ms) collectively close [#50](https://github.com/SanchitB23/meetthefam/issues/50); revoke-member confirm copy + italic-Cormorant whitelist audit complete; `APP_VERSION` footer micro-version is the first consumer of [ADR 0009 Amendment 4](../adrs/0009-versioning-and-releases.md)'s build-time-derived version.
 - `pnpm typecheck && pnpm lint && pnpm test` clean.
+- e2e-smoke-tester passes Phase 1–7 flows against the QA preview (no regressions in the `(app)` route group refactor).
 
-**Sub-tasks**:
+**Sub-tasks** (14 total — 8a (4) + 8b (3) + 8c (7)):
 
-- [ ] **Sub-task 1** — TBD at planning.
+**8a — Brand foundations**
 
-> **Workflow note** — Phase 8 continues under the phase-branch-as-default workflow (`feedback_feature_branch_workflow.md`). Closes with `v0.4.0` per [ADR 0009 §1](../adrs/0009-versioning-and-releases.md). Pre-v1 policy still applies (no prod-DB / prod-Vercel-config changes until v1.0 launch gate).
+- [ ] **Sub-task 8a-1** — Knot brand-guide pull-review + decisions doc. No code.
+- [ ] **Sub-task 8a-2** — Warm-shifted dark-mode tokens in `globals.css`; WCAG re-verify.
+- [ ] **Sub-task 8a-3** — Logo / logomark adoption into top-nav + favicon + metadata.
+- [ ] **Sub-task 8a-4** — Brand icon set (`Branch`, `Leaf`, `Quote`, `Family`, `Sparkle`, `Heart`) at `src/components/icons/`.
+
+**8b — Person + tree canvas polish**
+
+- [ ] **Sub-task 8b-1** — Gender-shape avatar variation + deceased treatment + `<Memoriam>` component.
+- [ ] **Sub-task 8b-2** — Tree-overview / zoom-to-fit control + floating "+" hover affordance.
+- [ ] **Sub-task 8b-3** — Duplicate-card visual marker (option 2 — dashed border + `↑` badge + tooltip + tap-to-jump). QA feedback gate before close-out.
+
+**8c — Landing + nav + animations**
+
+- [ ] **Sub-task 8c-1** — Shared `(app)` route group for chrome (closes [#45](https://github.com/SanchitB23/meetthefam/issues/45)).
+- [ ] **Sub-task 8c-2** — Replace `src/app/page.tsx` with real landing screen (closes [#44](https://github.com/SanchitB23/meetthefam/issues/44)).
+- [ ] **Sub-task 8c-3** — Heirloom palette pass on empty / loading / error states (closes [#50](https://github.com/SanchitB23/meetthefam/issues/50) 1/3).
+- [ ] **Sub-task 8c-4** — Slow-nav loading affordance: `<Suspense>` + `useLinkStatus()` (closes [#50](https://github.com/SanchitB23/meetthefam/issues/50) 2/3).
+- [ ] **Sub-task 8c-5** — React 19.2 `<ViewTransition>` for cross-page animations (closes [#50](https://github.com/SanchitB23/meetthefam/issues/50) 3/3).
+- [ ] **Sub-task 8c-6** — Revoke-member confirm copy + italic-Cormorant whitelist audit.
+- [ ] **Sub-task 8c-7** — `APP_VERSION` footer micro-version (first consumer of Amendment 4).
+
+**Out of scope** (per the brainstorm — see spec §"Out of scope"):
+
+- Task 14 (`useEffectEvent` polish) — dropped; revisit v0.5+.
+- Task 18 (Tree-settings unified sheet refactor) — deferred to v0.5 brainstorm.
+- Tree-nav within-canvas animations — deferred unless 8c-5 reveals a boundary issue.
+- Issue [#49](https://github.com/SanchitB23/meetthefam/issues/49) — standalone `fix/login-redirect-authed-user` hotfix outside Phase 8.
+- Issue [#25](https://github.com/SanchitB23/meetthefam/issues/25) — `post-v1.0` labeled; Phase 9 / pre-launch.
+
+> **Workflow note** — Phase 8 continues under the phase-branch-as-default workflow (`feedback_feature_branch_workflow.md`). All 14 sub-tasks land as separate commits on `feat/phase-8-visual-polish-landing`; one PR at phase end squash-merges into `qa`. Closes with `v0.4.0` per [ADR 0009 §1](../adrs/0009-versioning-and-releases.md) — **first release using [Amendment 4](../adrs/0009-versioning-and-releases.md)'s zero-commit release-branch + fast-forward-push recipe.** Pre-v1 policy still applies (no prod-DB / prod-Vercel-config changes until v1.0 launch gate).
 
 ---
 
