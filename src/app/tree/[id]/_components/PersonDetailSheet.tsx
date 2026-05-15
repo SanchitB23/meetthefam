@@ -38,6 +38,8 @@ type Props = {
   /** Resolves spouse/parent names without re-querying the DB. */
   peopleById: Map<string, PersonRow>
   treeId: string
+  /** When true, hides the Edit footer button. Used by the public share view. */
+  readOnly?: boolean
   /** Called with `null` when the user closes the sheet. */
   onOpenChange: (person: PersonRow | null) => void
 }
@@ -56,6 +58,7 @@ export function PersonDetailSheet({
   person,
   peopleById,
   treeId,
+  readOnly = false,
   onOpenChange,
 }: Props) {
   const desktop = useIsDesktop()
@@ -143,21 +146,23 @@ export function PersonDetailSheet({
                   </div>
                 )}
 
-                <div className="flex justify-end pt-2">
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      // Sequence: capture the person for the edit form,
-                      // then close this sheet. The form mounts independently
-                      // of the detail-sheet `person` prop, so closing here
-                      // doesn't unmount it.
-                      setEditPerson(person)
-                      onOpenChange(null)
-                    }}
-                  >
-                    Edit
-                  </Button>
-                </div>
+                {!readOnly && (
+                  <div className="flex justify-end pt-2">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        // Sequence: capture the person for the edit form,
+                        // then close this sheet. The form mounts independently
+                        // of the detail-sheet `person` prop, so closing here
+                        // doesn't unmount it.
+                        setEditPerson(person)
+                        onOpenChange(null)
+                      }}
+                    >
+                      Edit
+                    </Button>
+                  </div>
+                )}
               </div>
             </>
           )}

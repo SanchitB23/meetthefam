@@ -1,16 +1,19 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Users2 } from 'lucide-react'
+import { ArrowLeft, Share2, Users2 } from 'lucide-react'
 import { FamilyTree } from './_components/FamilyTree'
 import type { PersonRow } from './_lib/types'
 import { AddRelativeFab } from './_components/AddRelativeFab'
 import { MembersSheet, type MemberRow, type PendingInviteRow } from './_components/MembersSheet'
+import { ShareLinkSheet } from './_components/ShareLinkSheet'
+import { headers } from 'next/headers'
 
 type TreeRow = {
   id: string
   name: string
   description: string | null
+  share_token: string | null
 }
 
 export default async function TreePage(props: PageProps<'/tree/[id]'>) {
@@ -24,6 +27,8 @@ export default async function TreePage(props: PageProps<'/tree/[id]'>) {
   const initialFocusId =
     typeof rawFocus === 'string' && rawFocus.length > 0 ? rawFocus : null
 
+  const baseUrl = (await headers()).get('origin') ?? 'http://localhost:3000'
+
   const supabase = await createClient()
   const {
     data: { user },
@@ -32,7 +37,7 @@ export default async function TreePage(props: PageProps<'/tree/[id]'>) {
 
   const { data: tree } = await supabase
     .from('trees')
-    .select('id, name, description')
+    .select('id, name, description, share_token')
     .eq('id', id)
     .maybeSingle<TreeRow>()
 
@@ -163,6 +168,16 @@ export default async function TreePage(props: PageProps<'/tree/[id]'>) {
     </button>
   )
 
+  const shareTrigger = (
+    <button
+      type="button"
+      aria-label="Share link"
+      className="inline-flex items-center justify-center h-10 w-10 rounded-md text-foreground/60 hover:text-foreground hover:bg-foreground/5 transition-colors"
+    >
+      <Share2 className="h-5 w-5" />
+    </button>
+  )
+
   return (
     <main className="px-4 py-8">
       <div className="flex items-center gap-3 mb-6 max-w-4xl mx-auto">
@@ -176,6 +191,14 @@ export default async function TreePage(props: PageProps<'/tree/[id]'>) {
         <h1 className="font-serif text-3xl text-foreground leading-tight flex-1 min-w-0 truncate">
           {tree.name}
         </h1>
+        {/* Phase 7 sub-task 2 — Share icon button in top bar */}
+        <ShareLinkSheet
+          treeId={tree.id}
+          currentUserRole={currentUserRole}
+          shareToken={tree.share_token}
+          baseUrl={baseUrl}
+          trigger={shareTrigger}
+        />
         {/* Phase 6 sub-task 4 — Members icon button in top bar */}
         <MembersSheet
           treeId={tree.id}

@@ -263,6 +263,34 @@ Tests: the Phase 6 ship gate — owner mints invite → copy URL → second acco
 
 ---
 
+### Phase 7 — share link flows
+
+All Phase 7 flows assume local dev server (`pnpm dev`) running at `http://localhost:3000` and local Supabase stack (`pnpm exec supabase start`). An incognito / private-browsing window is used to simulate the anonymous viewer.
+
+#### `phase-7-share-link` *(env: local)*
+
+Tests the Phase 7 ship gate — owner enables share link → copy URL → anon viewer in incognito sees read-only tree → owner regenerates → old URL 404s → owner disables → URL 404s.
+
+1. **Pre-condition** — local dev server + Supabase running. Owner A is signed in (normal browser). An incognito window is open and not signed in. The Smith Family demo tree (or any owned tree with people) exists.
+2. As A: open the tree (`/tree/<id>`). In the top bar, click the new `Share2` icon button (next to Members). Assert: the ShareLinkSheet opens with an "Enable read-only share link" button.
+3. As A: click **Enable read-only share link**. Assert: a read-only URL input appears with a Copy button. The URL matches the pattern `http://localhost:3000/share/<43-char-token>`.
+4. Copy the URL. In the incognito window, paste into the address bar and load. Assert: the page renders with a sticky banner ("You're viewing a shared family tree. Sign up to create your own ↗"), the tree-name heading, and the family-tree canvas below. NO FAB visible. NO three-dot button on cards. NO top-nav with Logo or profile menu.
+5. As incognito viewer: tap any person. Assert: the PersonDetailSheet opens showing avatar, name, bio, dates, location, occupation, relations. NO "Edit" button visible at the bottom. Pan + pinch-zoom on the canvas: works.
+6. As incognito viewer: click "Sign up to create your own" in the banner. Assert: lands at `/login`.
+7. As A: go back to the tree's ShareLinkSheet. Click **Regenerate** → **Confirm regenerate**. Assert: the URL changes (token differs). The "Cancel regenerate" affordance dismisses correctly if clicked before Confirm.
+8. As incognito viewer: reload the original (pre-regenerate) URL. Assert: 404 page renders ("Tree not found. This share link is no longer active.").
+9. As A: copy the NEW URL. Paste into the incognito tab. Assert: tree loads again with all chrome from step 4.
+10. As A: click **Disable sharing** → **Confirm disable**. Assert: the URL input disappears and the "Enable read-only share link" button reappears.
+11. As incognito viewer: reload the (just-disabled) URL. Assert: 404 page renders.
+
+**Pass:** all 11 steps complete; step 4 + 5 prove read-only lockdown; step 8 proves the regenerate kills the old URL; step 11 proves disable kills all URLs; no console errors; no orphan rows left after cleanup.
+
+**Skip rules:**
+- Running on `local` without `supabase start` → SKIP with reason "needs-local-supabase".
+- `e2e-smoke-tester` agent tools-grant fix still unresolved → SKIP with reason "needs-tools-grant-fix"; manual QA on the local preview stands in.
+
+---
+
 ## Adding a new flow
 
 When closing out a phase:

@@ -103,7 +103,12 @@ function avatarHtml(data: FamilyChartDatum['data']): string {
   `
 }
 
-export function personNodeHtml(d: TreeDatum): string {
+type PersonNodeHtmlOptions = { readOnly?: boolean }
+
+export function personNodeHtml(
+  d: TreeDatum,
+  options: PersonNodeHtmlOptions = {},
+): string {
   // `d` is a d3 hierarchy node. `d.data` is the Datum we shipped to
   // family-chart (`{ id, data: payload, rels }`). The renderable payload
   // (full_name, birth_year, tone, …) lives at `d.data.data` — one level
@@ -187,7 +192,7 @@ export function personNodeHtml(d: TreeDatum): string {
         overflow:visible;
       "
     >
-      ${ellipsisButton}
+      ${options.readOnly ? '' : ellipsisButton}
       ${avatarHtml(data)}
       <div
         style="
