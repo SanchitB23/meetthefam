@@ -1,8 +1,34 @@
-# Current phase: 7 — Share link
+# Current phase: 8 — Visual polish + landing
+
+Spec → [`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → Phase 8 row.
+
+**Ship gate** *(placeholder — Phase 8 has not been brainstormed yet; refine at plan time)*:
+
+- Knot brand-guide pull-review lands (logomark + wordmark adoption candidates picked, palette + typography overlap/conflicts vs. existing heirloom OKLCH tokens reconciled). See [`phase-backlog.md`](phase-backlog.md) → Phase 8 "Knot brand-guide review" entry for cherry-pick discipline.
+- Warm-shifted dark-mode tokens mapped from the Knot bundle into `globals.css` `.dark` (currently shadcn defaults); WCAG contrast re-verified against the bundle's a11y matrix.
+- React 19.2 `<ViewTransition>` wired for cross-page animations (landing → dashboard, dashboard → tree page) — keep ≤200 ms.
+- Gender-shape avatar variation + deceased treatment (avatar desaturate + `†` badge + `<Memoriam>` name prefix + softened card chrome) ship together per the 2026-05-12 Claude Design brainstorm.
+- Tree-overview / zoom-to-fit control lands (top-right of the tree canvas, sibling to the FAB) — closes the missing return-path from Phase 4's tap-to-recenter UX.
+- Duplicate-card handling decision made + shipped (option 1 fold-via-`setDuplicateBranchToggle` OR option 2 visual marker — not both).
+- Create-next-app `src/app/page.tsx` replaced with the actual landing screen (heirloom palette, Cormorant hero copy, branch/leaf decorative motifs per ADR 0008's italic-Cormorant whitelist).
+- Slow-nav loading affordance lands: `<Suspense>` skeleton fallbacks for `/dashboard` + `/tree/[id]` plus `useLinkStatus()` progress indicators on the most-traversed links (Phase 6 smoke-walk follow-up).
+- `pnpm typecheck && pnpm lint && pnpm test` clean.
+
+**Sub-tasks**:
+
+- [ ] **Sub-task 1** — TBD at planning.
+
+> **Workflow note** — Phase 8 continues under the phase-branch-as-default workflow (`feedback_feature_branch_workflow.md`). Closes with `v0.4.0` per [ADR 0009 §1](../adrs/0009-versioning-and-releases.md). Pre-v1 policy still applies (no prod-DB / prod-Vercel-config changes until v1.0 launch gate).
+
+---
+
+## Previous phase: 7 — Share link (✅ closed)
+
+Closed with **`v0.3.0`**. See [release notes](https://github.com/SanchitB23/meetthefam/releases/tag/v0.3.0).
 
 Spec → [`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → Phase 7 row.
 
-**Ship gate** *(placeholder — Phase 7 has not been brainstormed yet; refine at plan time)*:
+**Ship gate (met)**:
 
 - Anonymous read-only share link works end-to-end: owner toggles the `share_token` on the tree → owner shares the `/share/<token>` URL → a logged-out visitor opens the URL → reads the tree (people + photos via `service_role` lookup, no RLS round-trip) without seeing edit affordances.
 - Owner can rotate the share token (invalidates the old URL).
@@ -20,13 +46,13 @@ Spec → [`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-famil
 - [x] All five sub-tasks ticked above.
 - [x] Per-sub-task docs ticks landed in `current-phase.md` in the same commit as each feature commit (per the standing memory rule).
 - [x] Vitest suite passing: **17 new Phase 7 tests** (9 `shareLink` actions + 4 RLS `share_token` + 4 share-page data lookup) — total suite now **164 tests** on Node 22 (`engines.node` is `≥24.15.0` but the local runner reports an "Unsupported engine" WARN on 22 and proceeds; CI runs the pinned LTS).
-- [ ] `e2e-smoke-tester` agent ran the `phase-7-share-link` smoke flow — still blocked by the `needs-tools-grant-fix` Tooling-backlog item (same block Phase 5 + 6 close-outs flagged); manual QA on the local preview stands in.
-- [ ] Manual QA pass on the QA preview — to be performed during the phase→qa PR review.
-- [ ] Release version: **`v0.3.0`** (second minor bump after v0.2.0 per [ADR 0009 §1](../adrs/0009-versioning-and-releases.md)). Release recipe runs after the phase-branch PR merges into `qa`.
+- [ ] `e2e-smoke-tester` agent ran the `phase-7-share-link` smoke flow — still blocked by the `needs-tools-grant-fix` Tooling-backlog item (same block Phase 5 + 6 close-outs flagged); manual QA on the QA preview stood in.
+- [x] Manual QA pass on the QA preview — user walked the pre-merge smoke checklist during the [PR #48](https://github.com/SanchitB23/meetthefam/pull/48) review before marking it ready.
+- [x] Release version: **`v0.3.0`** (second minor bump after v0.2.0 per [ADR 0009 §1](../adrs/0009-versioning-and-releases.md)). Release rode `release/v0.3.0` per [ADR 0009 §4](../adrs/0009-versioning-and-releases.md) — [PR #51](https://github.com/SanchitB23/meetthefam/pull/51) merged to `main` with merge commit `2797a5f`, GitHub Release [v0.3.0](https://github.com/SanchitB23/meetthefam/releases/tag/v0.3.0) created (prerelease, `--target main`), forward-[PR #52](https://github.com/SanchitB23/meetthefam/pull/52) squash-merged back into `qa` to return the bump.
 - n/a Phase 7 migration applied to QA — **no migration this phase** (the existing `trees.share_token` column + `trees_update_owner` RLS policy from Phase 0 already cover Phase 7's needs).
 - n/a Phase 7 migration applied to **prod** — no migration this phase + pre-v1 policy (no prod DB changes during Phases 6/7/8; everything batches at v1.0 per [`../dev/prod-readiness.md`](../dev/prod-readiness.md)).
 
-> **Workflow note** — Phase 7 will return to the default [ADR 0010](../adrs/0010-feature-branch-workflow.md) sub-task-→-`qa` flow unless brainstorming uncovers parallel-agent scope similar to Phase 6's UI fan-out. Closes with `v0.3.0` per [ADR 0009 §1](../adrs/0009-versioning-and-releases.md).
+> **Workflow note** — Phase 7 was the first phase under the phase-branch-as-default workflow (memory rule `feedback_feature_branch_workflow.md` inverted 2026-05-15; ADR 0010 needs amendment). All 5 sub-tasks landed as separate commits on `feat/phase-7-share-link`, then a single PR `#48` squash-merged into `qa` (commit `92bf861`). Release rode `release/v0.3.0` per [ADR 0009 §4](../adrs/0009-versioning-and-releases.md).
 
 ---
 
