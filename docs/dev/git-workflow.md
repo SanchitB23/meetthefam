@@ -8,10 +8,12 @@ Operational guide for day-to-day branching and PRs in this repo. For the rationa
 local → feat/* (or fix/, chore/, docs/, refactor/, test/, style/)
    ↓                ↘ PR (squash-merge)
    qa  ────────────────────────────────────●
-   ↓                                       ↘ cut release/vX.Y.Z
+   ↓                                       ↘ cut release/vX.Y.Z (snapshot — zero unique commits)
    release/vX.Y.Z ──────────────────────────→ PR to main (merge commit) → tag on GitHub
-                                            ↘ back-PR (squash-merge) returns the bump to qa
+                                            ↘ git push origin release/vX.Y.Z:qa  (fast-forward — no PR)
 ```
+
+> **Since ADR 0009 Amendment 4 (2026-05-15):** the release branch carries zero unique commits (no manual `pnpm version`). The "return to qa" step is now a fast-forward push, not a squash-PR. See [`releases.md`](releases.md) for the full recipe and [`../adrs/0009-versioning-and-releases.md`](../adrs/0009-versioning-and-releases.md) Amendment 4 for the rationale.
 
 Code flows in one direction: `local → feat/* → qa → release/* → main → production`. Never commit directly to `main`. Per-sub-task feature branches are mandatory; direct commits to `qa` are reserved for emergencies.
 
@@ -28,7 +30,7 @@ Branch prefix mirrors the Conventional Commit type used in commit messages. PR t
 | `refactor/<slug>` | `qa` | `qa` | Squash | Internal restructuring with no behavioral change. |
 | `test/<slug>` | `qa` | `qa` | Squash | Test-only additions/fixes when not bundled with feature work. |
 | `style/<slug>` | `qa` | `qa` | Squash | Formatting/style-only changes. |
-| `release/vX.Y.Z` | `qa` | `main` (then back into `qa`) | Merge commit on `main`; squash on the back-PR | Phase-boundary release. Only branch that targets `main`. See [`releases.md`](releases.md). |
+| `release/vX.Y.Z` | `qa` | `main` (then fast-forward into `qa`) | Merge commit on `main`; `git push` fast-forward to `qa` | Phase-boundary release. Only branch that targets `main`. Snapshot pointer — zero unique commits. See [`releases.md`](releases.md). |
 | `fix/<slug>` (hotfix) | `main` | `main` | Merge commit | **Hotfix exception**: production is broken AND `qa` has un-shipped work. Forward-port to `qa` afterwards. |
 
 ## Sub-task workflow

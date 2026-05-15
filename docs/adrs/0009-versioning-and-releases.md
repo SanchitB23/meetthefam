@@ -46,32 +46,25 @@ The release process is run by the human after each `qa→main` promotion. **Alwa
 ```bash
 gh auth status                          # MUST show SanchitB23 active
 
-# 1. Cut release branch from qa.
+# 1. Cut release branch from qa. Snapshot pointer — zero unique commits
+#    (per Amendment 4: no version bump, no edits on the branch).
 git checkout qa && git pull --ff-only
 git checkout -b release/vX.Y.Z
 
-# 2. Bump version. Choose patch / minor / major per §1 above.
-#    --no-git-tag-version because the tag is created on GitHub in step 6,
-#    not locally — keeps the tag's source of truth on GitHub against the
-#    actual main merge commit.
-pnpm version <patch|minor|major> --no-git-tag-version
-git add package.json pnpm-lock.yaml
-git commit -m "chore(release): vX.Y.Z"
-
-# 3. Push branch. No tags pushed.
+# 2. Push the snapshot. No tags pushed.
 git push -u origin release/vX.Y.Z
 
-# 4. PR into main. Release notes in body.
+# 3. PR into main. Release notes in body.
 gh pr create --repo SanchitB23/meetthefam \
   --base main --head release/vX.Y.Z \
   --title "vX.Y.Z — <summary>" \
   --body-file /tmp/vX.Y.Z-notes.md
 
-# 5. Merge with a real merge commit. Keep the branch alive — step 7 reuses it.
+# 4. Merge with a real merge commit. Keep the branch alive — step 6 reuses it.
 gh pr merge --repo SanchitB23/meetthefam --merge \
             --delete-branch=false <release-pr-number>
 
-# 6. Create GitHub Release — this creates the tag, pointing at the new
+# 5. Create GitHub Release — this creates the tag, pointing at the new
 #    main merge commit.
 git fetch origin main
 gh release create vX.Y.Z \
@@ -81,13 +74,10 @@ gh release create vX.Y.Z \
   --notes-file /tmp/vX.Y.Z-notes.md \
   --prerelease                          # drop --prerelease starting v1.0.0
 
-# 7. Forward the bump back to qa so the branches don't diverge on package.json.
-gh pr create --repo SanchitB23/meetthefam \
-  --base qa --head release/vX.Y.Z \
-  --title "chore(release): forward vX.Y.Z bump to qa" \
-  --body "Brings the package.json bump from #<release-pr-number> back to qa."
-gh pr merge --repo SanchitB23/meetthefam --squash \
-            --delete-branch <forward-pr-number>
+# 6. Fast-forward qa to release-branch tip (Amendment 4 — no more
+#    forward-PR; zero ghost commits, zero structural divergence).
+git push origin release/vX.Y.Z:qa
+git push origin --delete release/vX.Y.Z
 ```
 
 **Fallback for environments without `gh`** (CI, or a fresh machine before `gh auth login`): curl to the GitHub REST API using `$GITHUB_PERSONAL_ACCESS_TOKEN` from `.env.local` (loaded by direnv, fine-grained-scoped to `SanchitB23/meetthefam`):
@@ -135,6 +125,12 @@ The GitHub MCP currently has only read-tools for releases (no `create_release`),
 - **2026-05-12** — Promoted `gh release create` to the primary release command and demoted the `curl` form to a fallback. The original §4 (in `v0.0.0`'s ADR) claimed `gh` was unavailable because it was logged into the user's org account — that was incorrect at the time of writing. Both `SanchitB23` (personal) and `SQB6461_YUMGHCP` (org) are logged in on this machine, with `SanchitB23` set as the active account, and `gh release create` works against this repo. The `v0.0.0` release was itself created via `gh release create`, demonstrating the path. §4 was rewritten accordingly, and a "verify `gh auth status` first" step was prepended to guard against accidentally operating under the org identity.
 
 - **2026-05-12 (post-v0.0.2)** — Flipped the promotion mechanic from "`git merge qa --ff-only`, no PR" to **"PR with a real merge commit"**. The original convention optimized for a linear `main` history; in practice that cost us the PR record as a durable phase marker, and a GitHub Release alone isn't as discoverable when you're scanning history six months later. New convention: each `qa → main` promotion goes through a PR (description reuses the release notes), merged via GitHub's "Create a merge commit" — squash and rebase are explicitly disallowed because they lose either the per-sub-task commits or the phase boundary. `git log --graph main` now shows one merge bubble per release. Releases `v0.0.0`, `v0.0.1`, and `v0.0.2` predate this amendment and shipped via the ff-only path — they remain as-is on `main`, with GitHub Releases serving as their history markers. Starting Phase 2, every promotion follows the PR-based steps in CLAUDE.md "Releases."
+
+- **2026-05-15 (post-v0.3.0)** — Killed the recurring `package.json` 3-way merge conflict on the release PR. Two structural changes:
+  1. **Drop the manual `pnpm version` step from the release recipe.** `package.json` `version` becomes a permanent sentinel `"0.0.0-dev"`, never edited by hand. A new build script [`scripts/derive-version.mjs`](../../scripts/derive-version.mjs) runs as `prebuild` and writes the real version into `src/lib/generated/version.ts` from the latest git tag. `APP_VERSION` is exported but unused at write-time (no UI consumer yet); future surfaces (dev banner, Sentry release tag, debug overlay) can import it directly. Version-string format: tagged commit → `"X.Y.Z"`; release branch preview → `"X.Y.Z-rc.<short-sha>"`; everything else → `"<latest-tag>-dev.<short-sha>"`.
+  2. **Replace the forward-PR (squash) step with a fast-forward push** of the release branch into `qa`: `git push origin release/vX.Y.Z:qa`. This lands the same SHA on qa as one of main's merge-commit parents — eliminating the ghost-commit class of conflicts where the version-bump existed on two distinct SHAs (one in `main`'s merge commit's release-parent, one in `qa`'s squash-forward commit). Rare-case fallback (qa moved during the release window) documented in [`../dev/releases.md`](../dev/releases.md).
+  **Why now.** The same conflict struck v0.1.0 (resolver commit `4673f59`) and v0.3.0 (resolver commit `097abaa`). Two more releases at this cadence and we've burned an hour on the same manual resolution. The root cause is structural to Git Flow with manual `version` files — modern shops on Git Flow auto-derive `version` from tags; modern non-Git-Flow shops (trunk-based, GitHub Flow, GitLab Flow) avoid the problem at the source by dropping the long-lived `develop`/`qa` branch entirely. We pick the cheaper of the two: keep `qa`, drop the manual bump, fast-forward the version into qa. Switching to GitHub Flow is deferred to v1.0+ when team size justifies the refactor.
+  **Releases v0.0.0–v0.3.0 keep their existing tags and history as-is.** Starting v0.4.0, every release follows the new recipe (zero unique commits on the release branch; fast-forward push of release-branch-tip into qa). Full design spec: [`../superpowers/specs/2026-05-15-release-flow-divergence-fix-design.md`](../superpowers/specs/2026-05-15-release-flow-divergence-fix-design.md).
 
 - **2026-05-12 (post-v0.0.4)** — Reworked §4 release steps to drive the release through a dedicated `release/vX.Y.Z` branch and create the tag on GitHub rather than locally. Three concrete changes:
   1. **Source branch for the release PR is now `release/vX.Y.Z` (cut from `qa`), not `qa` directly.** This isolates the version-bump commit on a disposable branch — if the release is aborted, `qa` doesn't carry a half-cooked bump that has to be reverted.
