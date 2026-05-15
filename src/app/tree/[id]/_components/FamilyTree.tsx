@@ -94,7 +94,7 @@ function getServerHashSnapshot(): string | null {
   return null
 }
 
-function FamilyTreeImpl({ treeId, people, initialFocusId }: Props) {
+function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<Chart | null>(null)
   const [detailPersonId, setDetailPersonId] = useState<string | null>(null)
@@ -122,15 +122,19 @@ function FamilyTreeImpl({ treeId, people, initialFocusId }: Props) {
   const currentFocusId = hashFocus ?? initialFocusId ?? null
 
   const { shouldSuppressNextClickRef } = usePressActions(containerRef, {
-    onLongPress: (personId, e) => {
-      const node = (e.target as HTMLElement | null)?.closest('.mtf-node') as HTMLElement | null
-      const rect = node?.getBoundingClientRect()
-      setActionAnchor({
-        personId,
-        x: rect ? rect.right - 4 : e.clientX,
-        y: rect ? rect.top + 8 : e.clientY,
-      })
-    },
+    onLongPress: readOnly
+      ? () => {
+          /* no-op in read-only mode */
+        }
+      : (personId, e) => {
+          const node = (e.target as HTMLElement | null)?.closest('.mtf-node') as HTMLElement | null
+          const rect = node?.getBoundingClientRect()
+          setActionAnchor({
+            personId,
+            x: rect ? rect.right - 4 : e.clientX,
+            y: rect ? rect.top + 8 : e.clientY,
+          })
+        },
   })
 
   // Chart-bound effect — full teardown + rebuild when `people` changes.
@@ -165,7 +169,7 @@ function FamilyTreeImpl({ treeId, people, initialFocusId }: Props) {
     chart
       .setCardHtml()
       .setCardDim({ w: 158, h: 110 })
-      .setCardInnerHtmlCreator(personNodeHtml)
+      .setCardInnerHtmlCreator((d) => personNodeHtml(d, { readOnly }))
       .setOnCardClick((e: Event, d: TreeDatum) => {
         if (shouldSuppressNextClickRef.current) {
           shouldSuppressNextClickRef.current = false
@@ -174,16 +178,18 @@ function FamilyTreeImpl({ treeId, people, initialFocusId }: Props) {
         const id = d.data.id
         if (!peopleByIdRef.current.has(id)) return
 
-        const target = (e.target as HTMLElement | null) ?? null
-        const trigger = target?.closest('[data-action-trigger]') as HTMLElement | null
-        if (trigger) {
-          const rect = trigger.getBoundingClientRect()
-          setActionAnchor({
-            personId: id,
-            x: rect.right,
-            y: rect.bottom,
-          })
-          return
+        if (!readOnly) {
+          const target = (e.target as HTMLElement | null) ?? null
+          const trigger = target?.closest('[data-action-trigger]') as HTMLElement | null
+          if (trigger) {
+            const rect = trigger.getBoundingClientRect()
+            setActionAnchor({
+              personId: id,
+              x: rect.right,
+              y: rect.bottom,
+            })
+            return
+          }
         }
         setDetailPersonId(id)
       })
@@ -208,7 +214,7 @@ function FamilyTreeImpl({ treeId, people, initialFocusId }: Props) {
     // come through the hash and the hashchange-driven `applyFocus`
     // effect, not through teardown + rebuild.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [people, shouldSuppressNextClickRef])
+  }, [people, shouldSuppressNextClickRef, readOnly])
 
   // React → chart sync. The hash-derived `currentFocusId` is the source;
   // whenever it changes we push the new id into family-chart's store.
@@ -267,17 +273,22 @@ function FamilyTreeImpl({ treeId, people, initialFocusId }: Props) {
         person={detailPerson}
         peopleById={peopleById}
         treeId={treeId}
+        readOnly={readOnly}
         onOpenChange={(next) => setDetailPersonId(next?.id ?? null)}
       />
-      <PersonActionMenu
-        anchor={actionAnchor}
-        treeId={treeId}
-        people={people}
-        peopleById={peopleById}
-        onClose={() => setActionAnchor(null)}
-        onRecenter={handleRecenter}
-      />
-      <AddRelativeFab treeId={treeId} focusPerson={focusPerson} />
+      {!readOnly && (
+        <>
+          <PersonActionMenu
+            anchor={actionAnchor}
+            treeId={treeId}
+            people={people}
+            peopleById={peopleById}
+            onClose={() => setActionAnchor(null)}
+            onRecenter={handleRecenter}
+          />
+          <AddRelativeFab treeId={treeId} focusPerson={focusPerson} />
+        </>
+      )}
     </>
   )
 }
