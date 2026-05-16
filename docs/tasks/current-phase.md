@@ -12,11 +12,13 @@ Spec → [`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-famil
 
 ---
 
-### Phase 8a — slice 1 of 3 (landing in qa via PR #55)
+### Phase 8 progress — running draft PR #55 opened for visibility
 
-**Pivot rationale** *(2026-05-16, mid-phase)* — the original plan was a single 14-sub-task phase branch ending in one PR + `v0.4.0`. User opted to ship the 8a slice (brand foundations, 4 sub-tasks) into `qa` first via its own draft PR, then pick up 8b/8c on a fresh branch. Reasoning: visual polish should land in `qa` ahead of the longer 8b/8c work so the warm-shifted dark mode + Logo + brand icons get preview-bake time independent of the canvas / landing churn. The `v0.4.0` release still cuts at FULL Phase 8 close (after 8c-7) — 8a merging into `qa` does NOT trigger its own release (mid-phase merge, not phase close).
+**Branch strategy** *(unchanged from the plan)* — ONE phase branch `feat/phase-8-visual-polish-landing` holds ALL 14 sub-tasks (8a-1..8a-4, 8b-1..8b-3, 8c-1..8c-7). The single squash-merge into `qa` happens once 8c-7 + phase close-out land. `v0.4.0` releases at that point per [ADR 0009 Amendment 4](../adrs/0009-versioning-and-releases.md).
 
-**Commits on `feat/phase-8-visual-polish-landing` (5 ahead of qa)**:
+PR #55 is a **running draft** opened mid-phase for review-visibility while the work is in flight — it is NOT a "slice PR" and 8b/8c commits will be added to this same PR (same branch).
+
+**Commits on `feat/phase-8-visual-polish-landing` so far (6 ahead of qa)**:
 
 | SHA | Sub-task |
 |---|---|
@@ -25,10 +27,11 @@ Spec → [`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-famil
 | `45bc84a` | 8a-3 Logo logomark + favicon + metadata |
 | `96aa207` | 8a-4 brand icon set (`Branch`, `Leaf`, `Quote`, `Family`, `Sparkle`, `Heart`) |
 | `a60ea87` | 8a polish (favicon `aria`, "An heirloom", drop Logo snapshot, `BRANCH_ASPECT_RATIO` const) |
+| `49d9d61` | docs: next-session handoff notes (this section's first draft; superseded by the current revision) |
 
-**Draft PR**: [#55](https://github.com/SanchitB23/meetthefam/pull/55) — `feat(phase-8a): brand foundations — Knot pull-review + dark-mode + Logo + brand icons` (`feat/phase-8-visual-polish-landing` → `qa`, **draft**, mergeable).
+**Draft PR**: [#55](https://github.com/SanchitB23/meetthefam/pull/55) — full Phase 8 running draft, `feat/phase-8-visual-polish-landing` → `qa`. Will be marked ready ONLY after 8c-7 + phase close-out land.
 
-**Gates at HEAD (`a60ea87`)**:
+**Gates at the most recent code-touching HEAD (`a60ea87`)**:
 
 - `pnpm typecheck` clean.
 - `pnpm lint` clean (only the pre-existing `PersonForm` `react-hooks/incompatible-library` warning).
@@ -36,14 +39,11 @@ Spec → [`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-famil
 
 ### Phase 8b / 8c — next session
 
-**Cut a fresh branch from `qa` after [PR #55](https://github.com/SanchitB23/meetthefam/pull/55) merges.** Suggested branch shapes (defer to the next session's judgement):
+**Continue on the SAME branch `feat/phase-8-visual-polish-landing`.** No fresh branch. Pull origin first (`git checkout feat/phase-8-visual-polish-landing && git pull --ff-only`), then start at the first unticked sub-task in the canonical plan: **8b-1**.
 
-- Two branches: `feat/phase-8b-canvas-polish` for 8b-1 / 8b-2 / 8b-3, then `feat/phase-8c-landing-and-nav` for 8c-1..8c-7.
-- One branch: `feat/phase-8bc-rest` for all 10 remaining sub-tasks.
+The canonical reference is the plan at [`../superpowers/plans/2026-05-16-phase-8-visual-polish-landing.md`](../superpowers/plans/2026-05-16-phase-8-visual-polish-landing.md) — sub-task numbering, locked decisions, internal milestone smokes (8a-done / 8b-done / 8c-done), and phase close-out + release recipe are all unchanged.
 
-The canonical reference is still the plan at [`../superpowers/plans/2026-05-16-phase-8-visual-polish-landing.md`](../superpowers/plans/2026-05-16-phase-8-visual-polish-landing.md) — sub-task numbering + locked decisions + milestone smokes are unchanged by the slice pivot.
-
-**Still-pending sub-tasks**: 8b-1, 8b-2, 8b-3, 8c-1, 8c-2, 8c-3, 8c-4, 8c-5, 8c-6, 8c-7 → phase close-out → `v0.4.0` release.
+**Still-pending sub-tasks**: 8b-1, 8b-2, 8b-3, 8c-1, 8c-2, 8c-3, 8c-4, 8c-5, 8c-6, 8c-7 → phase close-out → `v0.4.0` release (single phase PR squash-merge into qa, then ADR 0009 Amendment 4 release flow).
 
 ### Infrastructure blockers to address before milestone smokes can run
 
