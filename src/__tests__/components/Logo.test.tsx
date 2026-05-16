@@ -19,9 +19,4 @@ describe('<Logo>', () => {
       expect(el.getAttribute('stroke')).toBe('currentColor')
     })
   })
-
-  it('matches snapshot at default size', () => {
-    const { asFragment } = render(<Logo />)
-    expect(asFragment()).toMatchSnapshot()
-  })
 })

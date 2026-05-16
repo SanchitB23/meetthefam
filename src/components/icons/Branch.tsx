@@ -1,4 +1,8 @@
 // src/components/icons/Branch.tsx
+
+// Aspect ratio derived from the viewBox: 80 / 200 = 0.4
+const BRANCH_ASPECT_RATIO = 80 / 200
+
 type Props = {
   size?: number
   className?: string
@@ -25,7 +29,7 @@ export function Branch({ size = 200, className, flip = false }: Props) {
   return (
     <svg
       width={size}
-      height={Math.round(size * 0.4)}
+      height={Math.round(size * BRANCH_ASPECT_RATIO)}
       viewBox="0 0 200 80"
       fill="none"
       aria-hidden="true"
