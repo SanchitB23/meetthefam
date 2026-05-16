@@ -1,0 +1,162 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`brand icons > <Branch> matches snapshot 1`] = `
+<DocumentFragment>
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height="80"
+    preserveAspectRatio="none"
+    viewBox="0 0 200 80"
+    width="200"
+  >
+    <path
+      d="M5 40 Q 60 10, 105 40 T 195 40"
+      fill="none"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-width="1.2"
+    />
+    <circle
+      cx="105"
+      cy="40"
+      fill="currentColor"
+      r="2.6"
+    />
+    <path
+      d="M50 25 q 5 -8, 12 -6 q -3 6, -12 6 z"
+      fill="currentColor"
+      opacity="0.7"
+    />
+    <path
+      d="M150 55 q 5 8, 12 6 q -3 -6, -12 -6 z"
+      fill="currentColor"
+      opacity="0.7"
+    />
+  </svg>
+</DocumentFragment>
+`;
+
+exports[`brand icons > <Family> matches snapshot 1`] = `
+<DocumentFragment>
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height="18"
+    stroke="currentColor"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="1.6"
+    viewBox="0 0 24 24"
+    width="18"
+  >
+    <circle
+      cx="8"
+      cy="9"
+      r="2.2"
+    />
+    <circle
+      cx="16"
+      cy="9"
+      r="2.2"
+    />
+    <circle
+      cx="12"
+      cy="16"
+      r="1.8"
+    />
+    <path
+      d="M5 18c.5-2 1.5-3.5 3-4M19 18c-.5-2-1.5-3.5-3-4"
+    />
+  </svg>
+</DocumentFragment>
+`;
+
+exports[`brand icons > <Heart> matches snapshot 1`] = `
+<DocumentFragment>
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height="18"
+    stroke="currentColor"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="1.6"
+    viewBox="0 0 24 24"
+    width="18"
+  >
+    <path
+      d="M12 20s-7-4.5-9-9.5C1.5 6.5 5 3 8.5 5 10 5.8 11 7 12 8c1-1 2-2.2 3.5-3 3.5-2 7 1.5 5.5 5.5C19 15.5 12 20 12 20z"
+    />
+  </svg>
+</DocumentFragment>
+`;
+
+exports[`brand icons > <Leaf> matches snapshot 1`] = `
+<DocumentFragment>
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height="18"
+    stroke="currentColor"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="1.6"
+    viewBox="0 0 24 24"
+    width="18"
+  >
+    <path
+      d="M5 19c0-9 7-15 15-15-1 9-7 15-15 15z"
+    />
+    <path
+      d="M5 19l9-9"
+    />
+  </svg>
+</DocumentFragment>
+`;
+
+exports[`brand icons > <Quote> matches snapshot 1`] = `
+<DocumentFragment>
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height="18"
+    stroke="currentColor"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="1.6"
+    viewBox="0 0 24 24"
+    width="18"
+  >
+    <path
+      d="M7 8h4v4c0 3-2 5-5 5"
+    />
+    <path
+      d="M14 8h4v4c0 3-2 5-5 5"
+    />
+  </svg>
+</DocumentFragment>
+`;
+
+exports[`brand icons > <Sparkle> matches snapshot 1`] = `
+<DocumentFragment>
+  <svg
+    aria-hidden="true"
+    fill="none"
+    height="18"
+    stroke="currentColor"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="1.6"
+    viewBox="0 0 24 24"
+    width="18"
+  >
+    <path
+      d="M12 3v4M12 17v4M3 12h4M17 12h4"
+    />
+    <path
+      d="M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2"
+    />
+  </svg>
+</DocumentFragment>
+`;
