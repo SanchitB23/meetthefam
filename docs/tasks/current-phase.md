@@ -10,6 +10,59 @@ Spec → [`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-famil
 - `pnpm typecheck && pnpm lint && pnpm test` clean.
 - e2e-smoke-tester passes Phase 1–7 flows against the QA preview (no regressions in the `(app)` route group refactor).
 
+---
+
+### Phase 8a — slice 1 of 3 (landing in qa via PR #55)
+
+**Pivot rationale** *(2026-05-16, mid-phase)* — the original plan was a single 14-sub-task phase branch ending in one PR + `v0.4.0`. User opted to ship the 8a slice (brand foundations, 4 sub-tasks) into `qa` first via its own draft PR, then pick up 8b/8c on a fresh branch. Reasoning: visual polish should land in `qa` ahead of the longer 8b/8c work so the warm-shifted dark mode + Logo + brand icons get preview-bake time independent of the canvas / landing churn. The `v0.4.0` release still cuts at FULL Phase 8 close (after 8c-7) — 8a merging into `qa` does NOT trigger its own release (mid-phase merge, not phase close).
+
+**Commits on `feat/phase-8-visual-polish-landing` (5 ahead of qa)**:
+
+| SHA | Sub-task |
+|---|---|
+| `a3ce6ad` | 8a-1 Knot brand-decisions doc |
+| `6f86816` | 8a-2 warm-shifted dark-mode tokens |
+| `45bc84a` | 8a-3 Logo logomark + favicon + metadata |
+| `96aa207` | 8a-4 brand icon set (`Branch`, `Leaf`, `Quote`, `Family`, `Sparkle`, `Heart`) |
+| `a60ea87` | 8a polish (favicon `aria`, "An heirloom", drop Logo snapshot, `BRANCH_ASPECT_RATIO` const) |
+
+**Draft PR**: [#55](https://github.com/SanchitB23/meetthefam/pull/55) — `feat(phase-8a): brand foundations — Knot pull-review + dark-mode + Logo + brand icons` (`feat/phase-8-visual-polish-landing` → `qa`, **draft**, mergeable).
+
+**Gates at HEAD (`a60ea87`)**:
+
+- `pnpm typecheck` clean.
+- `pnpm lint` clean (only the pre-existing `PersonForm` `react-hooks/incompatible-library` warning).
+- `pnpm test --run` **178 / 178** pass.
+
+### Phase 8b / 8c — next session
+
+**Cut a fresh branch from `qa` after [PR #55](https://github.com/SanchitB23/meetthefam/pull/55) merges.** Suggested branch shapes (defer to the next session's judgement):
+
+- Two branches: `feat/phase-8b-canvas-polish` for 8b-1 / 8b-2 / 8b-3, then `feat/phase-8c-landing-and-nav` for 8c-1..8c-7.
+- One branch: `feat/phase-8bc-rest` for all 10 remaining sub-tasks.
+
+The canonical reference is still the plan at [`../superpowers/plans/2026-05-16-phase-8-visual-polish-landing.md`](../superpowers/plans/2026-05-16-phase-8-visual-polish-landing.md) — sub-task numbering + locked decisions + milestone smokes are unchanged by the slice pivot.
+
+**Still-pending sub-tasks**: 8b-1, 8b-2, 8b-3, 8c-1, 8c-2, 8c-3, 8c-4, 8c-5, 8c-6, 8c-7 → phase close-out → `v0.4.0` release.
+
+### Infrastructure blockers to address before milestone smokes can run
+
+Discovered during the 8a-done smoke attempt — neither is a code issue, but both will block 8b-done / 8c-done smokes too if left unfixed:
+
+1. **Playwright MCP not attached to dispatched `e2e-smoke-tester` subagents.** Tools appear in the controller session's deferred-tool list but don't pass through to subagents spawned via the Task tool. Fix: add the Playwright server to `enabledMcpjsonServers` in `.claude/settings.local.json`, then restart Claude Code so the subagent runtime re-reads the config. (The `tools:` grant in `.claude/agents/e2e-smoke-tester.md` is already correct — Phase 6 close-out fixed that — the gap is at the subagent-MCP-attachment layer.)
+2. **Vercel preview SSO gate.** Both `feat-phase-8-*` and `qa` previews return `HTTP/2 401` with a `_vercel_sso_nonce` cookie. Fix: lift preview-protection on the Vercel project (Settings → Deployment Protection), OR pass an `x-vercel-protection-bypass` token through to the agent's `browser_*` calls.
+
+### Carry-forward review items from 8a (deferred / non-blocking)
+
+The 8a pull-review of Knot's brand bundle surfaced **zero blocking issues** — all four sub-tasks landed cleanly. The four items below are explicitly captured in [`../architecture/brand-decisions.md`](../architecture/brand-decisions.md) § Open questions and queued for v0.5+ (NOT for the remaining Phase 8 work):
+
+- Spacing scale audit — Tailwind v4 default vs Knot `tokens.json`'s 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 / 48 px scale.
+- Type-size scale alignment — Knot named scale (xs / sm / base / lg / xl / 2xl / 3xl / 4xl / 5xl) vs our current ad-hoc Tailwind usage.
+- Automated WCAG contrast budget Vitest test — replaces the manual screenshot walk currently used to verify 8a-2's warm-shifted dark mode.
+- `base-nova` shadcn preset smoke test against the new radius scale — once 8a-1's adopted radius scale lands in `globals.css` it'd be worth confirming the shadcn primitives still render correctly.
+
+---
+
 **Sub-tasks** (14 total — 8a (4) + 8b (3) + 8c (7)):
 
 **8a — Brand foundations**
