@@ -103,37 +103,40 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* Warm-shifted dark mode per Knot brand-decisions.md (Phase 8a-2) — NOT
+   * a desaturated invert of light mode. Sustains the heirloom journal
+   * aesthetic in dark. */
+  --background: oklch(0.18 0.01 60);       /* warm near-black ≈ #1B1814 */
+  --foreground: oklch(0.89 0.018 80);      /* warm parchment ≈ #E8DFD0 */
+  --card: oklch(0.22 0.012 70);            /* paper-on-dark ≈ #241F18 */
+  --card-foreground: oklch(0.89 0.018 80);
+  --popover: oklch(0.22 0.012 70);
+  --popover-foreground: oklch(0.89 0.018 80);
+  --primary: oklch(0.92 0.018 80);         /* brightened ink for button legibility */
+  --primary-foreground: oklch(0.18 0.01 60);
+  --secondary: oklch(0.25 0.012 70);
+  --secondary-foreground: oklch(0.89 0.018 80);
+  --muted: oklch(0.25 0.012 70);
+  --muted-foreground: oklch(0.62 0.018 80);
+  --accent: oklch(0.72 0.10 38);           /* warm terracotta ≈ #E09376 */
+  --accent-foreground: oklch(0.18 0.01 60);
+  --destructive: oklch(0.70 0.18 25);
+  --border: oklch(0.89 0.018 80 / 0.12);
+  --input: oklch(0.89 0.018 80 / 0.18);
+  --ring: oklch(0.72 0.10 38);
+  --chart-1: oklch(0.92 0.018 80);
+  --chart-2: oklch(0.72 0.10 38);
+  --chart-3: oklch(0.62 0.018 80);
+  --chart-4: oklch(0.50 0.04 200);
+  --chart-5: oklch(0.45 0.06 60);
+  --sidebar: oklch(0.22 0.012 70);
+  --sidebar-foreground: oklch(0.89 0.018 80);
+  --sidebar-primary: oklch(0.92 0.018 80);
+  --sidebar-primary-foreground: oklch(0.18 0.01 60);
+  --sidebar-accent: oklch(0.25 0.012 70);
+  --sidebar-accent-foreground: oklch(0.89 0.018 80);
+  --sidebar-border: oklch(0.89 0.018 80 / 0.12);
+  --sidebar-ring: oklch(0.72 0.10 38);
 }
 
 @layer base {
