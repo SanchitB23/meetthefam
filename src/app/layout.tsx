@@ -19,7 +19,21 @@ const cormorant = Cormorant_Garamond({
 
 export const metadata: Metadata = {
   title: "meetthefam",
-  description: "Build your private family tree.",
+  description:
+    "A heirloom-quality family-tree builder for the people who already know each other",
+  icons: {
+    icon: [{ url: "/logo.svg", type: "image/svg+xml" }],
+  },
+  openGraph: {
+    title: "meetthefam",
+    description: "A heirloom-quality family-tree builder",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "meetthefam",
+    description: "A heirloom-quality family-tree builder",
+  },
 };
 
 export default function RootLayout({
