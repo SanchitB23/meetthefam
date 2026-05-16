@@ -14,7 +14,7 @@ Spec → [`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-famil
 
 **8a — Brand foundations**
 
-- [ ] **Sub-task 8a-1** — Knot brand-guide pull-review + decisions doc. No code.
+- [x] **Sub-task 8a-1** — Knot brand-guide pull-review + decisions doc. No code. Decisions captured in [`../architecture/brand-decisions.md`](../architecture/brand-decisions.md). No ADR amendment needed; ADR 0008 light-touch amendment to follow when 8a-1 lands. Tone-encoding decision: `oklch(from #HEX)` syntax.
 - [ ] **Sub-task 8a-2** — Warm-shifted dark-mode tokens in `globals.css`; WCAG re-verify.
 - [ ] **Sub-task 8a-3** — Logo / logomark adoption into top-nav + favicon + metadata.
 - [ ] **Sub-task 8a-4** — Brand icon set (`Branch`, `Leaf`, `Quote`, `Family`, `Sparkle`, `Heart`) at `src/components/icons/`.
