@@ -178,7 +178,8 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
           // 8b-2 mobile parity — also surface hover state after long-press so
           // the PersonHoverPlus "+" is reachable on touch devices. The position
           // is the bottom-right of the node relative to the wrapper container.
-          if (node) {
+          // 8b-3: skip duplicate cards — echoes don't get the "+" affordance.
+          if (node && node.dataset.duplicate !== 'true') {
             const wrapper = wrapperRef.current ?? containerRef.current
             if (wrapper) {
               setHoverState({
@@ -231,8 +232,22 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
         const id = d.data.id
         if (!peopleByIdRef.current.has(id)) return
 
+        const target = (e.target as HTMLElement | null) ?? null
+
+        // 8b-3: tap on a duplicate card → jump to the primary instance.
+        // family-chart marks duplicates with the same data.id as the primary,
+        // so setting the hash to that id re-centers on the canonical occurrence
+        // via the existing hash-driven re-center wiring (handleRecenter /
+        // useSyncExternalStore). Use window.location.hash (not replaceState)
+        // so a new hashchange event fires and the subscriber picks it up.
+        // This branch fires BEFORE the action-trigger branch so a duplicate
+        // card never falls through to the action menu path.
+        if (target?.closest('[data-duplicate="true"]')) {
+          window.location.hash = `#p=${encodeURIComponent(id)}`
+          return
+        }
+
         if (!readOnly) {
-          const target = (e.target as HTMLElement | null) ?? null
           const trigger = target?.closest('[data-action-trigger]') as HTMLElement | null
           if (trigger) {
             const rect = trigger.getBoundingClientRect()
@@ -317,6 +332,7 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
       const target = e.target as HTMLElement | null
       const node = target?.closest('.mtf-node') as HTMLElement | null
       if (!node) return
+      if (node.dataset.duplicate === 'true') return  // 8b-3: echoes don't get the "+" hover
       const personId = node.dataset.personId
       if (!personId) return
       const wrapper = wrapperRef.current ?? cont
@@ -327,6 +343,7 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
       const target = e.target as HTMLElement | null
       const node = target?.closest('.mtf-node') as HTMLElement | null
       if (!node) return
+      if (node.dataset.duplicate === 'true') return  // 8b-3: defensive — echoes don't own hover state
 
       // Avoid flicker when the pointer transitions between children inside the
       // same .mtf-node. Only clear hover when the relatedTarget is outside

@@ -212,3 +212,63 @@ describe('personNodeHtml — deceased treatment (8b-1)', () => {
     expect(html).not.toContain('mtf-node__deceased-badge')
   })
 })
+
+// 8b-3 — duplicate-card visual marker tests.
+// The duplicate flag lives on the d3 node (`node.duplicate: number`) per
+// family-chart.esm.js:880. The `treeNode` helper is extended inline here
+// by spreading the duplicate count onto the returned object.
+describe('personNodeHtml — duplicate marker (8b-3)', () => {
+  /** Build a TreeDatum with d.duplicate set (node-level flag, not data-level). */
+  function duplicateNode(
+    dataOverrides: Partial<Parameters<typeof datum>[0]> = {},
+    duplicateCount = 2,
+  ) {
+    const base = treeNode(datum(dataOverrides))
+    return { ...base, duplicate: duplicateCount } as typeof base
+  }
+
+  test('duplicate emits the mtf-node--duplicate class and dashed border', () => {
+    const html = personNodeHtml(duplicateNode())
+    expect(html).toContain('mtf-node--duplicate')
+    // The inline style uses the border shorthand: `border:1px dashed var(--border)`.
+    // Verify the dashed keyword appears in the border declaration.
+    expect(html).toMatch(/border:\s*1px dashed/)
+  })
+
+  test('duplicate emits the ↑ badge at the expected corner (top:-6px; left:-6px)', () => {
+    const html = personNodeHtml(duplicateNode())
+    expect(html).toContain('mtf-node__duplicate-badge')
+    expect(html).toContain('↑')
+    expect(html).toContain('top:-6px')
+    expect(html).toContain('left:-6px')
+    // Also verifies the "Already shown above" tooltip text is present.
+    expect(html).toContain('Already shown above')
+  })
+
+  test('duplicate omits the ellipsis action button (no data-action-trigger)', () => {
+    const html = personNodeHtml(duplicateNode())
+    expect(html).not.toContain('data-action-trigger')
+  })
+
+  test('deceased + duplicate compose without collision: both classes, both badges, different corners', () => {
+    const html = personNodeHtml(
+      duplicateNode({ deceased: true, birth_year: 1900, death_year: 1975 }),
+    )
+    // Deceased signals on the AVATAR wrapper
+    expect(html).toContain('saturate(0.55)')
+    expect(html).toContain('mtf-node__deceased-badge')
+    // Duplicate signals on the CARD wrapper (different DOM element)
+    expect(html).toContain('mtf-node--duplicate')
+    expect(html).toContain('mtf-node__duplicate-badge')
+    // The inline border shorthand uses 'dashed': `border:1px dashed var(--border)`.
+    expect(html).toMatch(/border:\s*1px dashed/)
+    // Both classes present on the card wrapper
+    expect(html).toContain('mtf-node--deceased')
+    // Corners do not overlap: † is at top:0;right:0 (avatar wrapper),
+    // ↑ is at top:-6px;left:-6px (card wrapper). Both appear in the HTML.
+    expect(html).toContain('top:0')
+    expect(html).toContain('right:0')
+    expect(html).toContain('top:-6px')
+    expect(html).toContain('left:-6px')
+  })
+})

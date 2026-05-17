@@ -186,3 +186,27 @@
     color-mix(in oklch, var(--foreground) 2.5%, transparent)
   );
 }
+
+/*
+ * 8b-3 — Duplicate-card dashed border.
+ * The mtf-node--duplicate class is emitted by personNodeHtml when d.duplicate
+ * is truthy (family-chart sets d.duplicate = duplicates.length on d3 nodes
+ * whose data.id appears more than once in the tree, per esm.js:880).
+ * The dashed border is a universal "secondary/reference" cue — combined with
+ * the ↑ corner badge and "Already shown above" tooltip, it signals that this
+ * card is an echo of a canonical instance shown elsewhere in the tree.
+ *
+ * border-style is also set inline in personNodeHtml so it takes effect even
+ * without this CSS rule (the inline style wins in specificity); this rule
+ * exists as the canonical stylesheet declaration.
+ *
+ * Connector lines stay solid. family-chart renders connectors as SVG <path>
+ * children of .f3 .link; targeting the link leading TO a duplicate node from
+ * CSS alone would require a JS pass to add a class to the relevant <path>
+ * elements. Pragmatic compromise: render the card chrome dashed (done) and
+ * leave connectors solid. Revisit if QA feedback says the mismatch reads
+ * poorly. (See locked decision #4 in the canonical plan body.)
+ */
+.f3 .mtf-node--duplicate {
+  border-style: dashed;
+}

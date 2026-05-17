@@ -16,8 +16,14 @@
 //   - Deceased treatment (8b-1): avatar saturate(0.55) + opacity 0.82;
 //     † corner badge (top-right, 14×14px); mtf-node--deceased class on wrapper.
 //
-// 8b-3 (duplicate-card visual marker) adds to this file: dashed border +
-// ↑ badge at top-left + tooltip. Out of scope for 8b-1.
+// 8b-3 (duplicate-card visual marker): dashed border + ↑ badge at top-left
+// of the CARD wrapper (not the avatar wrapper, so it doesn't overlap the
+// deceased † badge at top:0;right:0 on the avatar wrapper) + tooltip +
+// omits the ellipsis action button. family-chart sets d.duplicate (a number)
+// on the d3 node when the same data.id appears more than once in the tree
+// (see family-chart.esm.js:880 — `d0.duplicate = duplicates.length`). The
+// flag lives on the node, NOT on d.data. We read it directly from TreeDatum
+// which exposes `duplicate?: number` in its type definition.
 
 import type { TreeDatum } from 'family-chart'
 import { computeInitials } from '@/components/ui/avatar'
@@ -208,6 +214,16 @@ export function personNodeHtml(
   const datum = d.data as unknown as FamilyChartDatum
   const data = datum.data
 
+  // 8b-3: family-chart sets d.duplicate (a positive number) on the d3 node
+  // when the same data.id appears more than once in the tree. The flag is
+  // on the node level (`d.duplicate`), NOT on `d.data`. `TreeDatum` exposes
+  // `duplicate?: number` so no cast is needed. Also defensively read
+  // `d.data.duplicate` for any future data-level duplicate flag shape.
+  const isDuplicate = Boolean(
+    d.duplicate ||
+    (d.data as unknown as { duplicate?: boolean }).duplicate,
+  )
+
   const name = escapeHtml(data.full_name)
   const dates = formatDates(data.birth_year, data.death_year, data.deceased)
   const id = escapeHtml(datum.id)
@@ -224,6 +240,8 @@ export function personNodeHtml(
   // the action menu just like long-press does. The 44×44 hit-area (Apple
   // HIG minimum) wraps a smaller 16×16 icon so the icon stays subtle
   // while the tap target meets accessibility.
+  // 8b-3: duplicate cards skip this button — they're not the canonical card;
+  // tapping a duplicate re-centers on the primary instance instead.
   const ellipsisButton = `
     <button
       type="button"
@@ -265,22 +283,61 @@ export function personNodeHtml(
     </button>
   `
 
+  // 8b-3: ↑ badge at top-left of the CARD wrapper (top:-6px; left:-6px).
+  // The deceased † badge sits at top:0;right:0 on the AVATAR wrapper —
+  // different DOM element and opposite corner, so they never overlap even
+  // on a deceased+duplicate card.
+  const duplicateBadge = isDuplicate
+    ? `<span
+        class="mtf-node__duplicate-badge"
+        title="Already shown above"
+        aria-hidden="true"
+        style="
+          position:absolute;
+          top:-6px;
+          left:-6px;
+          width:18px;
+          height:18px;
+          border-radius:50%;
+          background:var(--card);
+          color:var(--accent);
+          display:inline-flex;
+          align-items:center;
+          justify-content:center;
+          font-family:var(--font-sans);
+          font-size:12px;
+          font-weight:600;
+          line-height:1;
+          border:1px solid var(--border);
+        "
+      >↑</span>`
+    : ''
+
   // mtf-node--deceased: softened card chrome (border opacity + subtle gradient)
-  // defined in globals.css. Composes with 8b-3's mtf-node--duplicate class
-  // (separate class — no conflict).
-  const cardClass = `mtf-node${data.deceased ? ' mtf-node--deceased' : ''}`
+  // defined in globals.css. mtf-node--duplicate: dashed border (also in
+  // globals.css). Both classes compose cleanly — no shared declarations.
+  const cardClass = [
+    'mtf-node',
+    data.deceased ? 'mtf-node--deceased' : '',
+    isDuplicate ? 'mtf-node--duplicate' : '',
+  ].filter(Boolean).join(' ')
+
+  // 8b-3: card border style — dashed for duplicates, solid for canonical cards.
+  const borderStyle = isDuplicate ? 'dashed' : 'solid'
 
   return `
     <div
       class="${cardClass}"
       data-person-id="${id}"
+      data-duplicate="${isDuplicate ? 'true' : 'false'}"
+      ${isDuplicate ? `title="Already shown above"` : ''}
       style="
         position:relative;
         width:158px;
         height:110px;
         padding:8px 10px;
         border-radius:10px;
-        border:1px solid var(--border);
+        border:1px ${borderStyle} var(--border);
         background:var(--card);
         color:var(--foreground);
         display:flex;
@@ -292,7 +349,8 @@ export function personNodeHtml(
         overflow:visible;
       "
     >
-      ${options.readOnly ? '' : ellipsisButton}
+      ${options.readOnly || isDuplicate ? '' : ellipsisButton}
+      ${duplicateBadge}
       ${avatarHtml(data)}
       <div
         style="
