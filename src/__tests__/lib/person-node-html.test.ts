@@ -230,9 +230,9 @@ describe('personNodeHtml — duplicate marker (8b-3)', () => {
   test('duplicate emits the mtf-node--duplicate class and dashed border', () => {
     const html = personNodeHtml(duplicateNode())
     expect(html).toContain('mtf-node--duplicate')
-    // The inline style uses the border shorthand: `border:1px dashed var(--border)`.
-    // Verify the dashed keyword appears in the border declaration.
-    expect(html).toMatch(/border:\s*1px dashed/)
+    // 8b polish: border is split into border-width + border-style (no shorthand)
+    // so CSS can set border-color for deceased cards without being overridden.
+    expect(html).toContain('border-style:dashed')
   })
 
   test('duplicate emits the ↑ badge at the expected corner (top:-6px; left:-6px)', () => {
@@ -250,6 +250,24 @@ describe('personNodeHtml — duplicate marker (8b-3)', () => {
     expect(html).not.toContain('data-action-trigger')
   })
 
+  // 8b polish FIX 1 — in-card "+" add-relative button.
+  // Non-duplicate, non-readonly cards should emit the add-relative button.
+  test('non-duplicate non-readonly card emits mtf-node__add-btn with data-action-plus', () => {
+    const html = personNodeHtml(treeNode(datum({})))
+    expect(html).toContain('mtf-node__add-btn')
+    expect(html).toContain('data-action-plus')
+    expect(html).toContain('aria-label="Add relative to Jane Smith"')
+    // Button is absolutely positioned at bottom:-10px; right:-10px inside the card.
+    expect(html).toContain('bottom:-10px')
+    expect(html).toContain('right:-10px')
+  })
+
+  test('duplicate card omits mtf-node__add-btn (read-only echoes skip the "+")', () => {
+    const html = personNodeHtml(duplicateNode())
+    expect(html).not.toContain('mtf-node__add-btn')
+    expect(html).not.toContain('data-action-plus')
+  })
+
   test('deceased + duplicate compose without collision: both classes, both badges, different corners', () => {
     const html = personNodeHtml(
       duplicateNode({ deceased: true, birth_year: 1900, death_year: 1975 }),
@@ -260,8 +278,8 @@ describe('personNodeHtml — duplicate marker (8b-3)', () => {
     // Duplicate signals on the CARD wrapper (different DOM element)
     expect(html).toContain('mtf-node--duplicate')
     expect(html).toContain('mtf-node__duplicate-badge')
-    // The inline border shorthand uses 'dashed': `border:1px dashed var(--border)`.
-    expect(html).toMatch(/border:\s*1px dashed/)
+    // 8b polish: border split into border-width + border-style.
+    expect(html).toContain('border-style:dashed')
     // Both classes present on the card wrapper
     expect(html).toContain('mtf-node--deceased')
     // Corners do not overlap: † is at top:0;right:0 (avatar wrapper),

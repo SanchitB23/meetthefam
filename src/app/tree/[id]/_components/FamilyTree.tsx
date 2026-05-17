@@ -55,9 +55,10 @@ import type { PersonRow } from '../_lib/types'
 import { AddRelativeFab } from './AddRelativeFab'
 import { PersonActionMenu, type ActionAnchor } from './PersonActionMenu'
 import { PersonDetailSheet } from './PersonDetailSheet'
-import { PersonForm } from './PersonForm'
 import { TreeOverviewButton } from './TreeOverviewButton'
-import { PersonHoverPlus } from './PersonHoverPlus'
+// PersonHoverPlus and PersonForm removed in 8b polish FIX 1:
+// "+" is now an in-card button child of .mtf-node; form is owned by AddRelativeFab
+// via CustomEvent('mtf-add-relative') dispatched from setOnCardClick.
 
 type Props = {
   treeId: string
@@ -97,49 +98,12 @@ function getServerHashSnapshot(): string | null {
   return null
 }
 
-/**
- * Converts a node element's bounding rect into a { top, left } position
- * that represents the bottom-right corner of the node, relative to its
- * nearest positioned ancestor (the chart container).
- *
- * Used by both the pointer-hover effect and the long-press callback so the
- * PersonHoverPlus "+" lands at a consistent offset in both interaction modes.
- */
-function rectToPosition(
-  node: HTMLElement,
-  container: HTMLElement,
-): { top: number; left: number } {
-  const nodeRect = node.getBoundingClientRect()
-  const containerRect = container.getBoundingClientRect()
-  return {
-    top: nodeRect.bottom - containerRect.top,
-    left: nodeRect.right - containerRect.left,
-  }
-}
 
 function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
-  // 8b-2 — wrapperRef points to the outer position:relative div so that
-  // rectToPosition always computes offsets relative to the overlay container,
-  // not the inner f3 div. If the outer wrapper ever gains padding or border
-  // the math stays correct; containerRef stays for D3/event listeners only.
-  const wrapperRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<Chart | null>(null)
   const [detailPersonId, setDetailPersonId] = useState<string | null>(null)
   const [actionAnchor, setActionAnchor] = useState<ActionAnchor | null>(null)
-
-  // 8b-2 — hover state: which node the pointer is currently over, plus the
-  // bottom-right corner of that node (in container-relative coords) so
-  // PersonHoverPlus can position its "+" button without its own DOM access.
-  const [hoverState, setHoverState] = useState<{
-    personId: string
-    position: { top: number; left: number }
-  } | null>(null)
-
-  // 8b-2 — form state for the hover-plus "+" click path. Separate from the
-  // AddRelativeFab so we don't have to invasively lift its internal state.
-  const [hoverFormOpen, setHoverFormOpen] = useState(false)
-  const [hoverLinkPersonId, setHoverLinkPersonId] = useState<string | null>(null)
 
   const peopleById = useMemo(
     () => new Map(people.map((p) => [p.id, p])),
@@ -175,19 +139,6 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
             x: rect ? rect.right - 4 : e.clientX,
             y: rect ? rect.top + 8 : e.clientY,
           })
-          // 8b-2 mobile parity — also surface hover state after long-press so
-          // the PersonHoverPlus "+" is reachable on touch devices. The position
-          // is the bottom-right of the node relative to the wrapper container.
-          // 8b-3: skip duplicate cards — echoes don't get the "+" affordance.
-          if (node && node.dataset.duplicate !== 'true') {
-            const wrapper = wrapperRef.current ?? containerRef.current
-            if (wrapper) {
-              setHoverState({
-                personId,
-                position: rectToPosition(node, wrapper),
-              })
-            }
-          }
         },
   })
 
@@ -248,6 +199,18 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
         }
 
         if (!readOnly) {
+          // 8b polish FIX 1 — in-card "+" button dispatches a CustomEvent that
+          // AddRelativeFab picks up to open the add-relative form pre-seeded on
+          // this specific person (not the currently-centred FAB person).
+          if (target?.closest('[data-action-plus]')) {
+            const plusEl = target.closest<HTMLElement>('[data-action-plus]')
+            const personId2 = plusEl?.dataset.personId ?? id
+            window.dispatchEvent(
+              new CustomEvent('mtf-add-relative', { detail: { personId: personId2 } }),
+            )
+            return
+          }
+
           const trigger = target?.closest('[data-action-trigger]') as HTMLElement | null
           if (trigger) {
             const rect = trigger.getBoundingClientRect()
@@ -316,56 +279,6 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
     chartRef.current?.updateTree({ initial: true })
   }, [])
 
-  // 8b-2 — delegated pointer-hover wiring on the chart container.
-  // Attached in a SEPARATE effect from the chart-init effect so we never
-  // tear down + rebuild D3 on every hover (the chart-init deps array must
-  // stay [people, shouldSuppressNextClickRef, readOnly] — see its eslint-
-  // disable comment). This effect has empty deps: the containerRef.current
-  // element is stable for the lifetime of this component mount, and we clean
-  // up on unmount via the returned cleanup fn.
-  useEffect(() => {
-    if (readOnly) return
-    const cont = containerRef.current
-    if (!cont) return
-
-    const onPointerOver = (e: PointerEvent) => {
-      const target = e.target as HTMLElement | null
-      const node = target?.closest('.mtf-node') as HTMLElement | null
-      if (!node) return
-      if (node.dataset.duplicate === 'true') return  // 8b-3: echoes don't get the "+" hover
-      const personId = node.dataset.personId
-      if (!personId) return
-      const wrapper = wrapperRef.current ?? cont
-      setHoverState({ personId, position: rectToPosition(node, wrapper) })
-    }
-
-    const onPointerOut = (e: PointerEvent) => {
-      const target = e.target as HTMLElement | null
-      const node = target?.closest('.mtf-node') as HTMLElement | null
-      if (!node) return
-      if (node.dataset.duplicate === 'true') return  // 8b-3: defensive — echoes don't own hover state
-
-      // Avoid flicker when the pointer transitions between children inside the
-      // same .mtf-node. Only clear hover when the relatedTarget is outside
-      // the current node entirely.
-      const related = e.relatedTarget
-      if (related instanceof Node && node.contains(related)) return
-
-      setHoverState(null)
-    }
-
-    cont.addEventListener('pointerover', onPointerOver)
-    cont.addEventListener('pointerout', onPointerOut)
-
-    return () => {
-      cont.removeEventListener('pointerover', onPointerOver)
-      cont.removeEventListener('pointerout', onPointerOut)
-    }
-    // Intentionally empty deps — the container element is stable for this
-    // component's lifetime; readOnly check is inside the effect body.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   const handleRecenter = useCallback((personId: string) => {
     // Hash is the single source of truth — write it and let the
     // useSyncExternalStore subscription propagate. history.replaceState
@@ -391,20 +304,15 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
   const detailPerson = detailPersonId ? peopleById.get(detailPersonId) ?? null : null
   const focusPerson = currentFocusId ? peopleById.get(currentFocusId) ?? null : null
 
-  // Derive the hovered person row so we can pre-seed the hover-plus form.
-  const hoverLinkPerson = hoverLinkPersonId
-    ? (peopleById.get(hoverLinkPersonId) ?? null)
-    : null
-
   return (
     <>
       {/*
-        Outer wrapper: position:relative so TreeOverviewButton and
-        PersonHoverPlus can use `absolute` positioning relative to the canvas
-        area. The inner f3 div keeps overflow:hidden for family-chart's own
-        pan/zoom chrome; the overlays sit on top, outside the clip region.
+        Outer wrapper: position:relative so TreeOverviewButton can use
+        `absolute` positioning relative to the canvas area. The inner f3 div
+        keeps overflow:hidden for family-chart's own pan/zoom chrome; the
+        overlay sits on top, outside the clip region.
       */}
-      <div ref={wrapperRef} className="relative">
+      <div className="relative">
         <div
           ref={containerRef}
           className="f3 w-full h-[calc(100vh-9rem)] rounded-lg border border-border bg-card overflow-hidden"
@@ -413,19 +321,7 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
             ['--text-color' as string]: 'var(--foreground)',
           }}
         />
-        {!readOnly && (
-          <>
-            <TreeOverviewButton onActivate={zoomToFit} />
-            <PersonHoverPlus
-              position={hoverState?.position ?? null}
-              onActivate={() => {
-                if (!hoverState) return
-                setHoverLinkPersonId(hoverState.personId)
-                setHoverFormOpen(true)
-              }}
-            />
-          </>
-        )}
+        {!readOnly && <TreeOverviewButton onActivate={zoomToFit} />}
       </div>
       <PersonDetailSheet
         person={detailPerson}
@@ -444,24 +340,12 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
             onClose={() => setActionAnchor(null)}
             onRecenter={handleRecenter}
           />
-          <AddRelativeFab treeId={treeId} focusPerson={focusPerson} />
-          {/* 8b-2 — inline PersonForm for the hover-plus "+" click path.
-              Separate from AddRelativeFab so we don't need to lift its internal
-              state. Pre-seeds linkSpec as 'child' of the hovered person. */}
-          <PersonForm
-            mode="create"
-            open={hoverFormOpen}
-            onOpenChange={setHoverFormOpen}
+          {/* 8b polish FIX 1 — AddRelativeFab now also handles the in-card "+"
+              via CustomEvent('mtf-add-relative') dispatched from setOnCardClick. */}
+          <AddRelativeFab
             treeId={treeId}
-            linkSpec={
-              hoverLinkPerson
-                ? {
-                    focusPersonId: hoverLinkPerson.id,
-                    focusPersonName: hoverLinkPerson.full_name,
-                    defaultRelation: 'child',
-                  }
-                : undefined
-            }
+            focusPerson={focusPerson}
+            peopleById={peopleById}
           />
         </>
       )}

@@ -325,6 +325,54 @@ export function personNodeHtml(
   // 8b-3: card border style — dashed for duplicates, solid for canonical cards.
   const borderStyle = isDuplicate ? 'dashed' : 'solid'
 
+  // 8b polish (FIX 1) — "+" add-relative button anchored INSIDE the card chrome
+  // at bottom:-10px; right:-10px (child of the card DOM, not a floating overlay).
+  // This eliminates the cursor-bridge gap that caused the old PersonHoverPlus to
+  // vanish before the user could click it. Reveal is CSS-only (opacity transition
+  // on .mtf-node:hover .mtf-node__add-btn in globals.css). Omitted on duplicate
+  // and read-only cards to match the ellipsis button gate.
+  const addRelativeButton = `
+    <button
+      type="button"
+      class="mtf-node__add-btn"
+      data-action-plus
+      data-person-id="${id}"
+      aria-label="Add relative to ${name}"
+      style="
+        position:absolute;
+        bottom:-10px;
+        right:-10px;
+        width:28px;
+        height:28px;
+        border-radius:50%;
+        background:var(--accent);
+        color:#fff;
+        border:2px solid var(--card);
+        box-shadow:0 4px 10px color-mix(in oklch, var(--accent) 30%, transparent);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        cursor:pointer;
+        padding:0;
+      "
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.4"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+    </button>
+  `
+
   return `
     <div
       class="${cardClass}"
@@ -336,8 +384,9 @@ export function personNodeHtml(
         width:158px;
         height:110px;
         padding:8px 10px;
-        border-radius:10px;
-        border:1px ${borderStyle} var(--border);
+        border-radius:12px;
+        border-width:1px;
+        border-style:${borderStyle};
         background:var(--card);
         color:var(--foreground);
         display:flex;
@@ -347,9 +396,12 @@ export function personNodeHtml(
         gap:4px;
         box-sizing:border-box;
         overflow:visible;
+        box-shadow:0 1px 2px color-mix(in oklch, var(--foreground) 5%, transparent),
+                   0 4px 12px color-mix(in oklch, var(--foreground) 6%, transparent);
       "
     >
       ${options.readOnly || isDuplicate ? '' : ellipsisButton}
+      ${options.readOnly || isDuplicate ? '' : addRelativeButton}
       ${duplicateBadge}
       ${avatarHtml(data)}
       <div

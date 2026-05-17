@@ -170,21 +170,45 @@
 }
 
 /*
- * 8b-1 — Deceased card chrome softening.
+ * 8b polish FIX 1 — "+" add-relative button reveal.
+ * The button is a DOM child of .mtf-node (bottom:-10px; right:-10px), so
+ * pointer events stay alive as the cursor moves from the card to the button —
+ * no cursor-bridge gap. Hidden by default, revealed on card hover / focus-within.
+ * Touch devices (hover:none) show it at 85% opacity since there's no hover.
+ */
+.f3 .mtf-node__add-btn {
+  opacity: 0;
+  transition: opacity .15s ease, transform .15s ease;
+  transform: scale(0.9);
+}
+.f3 .mtf-node:hover .mtf-node__add-btn,
+.f3 .mtf-node:focus-within .mtf-node__add-btn {
+  opacity: 1;
+  transform: scale(1);
+}
+@media (hover: none) {
+  .f3 .mtf-node__add-btn { opacity: 0.85; transform: scale(1); }
+}
+
+/*
+ * 8b polish FIX 2 — Deceased card chrome, strengthened.
  * The mtf-node--deceased class is emitted by personNodeHtml when data.deceased
- * is true. The border opacity + subtle gradient signal "historical record"
- * without being funereal — the † badge + desaturated avatar already carry
- * the primary signal; this is a supporting halo.
+ * is true. Stronger border opacity (14% vs 10%), a warm-tinted gradient, and
+ * gentle whole-card desaturation (0.92) complement the already-deceased avatar
+ * treatment (saturate(0.55), opacity 0.82, † badge) to complete the
+ * in-memoriam feeling across the whole card chrome. No inline border-color is
+ * set by personNodeHtml (border-style only), so this rule wins.
  *
  * Connector lines stay solid (locked decision #4 — revisit on QA feedback).
  */
 .f3 .mtf-node--deceased {
-  border-color: color-mix(in oklch, var(--foreground) 10%, transparent);
+  border-color: color-mix(in oklch, var(--foreground) 14%, transparent);
   background: linear-gradient(
     180deg,
     var(--card),
-    color-mix(in oklch, var(--foreground) 2.5%, transparent)
+    color-mix(in oklch, var(--foreground) 5%, var(--card))
   );
+  filter: saturate(0.92);
 }
 
 /*
