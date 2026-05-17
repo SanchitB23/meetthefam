@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/sheet'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
+import { Memoriam } from '@/components/ui/memoriam'
 import { useIsDesktop } from '@/components/ui/use-is-desktop'
 
 import { PersonForm } from './PersonForm'
@@ -93,10 +94,16 @@ export function PersonDetailSheet({
                     photoUrl={person.photo_url}
                     tone={person.tone}
                     size="lg"
+                    gender={person.gender}
+                    deceased={person.deceased}
                   />
                 </div>
                 <SheetTitle className="font-serif text-2xl mt-3">
-                  {person.full_name}
+                  {person.deceased ? (
+                    <Memoriam name={person.full_name} />
+                  ) : (
+                    person.full_name
+                  )}
                 </SheetTitle>
                 {person.nickname && (
                   <SheetDescription className="italic font-serif text-base text-foreground/70">

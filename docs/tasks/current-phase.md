@@ -74,7 +74,7 @@ The 8a pull-review of Knot's brand bundle surfaced **zero blocking issues** — 
 
 **8b — Person + tree canvas polish**
 
-- [ ] **Sub-task 8b-1** — Gender-shape avatar variation + deceased treatment + `<Memoriam>` component.
+- [x] **Sub-task 8b-1** — Gender-shape avatar variation + deceased treatment + `<Memoriam>` component. *(landed 2026-05-17 — `<Avatar>` gains `gender` + `deceased` props with `borderRadiusForGender` helper (18%/34%/50%); new `<Memoriam>` component in serif italic with `†` aria-hidden glyph; `personNodeHtml` reads `data.gender_raw`, emits `mtf-node--deceased` class, † badge at top-right, † name prefix; `PersonPicker` + `PersonDetailSheet` thread the new props; `.f3 .mtf-node--deceased` CSS rule in `globals.css`. 11 new Vitest tests; full suite 189/189 pass.)*
 - [ ] **Sub-task 8b-2** — Tree-overview / zoom-to-fit control + floating "+" hover affordance.
 - [ ] **Sub-task 8b-3** — Duplicate-card visual marker (option 2 — dashed border + `↑` badge + tooltip + tap-to-jump). QA feedback gate before close-out.
 

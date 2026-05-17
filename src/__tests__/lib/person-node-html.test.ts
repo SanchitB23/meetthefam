@@ -154,3 +154,61 @@ describe('personNodeHtml', () => {
     ).not.toThrow()
   })
 })
+
+// 8b-1 — gender-shape avatar tests.
+// Fixtures set BOTH gender_raw (truthful 4-value field) AND gender (layout-only
+// 'M'|'F') so they match the real FamilyChartDatum shape from family-chart-data.ts.
+describe('personNodeHtml — gender shape (8b-1)', () => {
+  test('male renders rounded-square avatar (border-radius ~18% of 48px = 9px)', () => {
+    const html = personNodeHtml(
+      treeNode(datum({ gender_raw: 'm', gender: 'M' })),
+    )
+    expect(html).toContain('border-radius:9px') // Math.round(48 * 0.18) = 9
+  })
+
+  test('other renders squircle avatar (border-radius ~34% of 48px = 16px)', () => {
+    const html = personNodeHtml(
+      treeNode(datum({ gender_raw: 'other', gender: 'M' })),
+    )
+    expect(html).toContain('border-radius:16px') // Math.round(48 * 0.34) = 16
+  })
+
+  test('female renders circle avatar (border-radius 50%)', () => {
+    const html = personNodeHtml(
+      treeNode(datum({ gender_raw: 'f', gender: 'F' })),
+    )
+    expect(html).toContain('border-radius:50%')
+  })
+
+  test('unknown renders circle (default)', () => {
+    const html = personNodeHtml(
+      treeNode(datum({ gender_raw: 'unknown', gender: 'M' })),
+    )
+    expect(html).toContain('border-radius:50%')
+  })
+})
+
+// 8b-1 — deceased treatment tests.
+describe('personNodeHtml — deceased treatment (8b-1)', () => {
+  test('deceased adds the † badge', () => {
+    const html = personNodeHtml(
+      treeNode(datum({ deceased: true, birth_year: 1900, death_year: 1975 })),
+    )
+    expect(html).toContain('†')
+    expect(html).toContain('mtf-node__deceased-badge')
+  })
+
+  test('deceased adds saturate(0.55) filter to the avatar', () => {
+    const html = personNodeHtml(
+      treeNode(datum({ deceased: true })),
+    )
+    expect(html).toContain('saturate(0.55)')
+  })
+
+  test('living does NOT add the † badge', () => {
+    const html = personNodeHtml(
+      treeNode(datum({ deceased: false })),
+    )
+    expect(html).not.toContain('mtf-node__deceased-badge')
+  })
+})

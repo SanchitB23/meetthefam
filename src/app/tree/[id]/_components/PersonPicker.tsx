@@ -24,6 +24,7 @@ import {
   CommandList,
 } from '@/components/ui/command'
 import { Avatar } from '@/components/ui/avatar'
+import { Memoriam } from '@/components/ui/memoriam'
 import { useIsDesktop } from '@/components/ui/use-is-desktop'
 
 import type { PersonRow } from '../_lib/types'
@@ -94,10 +95,16 @@ function PickerBody({
                 photoUrl={p.photo_url}
                 tone={p.tone}
                 size="sm"
+                gender={p.gender}
+                deceased={p.deceased}
               />
               <div className="flex min-w-0 flex-col">
                 <span className="truncate font-medium text-foreground">
-                  {p.full_name}
+                  {p.deceased ? (
+                    <Memoriam name={p.full_name} />
+                  ) : (
+                    p.full_name
+                  )}
                   {p.nickname && (
                     <span className="ml-1 text-foreground/50 italic font-normal">
                       “{p.nickname}”

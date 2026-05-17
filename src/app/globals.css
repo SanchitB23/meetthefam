@@ -168,3 +168,21 @@
   stroke: color-mix(in oklch, var(--foreground) 35%, transparent);
   stroke-width: 1.5px;
 }
+
+/*
+ * 8b-1 — Deceased card chrome softening.
+ * The mtf-node--deceased class is emitted by personNodeHtml when data.deceased
+ * is true. The border opacity + subtle gradient signal "historical record"
+ * without being funereal — the † badge + desaturated avatar already carry
+ * the primary signal; this is a supporting halo.
+ *
+ * Connector lines stay solid (locked decision #4 — revisit on QA feedback).
+ */
+.f3 .mtf-node--deceased {
+  border-color: color-mix(in oklch, var(--foreground) 10%, transparent);
+  background: linear-gradient(
+    180deg,
+    var(--card),
+    color-mix(in oklch, var(--foreground) 2.5%, transparent)
+  );
+}

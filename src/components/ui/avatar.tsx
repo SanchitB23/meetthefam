@@ -1,6 +1,14 @@
-// <Avatar> — photo (circular) or tone-tinted initials.
+// <Avatar> — photo (gender-shaped or circular) or tone-tinted initials.
 // Contract: docs/ux/avatars-and-tones.md
 // Presentational + server-renderable: no state, no effects, no client APIs.
+//
+// 8b-1: gender prop drives border-radius shape:
+//   'm'       → rounded-square (~18% of px)
+//   'other'   → squircle (~34% of px)
+//   'f'       → circle (50%)
+//   'unknown' → circle (50%, default)
+// deceased prop: desaturates the avatar + adds a † badge (top-right corner)
+// at sizes >= 36px.
 
 export type Tone = 'sage' | 'rose' | 'indigo' | 'amber' | 'green'
 
@@ -17,6 +25,10 @@ type Props = {
   size?: Size
   /** Adds a 2px ring in `var(--tone-X-ring)` for "current person" treatment. */
   ring?: boolean
+  /** Gender shape: 'm' → rounded-square, 'other' → squircle, 'f' / 'unknown' → circle. */
+  gender?: 'm' | 'f' | 'other' | 'unknown'
+  /** Deceased: avatar desaturates (saturate 0.55 + opacity 0.82) + † badge at size >= 36. */
+  deceased?: boolean
   className?: string
 }
 
@@ -35,6 +47,32 @@ export function computeInitials(fullName: string): string {
   return (first + last).toUpperCase() || '?'
 }
 
+/**
+ * Maps a gender value to a CSS border-radius string.
+ * 'm'       → rounded-square (~18% of px)
+ * 'other'   → squircle (~34% of px)
+ * 'f'       → circle (50%)
+ * 'unknown' → circle (50%)
+ * undefined → circle (50%)
+ */
+export function borderRadiusForGender(
+  gender: 'm' | 'f' | 'other' | 'unknown' | undefined,
+  px: number,
+): string {
+  switch (gender) {
+    case 'm':
+      return `${Math.round(px * 0.18)}px`
+    case 'other':
+      return `${Math.round(px * 0.34)}px`
+    case 'f':
+      return '50%'
+    case 'unknown':
+      return '50%'
+    default:
+      return '50%'
+  }
+}
+
 export function Avatar({
   fullName,
   initials,
@@ -42,6 +80,8 @@ export function Avatar({
   tone,
   size = 'md',
   ring = false,
+  gender = 'unknown',
+  deceased = false,
   className,
 }: Props) {
   const px = typeof size === 'number' ? size : SIZE_MAP[size]
@@ -49,60 +89,112 @@ export function Avatar({
 
   // Initials sit at ~34% of the avatar diameter (matches the Kintree prototype).
   const fontSize = Math.round(px * 0.34)
+  const borderRadius = borderRadiusForGender(gender, px)
 
-  const baseStyle: React.CSSProperties = {
+  // The inner container clips the photo / background to the correct border-radius.
+  // It must NOT be position:relative — that role is taken by the outer wrapper so
+  // the deceased badge (position:absolute) escapes overflow:hidden clipping.
+  const innerStyle: React.CSSProperties = {
     width: px,
     height: px,
+    borderRadius,
     // Ring is drawn as an outline so it doesn't change layout dimensions.
     outline: ring ? `2px solid var(--tone-${tone}-ring)` : undefined,
     outlineOffset: ring ? 2 : undefined,
+    filter: deceased ? 'saturate(0.55)' : undefined,
+    opacity: deceased ? 0.82 : undefined,
   }
 
-  const containerClass = [
-    'inline-flex items-center justify-center rounded-full overflow-hidden shrink-0 select-none',
+  const innerClass = [
+    'inline-flex items-center justify-center overflow-hidden shrink-0 select-none',
     className,
   ]
     .filter(Boolean)
     .join(' ')
 
+  // Outer wrapper: position:relative (NO overflow:hidden) so the deceased badge
+  // (position:absolute) is not clipped by the inner container's border-radius.
+  const outerStyle: React.CSSProperties = {
+    position: 'relative',
+    display: 'inline-flex',
+    width: px,
+    height: px,
+  }
+
+  // Deceased † badge — top-right corner; only rendered when size >= 36
+  // because below that the badge is illegible.
+  // Corner choice: top:0 right:0 — 8b-3's ↑ duplicate badge will sit at
+  // top:-6px left:-6px so the two badges don't collide.
+  const deceasedBadge =
+    deceased && px >= 36 ? (
+      <span
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          top: 0,
+          right: 0,
+          width: Math.round(px * 0.26),
+          height: Math.round(px * 0.26),
+          borderRadius: '50%',
+          background: 'var(--card)',
+          color: 'var(--muted-foreground)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontFamily: 'var(--font-serif)',
+          fontSize: Math.round(px * 0.2),
+          lineHeight: 1,
+          border: '1px solid var(--border)',
+        }}
+      >
+        †
+      </span>
+    ) : null
+
   if (photoUrl) {
     return (
-      <span className={containerClass} style={baseStyle}>
-        {/* Phase 5 owns photo plumbing — a plain <img> is sufficient for now. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={photoUrl}
-          alt={fullName}
-          width={px}
-          height={px}
-          className="h-full w-full object-cover"
-        />
+      <span style={outerStyle}>
+        <span className={innerClass} style={innerStyle}>
+          {/* Phase 5 owns photo plumbing — a plain <img> is sufficient for now. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={photoUrl}
+            alt={fullName}
+            width={px}
+            height={px}
+            className="h-full w-full object-cover"
+          />
+        </span>
+        {deceasedBadge}
       </span>
     )
   }
 
   return (
-    <span
-      className={containerClass}
-      style={{
-        ...baseStyle,
-        background: `var(--tone-${tone}-bg)`,
-        color: `var(--tone-${tone}-ink)`,
-      }}
-      aria-label={fullName}
-      role="img"
-    >
+    <span style={outerStyle}>
       <span
-        className="font-serif"
+        className={innerClass}
         style={{
-          fontSize,
-          fontWeight: 600,
-          letterSpacing: '0.02em',
-          lineHeight: 1,
+          ...innerStyle,
+          background: `var(--tone-${tone}-bg)`,
+          color: `var(--tone-${tone}-ink)`,
         }}
+        aria-label={fullName}
+        role="img"
       >
-        {text}
+        <span
+          className="font-serif"
+          style={{
+            fontSize,
+            fontWeight: 600,
+            letterSpacing: '0.02em',
+            lineHeight: 1,
+          }}
+        >
+          {text}
+        </span>
       </span>
+      {deceasedBadge}
     </span>
   )
 }
