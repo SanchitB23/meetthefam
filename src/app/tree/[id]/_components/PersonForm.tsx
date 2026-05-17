@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { Controller, useForm, type SubmitHandler } from 'react-hook-form'
-import { Trash2 } from 'lucide-react'
+import { Trash2, Heart, UserRound, Baby, type LucideIcon } from 'lucide-react'
 
 import {
   Dialog,
@@ -114,14 +114,22 @@ const DEFAULT_VALUES: PersonFormValues = {
   relation: 'child',
 }
 
+// 8b polish — icon-card layout (matches the Anthropic Family Tree
+// prototype: docs/ux/inspiration/meetmyfamily/shared.jsx). Labels are
+// short ("Spouse", "Father", …); the focus person is named in the
+// surface title and the section header, so repeating "of <name>" on
+// each button was just noise. Father + Mother share the UserRound
+// icon — the label disambiguates them, gender-glyph icons looked busy
+// at small sizes.
 const RELATION_OPTIONS: ReadonlyArray<{
   value: LinkRelation
-  label: (focusName: string) => string
+  label: string
+  icon: LucideIcon
 }> = [
-  { value: 'spouse', label: (n) => `Spouse of ${n}` },
-  { value: 'father', label: (n) => `Father of ${n}` },
-  { value: 'mother', label: (n) => `Mother of ${n}` },
-  { value: 'child', label: (n) => `Child of ${n}` },
+  { value: 'spouse', label: 'Spouse', icon: Heart },
+  { value: 'father', label: 'Father', icon: UserRound },
+  { value: 'mother', label: 'Mother', icon: UserRound },
+  { value: 'child', label: 'Child', icon: Baby },
 ]
 
 function valuesFromPerson(person: PersonRow): PersonFormValues {
@@ -533,9 +541,9 @@ export function PersonForm({
        * to a later polish pass (same trade-off the tone swatch makes).
        */}
       {showLinkPicker && linkSpec && (
-        <div className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-foreground">
-            How is this person related?
+        <div className="flex flex-col gap-2">
+          <span className="text-xs font-medium uppercase tracking-[0.12em] text-foreground/50">
+            Relationship
           </span>
           <Controller
             control={control}
@@ -543,11 +551,12 @@ export function PersonForm({
             render={({ field }) => (
               <div
                 role="radiogroup"
-                aria-label="Relationship to focus person"
-                className="flex flex-col gap-1.5 mt-1"
+                aria-label={`Relationship to ${linkSpec.focusPersonName}`}
+                className="grid grid-cols-2 sm:grid-cols-4 gap-2"
               >
                 {RELATION_OPTIONS.map((opt) => {
                   const selected = field.value === opt.value
+                  const Icon = opt.icon
                   return (
                     <button
                       key={opt.value}
@@ -555,13 +564,19 @@ export function PersonForm({
                       role="radio"
                       aria-checked={selected}
                       onClick={() => field.onChange(opt.value)}
-                      className={`text-left px-3 py-2 rounded-md border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${
+                      className={`flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl border text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus-visible:ring-offset-background ${
                         selected
-                          ? 'border-primary bg-primary/10 text-foreground'
-                          : 'border-border bg-background text-foreground hover:bg-foreground/[0.03]'
+                          ? 'border-primary bg-foreground/[0.04] text-foreground'
+                          : 'border-border bg-card text-foreground hover:bg-foreground/[0.02]'
                       }`}
                     >
-                      {opt.label(linkSpec.focusPersonName)}
+                      <Icon
+                        aria-hidden="true"
+                        className={`h-5 w-5 ${
+                          selected ? 'text-foreground' : 'text-foreground/60'
+                        }`}
+                      />
+                      <span>{opt.label}</span>
                     </button>
                   )
                 })}
