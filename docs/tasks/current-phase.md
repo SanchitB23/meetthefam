@@ -39,18 +39,31 @@ PR #55 is a **running draft** opened mid-phase for review-visibility while the w
 
 ### Phase 8b / 8c — next session
 
-**Continue on the SAME branch `feat/phase-8-visual-polish-landing`.** No fresh branch. Pull origin first (`git checkout feat/phase-8-visual-polish-landing && git pull --ff-only`), then start at the first unticked sub-task in the canonical plan: **8b-1**.
+**Continue on the SAME branch `feat/phase-8-visual-polish-landing`.** No fresh branch. Pull origin first (`git checkout feat/phase-8-visual-polish-landing && git pull --ff-only`), then start at the first unticked sub-task in the canonical plan: **8c-1**.
 
 The canonical reference is the plan at [`../superpowers/plans/2026-05-16-phase-8-visual-polish-landing.md`](../superpowers/plans/2026-05-16-phase-8-visual-polish-landing.md) — sub-task numbering, locked decisions, internal milestone smokes (8a-done / 8b-done / 8c-done), and phase close-out + release recipe are all unchanged.
 
-**Still-pending sub-tasks**: 8b-1, 8b-2, 8b-3, 8c-1, 8c-2, 8c-3, 8c-4, 8c-5, 8c-6, 8c-7 → phase close-out → `v0.4.0` release (single phase PR squash-merge into qa, then ADR 0009 Amendment 4 release flow).
+**Still-pending sub-tasks**: 8c-1, 8c-2, 8c-3, 8c-4, 8c-5, 8c-6, 8c-7 → phase close-out → `v0.4.0` release (single phase PR squash-merge into qa, then ADR 0009 Amendment 4 release flow).
 
-### Infrastructure blockers to address before milestone smokes can run
+### Infrastructure blockers — smoke runner status (2026-05-17)
 
-Discovered during the 8a-done smoke attempt — neither is a code issue, but both will block 8b-done / 8c-done smokes too if left unfixed:
+Originally two stacked blockers from the 8a-done smoke attempt. Status as of the 8a/8b-done smoke run on 2026-05-17:
 
-1. **Playwright MCP not attached to dispatched `e2e-smoke-tester` subagents.** Tools appear in the controller session's deferred-tool list but don't pass through to subagents spawned via the Task tool. Fix: add the Playwright server to `enabledMcpjsonServers` in `.claude/settings.local.json`, then restart Claude Code so the subagent runtime re-reads the config. (The `tools:` grant in `.claude/agents/e2e-smoke-tester.md` is already correct — Phase 6 close-out fixed that — the gap is at the subagent-MCP-attachment layer.)
-2. **Vercel preview SSO gate.** Both `feat-phase-8-*` and `qa` previews return `HTTP/2 401` with a `_vercel_sso_nonce` cookie. Fix: lift preview-protection on the Vercel project (Settings → Deployment Protection), OR pass an `x-vercel-protection-bypass` token through to the agent's `browser_*` calls.
+1. **Playwright MCP not surfacing at runtime — STILL BLOCKED.** The Playwright plugin (`playwright@claude-plugins-official`) is correctly listed in `~/.claude/settings.json` (`enabledPlugins`) and in `.claude/settings.local.json` (`enabledMcpjsonServers`), and the `mcp__plugin_playwright_playwright__*` tool names are pre-allowed in `settings.local.json` permissions. Despite this, the tools do NOT surface at call time — even in the controller session (not just dispatched subagents). Root cause: the Claude Code session needs a full restart after adding/enabling the Playwright plugin. Fix: restart Claude Code, confirm `mcp__plugin_playwright_playwright__browser_navigate` appears in the session's tool list before dispatching the smoke agent.
+2. **Vercel preview SSO gate — RESOLVED (2026-05-17).** Bypass secret configured and verified: `curl` without bypass returns 401; with `?x-vercel-protection-bypass=$VERCEL_PROTECTION_BYPASS&x-vercel-set-bypass-cookie=true` returns 307 (app redirect). The bypass pattern is now documented in `docs/qa/smoke-flows.md` § "Vercel preview deployment protection". Secret stored as `VERCEL_PROTECTION_BYPASS` in `.env.local` (gitignored). The partial 8a/8b-done smoke run completed all curl-verifiable assertions against the preview.
+
+**8a-done + 8b-done milestone smoke — PARTIAL PASS (Playwright gap; all curl-verifiable gates green):**
+- `proxy-redirect-unauth`: PASS — `/dashboard` unauthed returns 307 to `/login?next=%2Fdashboard`
+- `proxy-skip-share-link`: PASS — `/share/<token>` unauthed returns 404 (not redirected to login)
+- Phase 8a brand assets (8a-2, 8a-3, 8a-4): PASS — favicon (25KB ICO), `logo.svg` (three-ring + terracotta dot SVG), Manrope + Cormorant fonts, heirloom description meta, warm dark tokens (`#15110d` background in `.dark` CSS block) all confirmed deployed
+- Phase 8b-1 CSS: PASS — `mtf-node--deceased` class confirmed present in deployed main CSS bundle
+- `people-crud-and-link` (phase-3): SKIPPED — needs Playwright + `pre-authed-cookie` for QA
+- `phase-4-tree-visualization`: SKIPPED — needs Playwright + `pre-authed-cookie` for QA
+- `phase-5-photo-upload`: SKIPPED — needs Playwright + `pre-authed-cookie` + ≥5 MB fixture JPEG
+- `phase-6-collaboration`: SKIPPED — `env: local` only (local Supabase stack required)
+- `phase-7-share-link`: SKIPPED — `env: local` only (local Supabase stack required)
+
+The interactive CRUD flows (phase-3 through phase-7) remain unrun against QA. They are not regressed by Phase 8 (no RLS or data-model changes in 8a/8b). Run them locally against `pnpm dev` + `supabase start` after Playwright MCP is confirmed surfacing.
 
 ### Carry-forward review items from 8a (deferred / non-blocking)
 
@@ -76,7 +89,7 @@ The 8a pull-review of Knot's brand bundle surfaced **zero blocking issues** — 
 
 - [x] **Sub-task 8b-1** — Gender-shape avatar variation + deceased treatment + `<Memoriam>` component. *(landed 2026-05-17 — `<Avatar>` gains `gender` + `deceased` props with `borderRadiusForGender` helper (18%/34%/50%); new `<Memoriam>` component in serif italic with `†` aria-hidden glyph; `personNodeHtml` reads `data.gender_raw`, emits `mtf-node--deceased` class, † badge at top-right, † name prefix; `PersonPicker` + `PersonDetailSheet` thread the new props; `.f3 .mtf-node--deceased` CSS rule in `globals.css`. 11 new Vitest tests; full suite 189/189 pass.)*
 - [x] **Sub-task 8b-2** — Tree-overview / zoom-to-fit control + floating "+" hover affordance. *(landed 2026-05-17 — `TreeOverviewButton` (top-right of canvas, `absolute top-3 right-3`, `Maximize2` icon, `aria-label="View whole tree"`) calls `zoomToFit` which clears the URL hash + calls `chart.updateTree({ initial: true })` for bounding-box auto-fit. `PersonHoverPlus` is a presentational overlay receiving `position: { top, left } | null` and `onActivate` from `FamilyTree`; returns null when no node is hovered. Hover wiring is a SEPARATE `useEffect` (NOT inside chart-init) that attaches delegated `pointerover` + `pointerout` listeners to the chart container, scoped to `.mtf-node` via `event.target.closest`; `pointerout` guards against inner-child flicker via `node.contains(event.relatedTarget)`. Long-press callback also sets hover state for mobile parity. Hover "+" opens an inline `PersonForm` (separate from `AddRelativeFab`, no invasive state lift) pre-seeded with `defaultRelation: 'child'` of the hovered person. Both components mount inside the existing `{!readOnly && ...}` block. Chart-init effect deps unchanged. 189/189 tests pass.)*
-- [ ] **Sub-task 8b-3** — Duplicate-card visual marker (option 2 — dashed border + `↑` badge + tooltip + tap-to-jump). QA feedback gate before close-out.
+- [x] **Sub-task 8b-3** — Duplicate-card visual marker (option 2 — dashed border + `↑` badge + tooltip + tap-to-jump). QA feedback gate before close-out. *(landed 2026-05-17 — `personNodeHtml` reads `d.duplicate` (node-level `number`, set by family-chart when the same `data.id` appears more than once) and emits `mtf-node--duplicate` class + `border:1px dashed` inline + `↑` badge at `top:-6px;left:-6px` on the card wrapper (CARD, not avatar wrapper — so it doesn't collide with the deceased `†` badge at `top:0;right:0` on the avatar wrapper). Duplicate cards set `data-duplicate="true"` attribute and omit the ellipsis action button. `FamilyTree.tsx` `setOnCardClick` gains a new branch BEFORE the action-trigger branch: `if (target.closest('[data-duplicate="true"]')) { window.location.hash = '#p=' + encodeURIComponent(id); return }` — reuses existing hash-driven re-center wiring. `globals.css` gets `.f3 .mtf-node--duplicate { border-style: dashed }` + explanatory comment about solid connector lines (pragmatic compromise). 4 new Vitest tests (duplicate class+dashed border, ↑ badge corner, no ellipsis on duplicate, deceased+duplicate compose without collision); full suite 193/193 pass. QA feedback gate per locked decision #13: controller asks user before commit.)*
 
 **8c — Landing + nav + animations**
 

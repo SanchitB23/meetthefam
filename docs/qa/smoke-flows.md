@@ -10,6 +10,19 @@ Named end-to-end flows that the `e2e-smoke-tester` agent (see [`.claude/agents/e
 - **Idempotency**: every flow must clean up after itself (delete the tree it created, sign out, etc.) so re-runs stay green. If cleanup fails, that's a fail.
 - **Viewport**: default 1280×800 desktop. Flows that test mobile resize explicitly.
 
+## Vercel preview deployment protection
+
+When running against a Vercel preview URL that has deployment protection enabled, the `_vercel_sso_nonce` gate blocks all browser requests with HTTP 401. Bypass it once per browser session via the protection-bypass-for-automation query string:
+
+```
+<preview-url>/?x-vercel-protection-bypass=$VERCEL_PROTECTION_BYPASS&x-vercel-set-bypass-cookie=true
+```
+
+- `VERCEL_PROTECTION_BYPASS` is the secret set in Vercel project settings under **Settings > Deployment Protection > Protection Bypass for Automation**. Store it in `.env.local` (gitignored); never commit the value.
+- Pass this as the FIRST `browser_navigate` call. Vercel sets a `_vercel_jwt` cookie; subsequent navigations within the same browser session use the cookie automatically — no query string needed on subsequent steps.
+- For `curl`-based pre-flight checks, pass the value via HTTP header instead: `-H "x-vercel-protection-bypass: $VERCEL_PROTECTION_BYPASS"`.
+- If the curl pre-flight still returns 401 after supplying the header/query, the bypass secret is wrong, expired, or scoped to a different project — STOP and report BLOCKED to the controller.
+
 ## Agent contract
 
 When a caller dispatches the agent, they pass:
