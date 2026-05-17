@@ -81,13 +81,13 @@ export function PersonDetailSheet({
           side={desktop ? 'right' : 'bottom'}
           className={
             desktop
-              ? 'overflow-y-auto'
-              : 'max-h-[90vh] overflow-y-auto rounded-t-xl'
+              ? 'flex flex-col'
+              : 'max-h-[90vh] flex flex-col rounded-t-xl'
           }
         >
           {person && (
             <>
-              <SheetHeader className="items-center text-center">
+              <SheetHeader className="items-center text-center shrink-0">
                 <div className="mx-auto mt-2">
                   <Avatar
                     fullName={person.full_name}
@@ -112,7 +112,7 @@ export function PersonDetailSheet({
                 )}
               </SheetHeader>
 
-              <div className="flex flex-col gap-4 px-4 pb-4">
+              <div className="flex-1 overflow-y-auto flex flex-col gap-4 px-4 pb-4">
                 {person.bio && (
                   <p className="text-sm text-foreground/80 whitespace-pre-line">
                     {person.bio}

@@ -151,14 +151,14 @@ export function PersonPicker({
   if (desktop) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
+          <DialogHeader className="shrink-0">
             <DialogTitle className="font-serif text-xl">{title}</DialogTitle>
             {description && (
               <DialogDescription>{description}</DialogDescription>
             )}
           </DialogHeader>
-          {body}
+          <div className="flex-1 overflow-y-auto">{body}</div>
         </DialogContent>
       </Dialog>
     )
@@ -168,13 +168,13 @@ export function PersonPicker({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="max-h-[90vh] overflow-y-auto rounded-t-xl"
+        className="max-h-[90vh] flex flex-col rounded-t-xl"
       >
-        <SheetHeader>
+        <SheetHeader className="shrink-0">
           <SheetTitle className="font-serif text-xl">{title}</SheetTitle>
           {description && <SheetDescription>{description}</SheetDescription>}
         </SheetHeader>
-        {body}
+        <div className="flex-1 overflow-y-auto">{body}</div>
       </SheetContent>
     </Sheet>
   )
