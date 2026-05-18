@@ -59,14 +59,41 @@ gh release create vX.Y.Z \
   --notes-file /tmp/vX.Y.Z-notes.md \
   --prerelease                           # drop --prerelease starting v1.0.0
 
-# 6. Fast-forward qa to the release-branch tip (which is a parent of main's
+# 6. Retrigger prod deploy so <VersionFooter> picks up the new tag.
+#    The Vercel build that fired off on step 4's merge to main raced
+#    AHEAD of step 5's tag — its GitHub-API fallback in
+#    scripts/derive-version.mjs saw the PREVIOUS release as "latest"
+#    and emitted "<prev>-dev.<sha>" for APP_VERSION. Redeploy re-runs
+#    the build with the new tag visible. Without this step prod renders
+#    the stale version until the next commit to main. (Caught on v0.4.0
+#    ship 2026-05-18.) Three paths — pick ONE:
+#
+#    a) Vercel MCP (preferred from a Claude Code session):
+#       Switch to main checkout first so deploy_to_vercel picks up the
+#       merge commit + the new tag via GitHub-API fallback.
+#         git checkout main && git pull --ff-only
+#       Then call: mcp__vercel__deploy_to_vercel
+#       (no parameters — uses .vercel/project.json for project linkage)
+#
+#    b) CLI (uses cached build files, ~30s — no rebuild):
+#       PROD_URL=$(npx vercel ls --prod meetthefam | awk '/Ready/{print $3; exit}')
+#       npx vercel redeploy "$PROD_URL"
+#
+#    c) Dashboard: open the latest Production deployment for
+#       sanchit-bhatnagars-projects/meetthefam and click "Redeploy".
+#
+#    Verify after any path:
+#       curl -s https://meetthefam.vercel.app/ | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+'
+#       # should print v<X.Y.Z>, NOT v<PREV>-dev.<sha>
+
+# 7. Fast-forward qa to the release-branch tip (which is a parent of main's
 #    merge commit). No PR; no squash; no ghost commits. Eliminates the
 #    structural divergence that caused v0.1.0 and v0.3.0 conflicts.
 #    See ADR 0009 Amendment 4.
 git push origin release/vX.Y.Z:qa
 git push origin --delete release/vX.Y.Z
 
-# 7. Sync local state and verify the tag exists.
+# 8. Sync local state and verify the tag exists.
 git checkout qa && git pull --ff-only
 git fetch --tags --prune
 git tag -l vX.Y.Z                        # should print vX.Y.Z
