@@ -304,6 +304,35 @@ Tests the Phase 7 ship gate — owner enables share link → copy URL → anon v
 
 ---
 
+### Phase 8 — visual polish + landing flows
+
+Phase 8 ships three coordinated bundles (8a brand foundations, 8b person + tree canvas polish, 8c landing + nav + animations). The flows below cover the **8c-done** milestone — the cumulative gate before the `v0.4.0` release. Earlier milestone gates (8a-done, 8b-done) ran against the existing Phase 1–7 catalog plus curl-verifiable brand-asset checks; both reported partial-pass with Playwright MCP runtime still blocked (see PR #55 notes).
+
+#### `phase-8c-full` *(env: qa)*
+
+End-to-end visual walk against the QA Vercel preview after 8c-1 through 8c-7 land. Covers the new chrome split (route group), the heirloom landing, perceived-perf wins (skeletons + LinkProgress), the revoke-member copy, and the global version footer. Interactive flows that need Playwright MCP runtime may still SKIP — report PARTIAL_PASS with reason `playwright-runtime-blocked` and call out which steps were curl-verifiable vs. interactive.
+
+1. **Pre-condition** — QA Vercel preview is reachable with `VERCEL_PROTECTION_BYPASS` set per the project's QA-preview unblock pattern (the env var is documented at the top of this file). The QA Supabase project has a known test account with at least one tree containing ≥1 person.
+2. **Landing (unauthed)** — visit `/` in an incognito session. Assert: heirloom hero renders (Logo + Cormorant italic kicker "meet the people who already know each other" + serif H1 "Build a family tree that feels like home." + primary-color "Sign in to begin" CTA). Below: three-card features grid using the brand icons (Family / Heart / Leaf) with Branch SVG dividers above + below. Below that: footer with Cormorant italic tagline + sign-in link. NO top-nav chrome. The bottom-right corner shows the `v…` micro-version.
+3. **Landing → login** — click "Sign in to begin". Assert: navigates to `/login`. (LinkProgress bar may flash at the top during the navigation; ViewTransition morph is DEFERRED post-Phase-8 — `react@19.2.6` stable does not export it.)
+4. **Authed redirect** — sign in, then visit `/` directly. Assert: the page redirects to `/dashboard` server-side (no flash of the landing markup).
+5. **Route-group chrome** — visit `/dashboard`, `/tree/<id>`, and `/invite/<token>` (a known pending invite). Assert: each shows the SAME top-nav (Logo + "meetthefam" wordmark on the left, "Sign out" link on the right). Public surfaces (`/`, `/login`, `/auth/*`, `/share/<token>`) show NO top-nav chrome.
+6. **Loading shimmer (dashboard)** — hard-refresh `/dashboard` (clear cache to force a cold SSR fetch). Assert: a heirloom-palette skeleton paints immediately (cream `bg-background` outer `<main>`, `bg-secondary/60` shimmer rows). NO black flash.
+7. **LinkProgress bar** — from `/dashboard` click a tree card. Assert: a thin accent-coloured bar animates at the very top of the viewport while the navigation is in flight; the bar disappears after `/tree/<id>` finishes painting.
+8. **Loading shimmer (tree)** — from `/dashboard` open a tree, then re-visit it (or open in a new tab to force a cold render). Assert: heirloom skeleton paints (cream `bg-background` + `bg-secondary/60` shimmer for back-arrow + name + Members + Share + a dashed-border canvas block).
+9. **Suspense order** — visit `/tree/<id>` with a path that 404s for the current user (e.g. someone else's tree id). Assert: the 404 page renders immediately, NOT a loading skeleton followed by 404 (the auth+permission gates run before Suspense).
+10. **Revoke-member copy** — as the owner on `/tree/<id>`, open MembersSheet, click the Trash icon next to an editor member. Assert: the row expands vertically — the chip-row stays inline, and a `text-sm text-muted-foreground` paragraph appears below: `"<editor name> will lose access. The people they added stay in your tree."`. Click "Cancel revoke" → the paragraph disappears.
+11. **Italic-Cormorant whitelist** — visual sweep. Confirm italic Cormorant appears ONLY in: landing kicker, landing footer tagline, not-found tagline ("Lost in the family tree?"), ShareBanner pull-quote, PersonDetailSheet nickname. Nowhere else.
+12. **VersionFooter** — on every page visited above, confirm the `v…` micro-version sits in the bottom-right corner at `fixed bottom-2 right-3`, muted (`opacity: 0.4`), and does NOT block the AddRelativeFab on `/tree/<id>` (the FAB at `bottom-6 right-6` remains clickable).
+
+**Pass:** all 12 steps complete; no console errors; the heirloom palette persists across light + dark mode (toggle `prefers-color-scheme: dark` in DevTools and re-walk steps 2 + 5 + 6 + 12).
+
+**Skip rules:**
+- ViewTransition cross-page morph is OUT OF SCOPE for this flow (8c-5 deferred; documented in `docs/tasks/current-phase.md`). Don't assert ViewTransition behavior.
+- Playwright MCP at runtime still blocked → SKIP steps 2 through 11 with reason `playwright-runtime-blocked`; agent still curl-verifies `/`, `/login`, the favicon, the global CSS for the heirloom tokens, and the rendered `v…` micro-version on the public landing as a partial pass.
+
+---
+
 ## Adding a new flow
 
 When closing out a phase:
