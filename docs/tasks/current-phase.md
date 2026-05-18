@@ -111,6 +111,20 @@ The 8a pull-review of Knot's brand bundle surfaced **zero blocking issues** — 
 
 > **Workflow note** — Phase 8 continues under the phase-branch-as-default workflow (`feedback_feature_branch_workflow.md`). All 14 sub-tasks land as separate commits on `feat/phase-8-visual-polish-landing`; one PR at phase end squash-merges into `qa`. Closes with `v0.4.0` per [ADR 0009 §1](../adrs/0009-versioning-and-releases.md) — **first release using [Amendment 4](../adrs/0009-versioning-and-releases.md)'s zero-commit release-branch + fast-forward-push recipe.** Pre-v1 policy still applies (no prod-DB / prod-Vercel-config changes until v1.0 launch gate).
 
+**Phase 8 close-out** *(2026-05-18 — `feat/phase-8-visual-polish-landing` + 14 commits ahead of `qa`)*:
+
+- [x] **13 of 14 sub-tasks landed**; **8c-5 deferred** with a documented re-evaluate gate (React 19.2.6 stable does not export `ViewTransition`; canary-channel swap vetoed by `feedback_no_prod_changes_pre_v1`). #50 closes via 8c-3 + 8c-4 only — perceived-perf wins shipped, soft cross-page morph polish defers.
+- [x] Per-sub-task docs ticks landed in `current-phase.md` in the same commit as each feature commit (per the standing memory rule). 8c-1 → `3a3612e`, 8c-2 → `170b73d`, 8c-3 → `01acf9b`, 8c-4 → `1f6db91`, 8c-5 deferral → `5e8db4f`, 8c-6 → `67acc2d`, 8c-7 → `17c81b0`, 8c-done smoke-flow → `85ff911`.
+- [x] Vitest suite passing at the final code-touching HEAD (`17c81b0`): **199 / 199** tests across 25 files. Net new from Phase 8: 2 LinkProgress + 2 VersionFooter + 11 deceased-shape avatar + 4 duplicate-card + 12 brand-icon = 31 new tests. Baseline 178 → 199.
+- [x] Italic-Cormorant whitelist audit passed (8c-6): 5 in-tree uses (`LandingHero` kicker, `LandingFooter` tagline, `not-found` tagline, `ShareBanner` pull-quote, `PersonDetailSheet` nickname) — all on the ADR 0008 whitelist; no deviations to document.
+- [ ] `e2e-smoke-tester` agent ran the `phase-8c-full` smoke against the QA preview (dispatched 2026-05-18 in background; result pending — Playwright MCP runtime block still possible → partial-pass via curl-verifiable gates expected).
+- [ ] Manual QA pass on the QA preview — user walks the 12-step `phase-8c-full` flow before un-drafting [PR #55](https://github.com/SanchitB23/meetthefam/pull/55).
+- [ ] Release version: **`v0.4.0`** — first run of [ADR 0009 Amendment 4](../adrs/0009-versioning-and-releases.md)'s zero-unique-commit release recipe. Recipe in this overlay's "v0.4.0 release recipe" section.
+- n/a Phase 8 migration applied to QA — **no migration this phase** (pure frontend).
+- n/a Phase 8 migration applied to prod — **no migration + pre-v1 policy** (everything batches at v1.0 per [`../dev/prod-readiness.md`](../dev/prod-readiness.md)).
+
+> **Handoff to next session** — phase work is complete; what remains is human-action steps: (a) walk `phase-8c-full` against the QA preview, (b) un-draft + squash-merge [PR #55](https://github.com/SanchitB23/meetthefam/pull/55) into `qa`, (c) run the `v0.4.0` release recipe per the [overlay](../superpowers/plans/2026-05-18-phase-8c-execution.md#v040-release-recipe-adr-0009-amendment-4--first-consumer). After v0.4.0 ships, a separate `docs/phase-9-stub` branch flips this document to **Phase 9 — QA + edge cases + launch** per `phase-backlog.md`.
+
 ---
 
 ## Previous phase: 7 — Share link (✅ closed)
