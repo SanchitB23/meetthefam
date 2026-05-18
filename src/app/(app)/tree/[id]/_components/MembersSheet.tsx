@@ -320,7 +320,8 @@ function MemberListRow({
   const displayName = member.display_name ?? member.user_id.slice(0, 8)
 
   return (
-    <div className="flex items-center gap-3 py-2">
+    <div className="py-2">
+      <div className="flex items-center gap-3">
       <Avatar
         fullName={displayName}
         photoUrl={member.avatar_url}
@@ -387,8 +388,14 @@ function MemberListRow({
           )}
         </div>
       )}
+      </div>
+      {confirmRevoke && (
+        <p className="mt-2 text-sm text-muted-foreground">
+          {displayName} will lose access. The people they added stay in your tree.
+        </p>
+      )}
       {error && (
-        <p className="text-xs text-destructive col-span-full">{error}</p>
+        <p className="mt-1 text-xs text-destructive">{error}</p>
       )}
     </div>
   )
