@@ -45,7 +45,7 @@ vi.mock('@/lib/supabase/server', () => ({
   },
 }))
 
-import { uploadPersonPhoto } from '@/app/tree/[id]/actions'
+import { uploadPersonPhoto } from '@/app/(app)/tree/[id]/actions'
 
 // ---- Fixtures ----------------------------------------------------------
 

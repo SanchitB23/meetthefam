@@ -52,7 +52,7 @@ import {
   enableShareLink,
   regenerateShareToken,
   disableShareLink,
-} from '@/app/tree/[id]/share/actions'
+} from '@/app/(app)/tree/[id]/share/actions'
 
 const OWNER_EMAIL = 'action-share-owner@test.local'
 const EDITOR_EMAIL = 'action-share-editor@test.local'

@@ -10,7 +10,7 @@
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
-import { attachPressDetector } from '@/app/tree/[id]/_lib/usePressActions'
+import { attachPressDetector } from '@/app/(app)/tree/[id]/_lib/usePressActions'
 
 function makeContainer(): HTMLElement {
   const cont = document.createElement('div')

@@ -53,7 +53,7 @@ vi.mock('@/lib/supabase/server', () => ({
 // Import the action AFTER mocks are registered. vitest hoists vi.mock above
 // imports automatically but being explicit avoids surprises if the file is
 // later refactored.
-import { createPerson } from '@/app/tree/[id]/actions'
+import { createPerson } from '@/app/(app)/tree/[id]/actions'
 
 // ---- Fixtures ----------------------------------------------------------
 

@@ -63,7 +63,7 @@ vi.mock('@/lib/email/inviteEmail', () => ({
   },
 }))
 
-import { inviteEditor } from '@/app/tree/[id]/members/actions'
+import { inviteEditor } from '@/app/(app)/tree/[id]/members/actions'
 
 // ---- Fixtures --------------------------------------------------------------
 

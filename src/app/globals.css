@@ -103,37 +103,40 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* Warm-shifted dark mode per Knot brand-decisions.md (Phase 8a-2) — NOT
+   * a desaturated invert of light mode. Sustains the heirloom journal
+   * aesthetic in dark. */
+  --background: oklch(0.18 0.01 60);       /* warm near-black ≈ #1B1814 */
+  --foreground: oklch(0.89 0.018 80);      /* warm parchment ≈ #E8DFD0 */
+  --card: oklch(0.22 0.012 70);            /* paper-on-dark ≈ #241F18 */
+  --card-foreground: oklch(0.89 0.018 80);
+  --popover: oklch(0.22 0.012 70);
+  --popover-foreground: oklch(0.89 0.018 80);
+  --primary: oklch(0.92 0.018 80);         /* brightened ink for button legibility */
+  --primary-foreground: oklch(0.18 0.01 60);
+  --secondary: oklch(0.25 0.012 70);
+  --secondary-foreground: oklch(0.89 0.018 80);
+  --muted: oklch(0.25 0.012 70);
+  --muted-foreground: oklch(0.62 0.018 80);
+  --accent: oklch(0.72 0.10 38);           /* warm terracotta ≈ #E09376 */
+  --accent-foreground: oklch(0.18 0.01 60);
+  --destructive: oklch(0.70 0.18 25);
+  --border: oklch(0.89 0.018 80 / 0.12);
+  --input: oklch(0.89 0.018 80 / 0.18);
+  --ring: oklch(0.72 0.10 38);
+  --chart-1: oklch(0.92 0.018 80);
+  --chart-2: oklch(0.72 0.10 38);
+  --chart-3: oklch(0.62 0.018 80);
+  --chart-4: oklch(0.50 0.04 200);
+  --chart-5: oklch(0.45 0.06 60);
+  --sidebar: oklch(0.22 0.012 70);
+  --sidebar-foreground: oklch(0.89 0.018 80);
+  --sidebar-primary: oklch(0.92 0.018 80);
+  --sidebar-primary-foreground: oklch(0.18 0.01 60);
+  --sidebar-accent: oklch(0.25 0.012 70);
+  --sidebar-accent-foreground: oklch(0.89 0.018 80);
+  --sidebar-border: oklch(0.89 0.018 80 / 0.12);
+  --sidebar-ring: oklch(0.72 0.10 38);
 }
 
 @layer base {
@@ -164,4 +167,127 @@
 .f3 .link {
   stroke: color-mix(in oklch, var(--foreground) 35%, transparent);
   stroke-width: 1.5px;
+}
+
+/*
+ * 8b polish FIX 1 — "+" add-relative button reveal.
+ * The button is a DOM child of .mtf-node (bottom:-10px; right:-10px), so
+ * pointer events stay alive as the cursor moves from the card to the button —
+ * no cursor-bridge gap. Hidden by default, revealed on card hover / focus-within.
+ * Touch devices (hover:none) show it at 85% opacity since there's no hover.
+ */
+.f3 .mtf-node__add-btn {
+  opacity: 0;
+  transition: opacity .15s ease, transform .15s ease;
+  transform: scale(0.9);
+}
+.f3 .mtf-node:hover .mtf-node__add-btn,
+.f3 .mtf-node:focus-within .mtf-node__add-btn {
+  opacity: 1;
+  transform: scale(1);
+}
+@media (hover: none) {
+  .f3 .mtf-node__add-btn { opacity: 0.85; transform: scale(1); }
+}
+
+/*
+ * 8b polish FIX 2 — Deceased card chrome, strengthened.
+ * The mtf-node--deceased class is emitted by personNodeHtml when data.deceased
+ * is true. Stronger border opacity (14% vs 10%), a warm-tinted gradient, and
+ * gentle whole-card desaturation (0.92) complement the already-deceased avatar
+ * treatment (saturate(0.55), opacity 0.82, † badge) to complete the
+ * in-memoriam feeling across the whole card chrome. No inline border-color is
+ * set by personNodeHtml (border-style only), so this rule wins.
+ *
+ * Connector lines stay solid (locked decision #4 — revisit on QA feedback).
+ */
+.f3 .mtf-node--deceased {
+  /* Border at 18% foreground opacity (was 14%) — the 14% line read too
+     quietly against the new card lift (8b polish box-shadow). 18% is a
+     deliberate "older" line at the standard tree-view zoom without
+     becoming funereal. */
+  border-color: color-mix(in oklch, var(--foreground) 18%, transparent);
+  /* Warm parchment tint on the WHOLE card (3% at top, 8% at bottom) —
+     the previous 0% → 5% gradient meant the top of a deceased card
+     looked identical to a living card, so duplicate spotting from a
+     distance failed. Tinting both ends makes the eye read "different
+     card" at a glance. */
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklch, var(--foreground) 3%, var(--card)),
+    color-mix(in oklch, var(--foreground) 8%, var(--card))
+  );
+  /* Card-level saturation drop (0.92 → 0.85). Compounds with the
+     avatar's own filter (saturate(0.4) grayscale(0.3) opacity:0.78)
+     so the avatar reads "old" even on photo portraits, while the
+     overall card stays legible. */
+  filter: saturate(0.85);
+}
+
+/*
+ * 8b-3 — Duplicate-card dashed border.
+ * The mtf-node--duplicate class is emitted by personNodeHtml when d.duplicate
+ * is truthy (family-chart sets d.duplicate = duplicates.length on d3 nodes
+ * whose data.id appears more than once in the tree, per esm.js:880).
+ * The dashed border is a universal "secondary/reference" cue — combined with
+ * the ↑ corner badge and "Already shown above" tooltip, it signals that this
+ * card is an echo of a canonical instance shown elsewhere in the tree.
+ *
+ * border-style is also set inline in personNodeHtml so it takes effect even
+ * without this CSS rule (the inline style wins in specificity); this rule
+ * exists as the canonical stylesheet declaration.
+ *
+ * Connector lines stay solid. family-chart renders connectors as SVG <path>
+ * children of .f3 .link; targeting the link leading TO a duplicate node from
+ * CSS alone would require a JS pass to add a class to the relevant <path>
+ * elements. Pragmatic compromise: render the card chrome dashed (done) and
+ * leave connectors solid. Revisit if QA feedback says the mismatch reads
+ * poorly. (See locked decision #4 in the canonical plan body.)
+ */
+.f3 .mtf-node--duplicate {
+  border-style: dashed;
+}
+
+/*
+ * 8c-4 — LinkProgress top-edge accent bar keyframe.
+ * Animates from 0 → 1 scaleX while a next/link navigation is pending
+ * (useLinkStatus). The bar is position:fixed so it always appears at the
+ * top of the viewport regardless of where the <LinkProgress> is mounted.
+ */
+@keyframes mtf-link-progress {
+  0%   { transform: scaleX(0); transform-origin: left; }
+  50%  { transform: scaleX(0.7); transform-origin: left; }
+  100% { transform: scaleX(1); transform-origin: left; }
+}
+
+/*
+ * 8c-3 polish — heirloom skeleton shimmer.
+ * A warm tinted base (10% foreground over background) with a brighter
+ * gradient sweep traveling left → right. `--secondary` alone was too
+ * close to `--background` (Δ L 0.025) and disappeared at low alpha,
+ * which is why the first pass landed faded.
+ */
+@keyframes mtf-skeleton-sweep {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.mtf-skeleton {
+  background-color: color-mix(in oklch, var(--foreground) 8%, transparent);
+  background-image: linear-gradient(
+    110deg,
+    transparent 30%,
+    color-mix(in oklch, var(--foreground) 14%, transparent) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: mtf-skeleton-sweep 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mtf-skeleton {
+    animation: none;
+    background-image: none;
+  }
 }
