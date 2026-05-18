@@ -259,3 +259,35 @@
   50%  { transform: scaleX(0.7); transform-origin: left; }
   100% { transform: scaleX(1); transform-origin: left; }
 }
+
+/*
+ * 8c-3 polish — heirloom skeleton shimmer.
+ * A warm tinted base (10% foreground over background) with a brighter
+ * gradient sweep traveling left → right. `--secondary` alone was too
+ * close to `--background` (Δ L 0.025) and disappeared at low alpha,
+ * which is why the first pass landed faded.
+ */
+@keyframes mtf-skeleton-sweep {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.mtf-skeleton {
+  background-color: color-mix(in oklch, var(--foreground) 8%, transparent);
+  background-image: linear-gradient(
+    110deg,
+    transparent 30%,
+    color-mix(in oklch, var(--foreground) 14%, transparent) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: mtf-skeleton-sweep 1.8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mtf-skeleton {
+    animation: none;
+    background-image: none;
+  }
+}
