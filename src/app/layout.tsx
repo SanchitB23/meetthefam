@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { VersionFooter } from "@/components/ui/VersionFooter";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -48,6 +49,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         {children}
+        <VersionFooter />
         <Analytics />
         <SpeedInsights />
       </body>
