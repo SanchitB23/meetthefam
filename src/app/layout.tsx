@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, Manrope } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { VersionFooter } from "@/components/ui/VersionFooter";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -19,7 +20,21 @@ const cormorant = Cormorant_Garamond({
 
 export const metadata: Metadata = {
   title: "meetthefam",
-  description: "Build your private family tree.",
+  description:
+    "An heirloom-quality family-tree builder for the people who already know each other",
+  icons: {
+    icon: [{ url: "/logo.svg", type: "image/svg+xml" }],
+  },
+  openGraph: {
+    title: "meetthefam",
+    description: "An heirloom-quality family-tree builder",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "meetthefam",
+    description: "An heirloom-quality family-tree builder",
+  },
 };
 
 export default function RootLayout({
@@ -34,6 +49,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         {children}
+        <VersionFooter />
         <Analytics />
         <SpeedInsights />
       </body>

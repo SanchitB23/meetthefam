@@ -7,8 +7,8 @@ import { describe, expect, test } from 'vitest'
 import {
   arePartnersMarried,
   transformToFamilyChartShape,
-} from '@/app/tree/[id]/_lib/family-chart-data'
-import type { PersonRow } from '@/app/tree/[id]/_lib/types'
+} from '@/app/(app)/tree/[id]/_lib/family-chart-data'
+import type { PersonRow } from '@/app/(app)/tree/[id]/_lib/types'
 
 function row(overrides: Partial<PersonRow>): PersonRow {
   return {

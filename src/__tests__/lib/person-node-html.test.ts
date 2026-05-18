@@ -11,8 +11,8 @@ import { describe, expect, test } from 'vitest'
 
 import type { TreeDatum } from 'family-chart'
 
-import { personNodeHtml } from '@/app/tree/[id]/_lib/person-node-html'
-import type { FamilyChartDatum } from '@/app/tree/[id]/_lib/family-chart-data'
+import { personNodeHtml } from '@/app/(app)/tree/[id]/_lib/person-node-html'
+import type { FamilyChartDatum } from '@/app/(app)/tree/[id]/_lib/family-chart-data'
 
 function datum(overrides: Partial<FamilyChartDatum['data']> = {}): FamilyChartDatum {
   return {
@@ -152,5 +152,147 @@ describe('personNodeHtml', () => {
     expect(() =>
       personNodeHtml(treeNode(datum({ full_name: 'Anon' }))),
     ).not.toThrow()
+  })
+})
+
+// 8b-1 — gender-shape avatar tests.
+// Fixtures set BOTH gender_raw (truthful 4-value field) AND gender (layout-only
+// 'M'|'F') so they match the real FamilyChartDatum shape from family-chart-data.ts.
+describe('personNodeHtml — gender shape (8b-1)', () => {
+  test('male renders rounded-square avatar (border-radius ~18% of 48px = 9px)', () => {
+    const html = personNodeHtml(
+      treeNode(datum({ gender_raw: 'm', gender: 'M' })),
+    )
+    expect(html).toContain('border-radius:9px') // Math.round(48 * 0.18) = 9
+  })
+
+  test('other renders squircle avatar (border-radius ~34% of 48px = 16px)', () => {
+    const html = personNodeHtml(
+      treeNode(datum({ gender_raw: 'other', gender: 'M' })),
+    )
+    expect(html).toContain('border-radius:16px') // Math.round(48 * 0.34) = 16
+  })
+
+  test('female renders circle avatar (border-radius 50%)', () => {
+    const html = personNodeHtml(
+      treeNode(datum({ gender_raw: 'f', gender: 'F' })),
+    )
+    expect(html).toContain('border-radius:50%')
+  })
+
+  test('unknown renders circle (default)', () => {
+    const html = personNodeHtml(
+      treeNode(datum({ gender_raw: 'unknown', gender: 'M' })),
+    )
+    expect(html).toContain('border-radius:50%')
+  })
+})
+
+// 8b-1 — deceased treatment tests.
+describe('personNodeHtml — deceased treatment (8b-1)', () => {
+  test('deceased adds the † badge', () => {
+    const html = personNodeHtml(
+      treeNode(datum({ deceased: true, birth_year: 1900, death_year: 1975 })),
+    )
+    expect(html).toContain('†')
+    expect(html).toContain('mtf-node__deceased-badge')
+  })
+
+  test('deceased adds desaturate + grayscale filter to the avatar', () => {
+    const html = personNodeHtml(
+      treeNode(datum({ deceased: true })),
+    )
+    // 8b polish revision — saturate + grayscale + opacity drop so the
+    // treatment is visible on photo avatars (saturate alone was inert
+    // on already-low-saturation portraits).
+    expect(html).toContain('saturate(0.4)')
+    expect(html).toContain('grayscale(0.3)')
+    expect(html).toContain('opacity:0.78')
+  })
+
+  test('living does NOT add the † badge', () => {
+    const html = personNodeHtml(
+      treeNode(datum({ deceased: false })),
+    )
+    expect(html).not.toContain('mtf-node__deceased-badge')
+  })
+})
+
+// 8b-3 — duplicate-card visual marker tests.
+// The duplicate flag lives on the d3 node (`node.duplicate: number`) per
+// family-chart.esm.js:880. The `treeNode` helper is extended inline here
+// by spreading the duplicate count onto the returned object.
+describe('personNodeHtml — duplicate marker (8b-3)', () => {
+  /** Build a TreeDatum with d.duplicate set (node-level flag, not data-level). */
+  function duplicateNode(
+    dataOverrides: Partial<Parameters<typeof datum>[0]> = {},
+    duplicateCount = 2,
+  ) {
+    const base = treeNode(datum(dataOverrides))
+    return { ...base, duplicate: duplicateCount } as typeof base
+  }
+
+  test('duplicate emits the mtf-node--duplicate class and dashed border', () => {
+    const html = personNodeHtml(duplicateNode())
+    expect(html).toContain('mtf-node--duplicate')
+    // 8b polish: border is split into border-width + border-style (no shorthand)
+    // so CSS can set border-color for deceased cards without being overridden.
+    expect(html).toContain('border-style:dashed')
+  })
+
+  test('duplicate emits the ↑ badge at the expected corner (top:-6px; left:-6px)', () => {
+    const html = personNodeHtml(duplicateNode())
+    expect(html).toContain('mtf-node__duplicate-badge')
+    expect(html).toContain('↑')
+    expect(html).toContain('top:-6px')
+    expect(html).toContain('left:-6px')
+    // Also verifies the "Already shown above" tooltip text is present.
+    expect(html).toContain('Already shown above')
+  })
+
+  test('duplicate omits the ellipsis action button (no data-action-trigger)', () => {
+    const html = personNodeHtml(duplicateNode())
+    expect(html).not.toContain('data-action-trigger')
+  })
+
+  // 8b polish FIX 1 — in-card "+" add-relative button.
+  // Non-duplicate, non-readonly cards should emit the add-relative button.
+  test('non-duplicate non-readonly card emits mtf-node__add-btn with data-action-plus', () => {
+    const html = personNodeHtml(treeNode(datum({})))
+    expect(html).toContain('mtf-node__add-btn')
+    expect(html).toContain('data-action-plus')
+    expect(html).toContain('aria-label="Add relative to Jane Smith"')
+    // Button is absolutely positioned at bottom:-10px; right:-10px inside the card.
+    expect(html).toContain('bottom:-10px')
+    expect(html).toContain('right:-10px')
+  })
+
+  test('duplicate card omits mtf-node__add-btn (read-only echoes skip the "+")', () => {
+    const html = personNodeHtml(duplicateNode())
+    expect(html).not.toContain('mtf-node__add-btn')
+    expect(html).not.toContain('data-action-plus')
+  })
+
+  test('deceased + duplicate compose without collision: both classes, both badges, different corners', () => {
+    const html = personNodeHtml(
+      duplicateNode({ deceased: true, birth_year: 1900, death_year: 1975 }),
+    )
+    // Deceased signals on the AVATAR wrapper
+    expect(html).toContain('saturate(0.4)')
+    expect(html).toContain('grayscale(0.3)')
+    expect(html).toContain('mtf-node__deceased-badge')
+    // Duplicate signals on the CARD wrapper (different DOM element)
+    expect(html).toContain('mtf-node--duplicate')
+    expect(html).toContain('mtf-node__duplicate-badge')
+    // 8b polish: border split into border-width + border-style.
+    expect(html).toContain('border-style:dashed')
+    // Both classes present on the card wrapper
+    expect(html).toContain('mtf-node--deceased')
+    // Corners do not overlap: † is at top:0;right:0 (avatar wrapper),
+    // ↑ is at top:-6px;left:-6px (card wrapper). Both appear in the HTML.
+    expect(html).toContain('top:0')
+    expect(html).toContain('right:0')
+    expect(html).toContain('top:-6px')
+    expect(html).toContain('left:-6px')
   })
 })

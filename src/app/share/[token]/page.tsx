@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createServiceRoleClient } from '@/lib/supabase/service'
-import { FamilyTree } from '@/app/tree/[id]/_components/FamilyTree'
-import type { PersonRow } from '@/app/tree/[id]/_lib/types'
+import { FamilyTree } from '@/app/(app)/tree/[id]/_components/FamilyTree'
+import type { PersonRow } from '@/app/(app)/tree/[id]/_lib/types'
 import { ShareBanner } from './_components/ShareBanner'
 
 // Phase 7 sub-task 3 — public read-only share view.

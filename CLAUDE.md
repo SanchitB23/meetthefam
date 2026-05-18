@@ -21,9 +21,11 @@ Stack: Next.js 16 (App Router, Turbopack default) on Vercel, Supabase (Postgres 
 - [`docs/ux/`](docs/ux/) — page-by-page UX details
 - [`docs/dev/`](docs/dev/) — operational recipes: git workflow, releases, migrations, **prod-readiness checklist** (the *how*)
 - [`docs/adrs/`](docs/adrs/) — Architecture Decision Records (the *why*)
+- [`docs/superpowers/plans/`](docs/superpowers/plans/) — phase + bundle execution plans authored via `superpowers:writing-plans`. Dated filenames (`YYYY-MM-DD-<slug>.md`); pick the latest matching the current phase. Canonical "everything for a phase" plans (e.g. `2026-05-16-phase-8-visual-polish-landing.md`) get focused **execution overlays** with per-bundle session recipes (e.g. `2026-05-17-phase-8b-execution.md`, `2026-05-18-phase-8c-execution.md`). When resuming mid-phase, load both the canonical plan AND the most recent execution overlay.
+- [`docs/superpowers/specs/`](docs/superpowers/specs/) — design + analysis specs authored via `superpowers:brainstorming` or before-coding scoping. Same dated-filename convention. Specs describe the *what* + *why* at a decision-locking level; plans describe the *how* + *when*.
 - [`docs/tasks/current-phase.md`](docs/tasks/current-phase.md) — what we're working on right now
 
-When unsure, read `docs/tasks/current-phase.md` first to know what phase we're in, then load only the docs relevant to the current phase.
+When unsure, read `docs/tasks/current-phase.md` first to know what phase we're in, then check `docs/superpowers/plans/` for the canonical plan + execution overlay matching that phase. Load only the architecture / UX docs relevant to the current phase.
 
 ## Project subagents
 

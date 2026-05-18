@@ -50,7 +50,7 @@ vi.mock('@/lib/supabase/server', () => ({
   },
 }))
 
-import { acceptInvite } from '@/app/tree/[id]/members/actions'
+import { acceptInvite } from '@/app/(app)/tree/[id]/members/actions'
 
 // ---- Fixtures --------------------------------------------------------------
 
