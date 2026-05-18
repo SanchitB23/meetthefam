@@ -74,7 +74,20 @@ gh release create vX.Y.Z \
   --notes-file /tmp/vX.Y.Z-notes.md \
   --prerelease                          # drop --prerelease starting v1.0.0
 
-# 6. Fast-forward qa to release-branch tip (Amendment 4 — no more
+# 6. Retrigger prod build so <VersionFooter> picks up the new tag.
+#    Vercel's prod build fired off on step 4's merge to main — i.e.
+#    BEFORE step 5's tag existed. The build's GitHub-API fallback in
+#    scripts/derive-version.mjs therefore resolved "latest release" to
+#    the PREVIOUS one, and APP_VERSION shipped as "<prev>-dev.<sha>".
+#    Redeploy re-runs the build with the new tag visible. Skipping this
+#    leaves prod rendering the stale version until the next commit to
+#    main. (Caught on v0.4.0 ship — see Amendment 5 below.)
+PROD_URL=$(npx vercel ls --prod meetthefam | awk '/Ready/{print $3; exit}')
+npx vercel redeploy "$PROD_URL"
+# (Or click "Redeploy" on the latest Production deployment in the
+#  Vercel dashboard — uses cached build files, ~30s, no env changes.)
+
+# 7. Fast-forward qa to release-branch tip (Amendment 4 — no more
 #    forward-PR; zero ghost commits, zero structural divergence).
 git push origin release/vX.Y.Z:qa
 git push origin --delete release/vX.Y.Z
@@ -121,6 +134,8 @@ The GitHub MCP currently has only read-tools for releases (no `create_release`),
 - [`docs/dev/releases.md`](../dev/releases.md) — operational recipe (the §4 code block above lives there too; this ADR holds the rationale and Amendment history).
 
 ## Amendments
+
+- **2026-05-18 (during v0.4.0 ship)** — Inserted a "redeploy prod after `gh release create`" step into the §4 recipe (now Step 6, between tag-create and qa-fast-forward). Why it's needed: Vercel's prod git integration starts a build the instant Step 4's merge lands on `main` — i.e. BEFORE Step 5's `gh release create` exists. The build's `scripts/derive-version.mjs` hits the GitHub `/releases?per_page=1` fallback (Vercel's shallow clone has no tags) and resolves "latest" to the PREVIOUS release. `APP_VERSION` therefore ships as `"<prev>-dev.<sha>"` and the `<VersionFooter>` on prod reads the stale string until something else triggers a rebuild. Caught on v0.4.0 — prod rendered `v0.3.0-dev.3b2a45c` for ~25 minutes after the v0.4.0 tag existed. Fix is a one-shot `npx vercel redeploy <prod-url>` (uses cached build files, ~30s, no env changes), or a manual "Redeploy" click in the Vercel dashboard. Codified in [`../dev/releases.md`](../dev/releases.md) as Step 6. v0.4.0 is the only release affected; subsequent releases following the amended recipe ship the correct footer on first paint.
 
 - **2026-05-12** — Promoted `gh release create` to the primary release command and demoted the `curl` form to a fallback. The original §4 (in `v0.0.0`'s ADR) claimed `gh` was unavailable because it was logged into the user's org account — that was incorrect at the time of writing. Both `SanchitB23` (personal) and `SQB6461_YUMGHCP` (org) are logged in on this machine, with `SanchitB23` set as the active account, and `gh release create` works against this repo. The `v0.0.0` release was itself created via `gh release create`, demonstrating the path. §4 was rewritten accordingly, and a "verify `gh auth status` first" step was prepended to guard against accidentally operating under the org identity.
 
