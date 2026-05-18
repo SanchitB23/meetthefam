@@ -1,5 +1,5 @@
-import Link from 'next/link'
 import { formatDistanceToNow } from 'date-fns'
+import { LinkProgress } from '@/components/ui/LinkProgress'
 
 export type TreeRow = {
   id: string
@@ -23,7 +23,7 @@ export function TreeCard({ tree, role, actions }: Props) {
           slot (z-0 vs z-10 below). The DropdownMenu's own event handling
           stops propagation, but layering also guarantees clicks land on the
           intended target without relying on Base UI's stopPropagation alone. */}
-      <Link
+      <LinkProgress
         href={`/tree/${tree.id}`}
         className="absolute inset-0 z-0 rounded-lg"
         aria-label={`Open ${tree.name}`}

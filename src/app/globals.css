@@ -247,3 +247,15 @@
 .f3 .mtf-node--duplicate {
   border-style: dashed;
 }
+
+/*
+ * 8c-4 — LinkProgress top-edge accent bar keyframe.
+ * Animates from 0 → 1 scaleX while a next/link navigation is pending
+ * (useLinkStatus). The bar is position:fixed so it always appears at the
+ * top of the viewport regardless of where the <LinkProgress> is mounted.
+ */
+@keyframes mtf-link-progress {
+  0%   { transform: scaleX(0); transform-origin: left; }
+  50%  { transform: scaleX(0.7); transform-origin: left; }
+  100% { transform: scaleX(1); transform-origin: left; }
+}
