@@ -33,8 +33,14 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
+  // Phase 8c-2 made `/` the public heirloom landing page (was the create-next-app
+  // scaffold). The landing's Server Component itself handles the "if authed,
+  // redirect to /dashboard" branch, so unauthed hits must reach the page —
+  // they should NOT be bounced to /login by this proxy.
   const isPublic =
-    pathname.startsWith('/login') || pathname.startsWith('/auth')
+    pathname === '/' ||
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/auth')
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone()
