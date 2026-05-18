@@ -11,8 +11,8 @@ import { describe, expect, test } from 'vitest'
 
 import type { TreeDatum } from 'family-chart'
 
-import { personNodeHtml } from '@/app/tree/[id]/_lib/person-node-html'
-import type { FamilyChartDatum } from '@/app/tree/[id]/_lib/family-chart-data'
+import { personNodeHtml } from '@/app/(app)/tree/[id]/_lib/person-node-html'
+import type { FamilyChartDatum } from '@/app/(app)/tree/[id]/_lib/family-chart-data'
 
 function datum(overrides: Partial<FamilyChartDatum['data']> = {}): FamilyChartDatum {
   return {

@@ -39,7 +39,7 @@ vi.mock('@/lib/supabase/server', () => ({
   },
 }))
 
-import { removePersonPhoto } from '@/app/tree/[id]/actions'
+import { removePersonPhoto } from '@/app/(app)/tree/[id]/actions'
 
 const OWNER_EMAIL = 'action-remove-owner@test.local'
 const OTHER_OWNER_EMAIL = 'action-remove-other@test.local'

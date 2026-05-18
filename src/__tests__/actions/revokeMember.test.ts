@@ -49,7 +49,7 @@ vi.mock('@/lib/supabase/server', () => ({
   },
 }))
 
-import { revokeMember } from '@/app/tree/[id]/members/actions'
+import { revokeMember } from '@/app/(app)/tree/[id]/members/actions'
 
 // ---- Fixtures --------------------------------------------------------------
 

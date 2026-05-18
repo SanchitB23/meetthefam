@@ -2,15 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 
-export async function signOut() {
-  const supabase = await createClient()
-  await supabase.auth.signOut()
-  redirect('/login')
-}
-
-// ---- Tree mutations ----
+// ---- Create ----
 
 export type CreateTreeState =
   | { error: string; success?: never }

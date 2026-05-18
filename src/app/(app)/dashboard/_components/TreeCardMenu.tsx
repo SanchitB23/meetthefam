@@ -11,11 +11,11 @@ import {
 import { Button } from '@/components/ui/button'
 import { RenameTreeModal } from './RenameTreeModal'
 import { DeleteTreeDialog } from './DeleteTreeDialog'
-import { MembersSheet, type MemberRow, type PendingInviteRow } from '@/app/tree/[id]/_components/MembersSheet'
+import { MembersSheet, type MemberRow, type PendingInviteRow } from '@/app/(app)/tree/[id]/_components/MembersSheet'
 import {
   getMembersAndInvites,
   type GetMembersAndInvitesResult,
-} from '@/app/tree/[id]/members/actions'
+} from '@/app/(app)/tree/[id]/members/actions'
 import type { TreeRow } from './TreeCard'
 
 type Props = { tree: TreeRow }

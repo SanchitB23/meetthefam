@@ -17,7 +17,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service'
-import { acceptInvite } from '@/app/tree/[id]/members/actions'
+import { acceptInvite } from '@/app/(app)/tree/[id]/members/actions'
 import { SubmitButton } from '@/components/ui/submit-button'
 
 // ---------------------------------------------------------------------------
