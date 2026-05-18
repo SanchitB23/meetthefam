@@ -96,8 +96,13 @@ function avatarHtml(data: FamilyChartDatum['data']): string {
   // Correction (8b-1): read data.gender_raw (truthful 4-value field),
   // NOT data.gender (layout-only 'M'|'F' for the library's spouse positioning).
   const radius = borderRadiusForGender(data.gender_raw, sizePx)
+  // 8b polish revision — aggressive saturate + grayscale so the
+  // treatment is visible on PHOTO avatars (a low-saturation portrait
+  // at saturate(0.55) alone is visually indistinguishable from a
+  // living one). Mirrors the React <Avatar> deceased filter so the
+  // detail sheet + picker stay in sync.
   const deceasedStyles = data.deceased
-    ? 'filter:saturate(0.55);opacity:0.82;'
+    ? 'filter:saturate(0.4) grayscale(0.3);opacity:0.78;'
     : ''
 
   // The inner span clips the photo / background to the correct border-radius

@@ -101,8 +101,11 @@ export function Avatar({
     // Ring is drawn as an outline so it doesn't change layout dimensions.
     outline: ring ? `2px solid var(--tone-${tone}-ring)` : undefined,
     outlineOffset: ring ? 2 : undefined,
-    filter: deceased ? 'saturate(0.55)' : undefined,
-    opacity: deceased ? 0.82 : undefined,
+    // Deceased: aggressive desaturation + small grayscale so the effect
+    // lands on PHOTO avatars too (a low-saturation portrait at saturate(0.55)
+    // alone is visually indistinguishable from a living one).
+    filter: deceased ? 'saturate(0.4) grayscale(0.3)' : undefined,
+    opacity: deceased ? 0.78 : undefined,
   }
 
   const innerClass = [

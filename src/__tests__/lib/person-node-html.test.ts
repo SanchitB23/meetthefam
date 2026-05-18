@@ -198,11 +198,16 @@ describe('personNodeHtml — deceased treatment (8b-1)', () => {
     expect(html).toContain('mtf-node__deceased-badge')
   })
 
-  test('deceased adds saturate(0.55) filter to the avatar', () => {
+  test('deceased adds desaturate + grayscale filter to the avatar', () => {
     const html = personNodeHtml(
       treeNode(datum({ deceased: true })),
     )
-    expect(html).toContain('saturate(0.55)')
+    // 8b polish revision — saturate + grayscale + opacity drop so the
+    // treatment is visible on photo avatars (saturate alone was inert
+    // on already-low-saturation portraits).
+    expect(html).toContain('saturate(0.4)')
+    expect(html).toContain('grayscale(0.3)')
+    expect(html).toContain('opacity:0.78')
   })
 
   test('living does NOT add the † badge', () => {
@@ -273,7 +278,8 @@ describe('personNodeHtml — duplicate marker (8b-3)', () => {
       duplicateNode({ deceased: true, birth_year: 1900, death_year: 1975 }),
     )
     // Deceased signals on the AVATAR wrapper
-    expect(html).toContain('saturate(0.55)')
+    expect(html).toContain('saturate(0.4)')
+    expect(html).toContain('grayscale(0.3)')
     expect(html).toContain('mtf-node__deceased-badge')
     // Duplicate signals on the CARD wrapper (different DOM element)
     expect(html).toContain('mtf-node--duplicate')

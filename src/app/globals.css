@@ -202,13 +202,26 @@
  * Connector lines stay solid (locked decision #4 — revisit on QA feedback).
  */
 .f3 .mtf-node--deceased {
-  border-color: color-mix(in oklch, var(--foreground) 14%, transparent);
+  /* Border at 18% foreground opacity (was 14%) — the 14% line read too
+     quietly against the new card lift (8b polish box-shadow). 18% is a
+     deliberate "older" line at the standard tree-view zoom without
+     becoming funereal. */
+  border-color: color-mix(in oklch, var(--foreground) 18%, transparent);
+  /* Warm parchment tint on the WHOLE card (3% at top, 8% at bottom) —
+     the previous 0% → 5% gradient meant the top of a deceased card
+     looked identical to a living card, so duplicate spotting from a
+     distance failed. Tinting both ends makes the eye read "different
+     card" at a glance. */
   background: linear-gradient(
     180deg,
-    var(--card),
-    color-mix(in oklch, var(--foreground) 5%, var(--card))
+    color-mix(in oklch, var(--foreground) 3%, var(--card)),
+    color-mix(in oklch, var(--foreground) 8%, var(--card))
   );
-  filter: saturate(0.92);
+  /* Card-level saturation drop (0.92 → 0.85). Compounds with the
+     avatar's own filter (saturate(0.4) grayscale(0.3) opacity:0.78)
+     so the avatar reads "old" even on photo portraits, while the
+     overall card stays legible. */
+  filter: saturate(0.85);
 }
 
 /*
