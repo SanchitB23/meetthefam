@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { Leaf } from '@/components/icons/Leaf'
 import { TreeCard, type TreeRow } from './TreeCard'
 import { CreateTreeModal } from './CreateTreeModal'
 import { TreeCardMenu } from './TreeCardMenu'
@@ -28,7 +29,7 @@ export async function DashboardContent({ userId }: { userId: string }) {
     .select(`
       role,
       trees (
-        id, name, description, owner_id, updated_at
+        id, name, description, owner_id, created_at, updated_at
       )
     `)
     .eq('user_id', userId)
@@ -42,7 +43,10 @@ export async function DashboardContent({ userId }: { userId: string }) {
   return (
     <main className="px-4 py-8 max-w-4xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="font-serif text-3xl text-foreground">Your Trees</h1>
+        <h1 className="font-serif text-3xl text-foreground flex items-center gap-2">
+          <Leaf size={22} className="text-primary" />
+          Your Trees
+        </h1>
         <CreateTreeModal />
       </div>
 
