@@ -12,8 +12,10 @@
 //     when both are present (the hash is more current — the user navigated
 //     within the session). The chosen id is fed to family-chart via
 //     `chart.updateMainId(...)` BEFORE the first `updateTree({ initial })`.
-//   - "Re-center here" writes the hash; a `hashchange` listener picks it up
-//     and applies the new focus. Hash is the single source of truth.
+//   - "Re-center here" and "zoom-to-fit" write the hash via
+//     `window.location.hash` (Phase 9 fix — was `history.replaceState`,
+//     which silenced browser back/undo). A `hashchange` listener picks it
+//     up and applies the new focus. Hash is the single source of truth.
 //   - React mirrors the focus id in `currentFocusId` state for the FAB.
 //
 // <ViewTransition> defer-or-promote (per Phase 4 backlog item):
@@ -271,20 +273,19 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
   // same path the chart takes on first paint). main-id is left as-is — the
   // current focus person becomes the layout root, but all nodes are visible.
   const zoomToFit = useCallback(() => {
-    history.replaceState(null, '', window.location.pathname)
-    // replaceState doesn't fire hashchange; dispatch manually so the
-    // useSyncExternalStore subscription clears `currentFocusId` and the FAB
-    // / "Re-center here" path see the correct (null) focus state.
-    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    // Use window.location.hash (not replaceState) so the native hashchange
+    // fires, useSyncExternalStore clears currentFocusId, and browser back
+    // can undo the zoom-to-fit.
+    window.location.hash = ''
     chartRef.current?.updateTree({ initial: true })
   }, [])
 
   const handleRecenter = useCallback((personId: string) => {
-    // Hash is the single source of truth — write it and let the
-    // useSyncExternalStore subscription propagate. history.replaceState
-    // avoids growing the back-stack with every re-center; if the hash is
-    // already current we still need to force the update because no
-    // hashchange event fires for a no-op assignment.
+    // Hash is the single source of truth — write it via window.location.hash
+    // so the native hashchange fires and browser back can undo the re-center
+    // (Phase 9 fix — was history.replaceState which silenced the back stack).
+    // If the hash is already current, force the chart update directly since
+    // no hashchange fires for a no-op assignment.
     const target = `#p=${encodeURIComponent(personId)}`
     if (window.location.hash === target) {
       const chart = chartRef.current
@@ -293,11 +294,7 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
         chart.updateTree()
       }
     } else {
-      window.history.replaceState(null, '', target)
-      // replaceState doesn't fire hashchange; dispatch manually so the
-      // subscription updates `currentFocusId` and the React → chart
-      // sync effect runs.
-      window.dispatchEvent(new HashChangeEvent('hashchange'))
+      window.location.hash = target
     }
   }, [])
 
