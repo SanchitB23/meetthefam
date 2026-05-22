@@ -40,6 +40,7 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-canvas: var(--canvas);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -52,6 +53,7 @@
 :root {
   /* Two-tone heirloom page surfaces — see ADR 0008 + Kintree prototype */
   --background: oklch(0.945 0.014 80);    /* cream  ≈ #F5EFE3 */
+  --canvas: oklch(0.965 0.012 80);        /* midpoint surface for tree playground */
   --foreground: oklch(0.22 0.005 60);     /* warm charcoal */
   --card: oklch(0.99 0.008 85);           /* paper  ≈ #FFFCF5 */
   --card-foreground: oklch(0.22 0.005 60);
@@ -107,6 +109,7 @@
    * a desaturated invert of light mode. Sustains the heirloom journal
    * aesthetic in dark. */
   --background: oklch(0.18 0.01 60);       /* warm near-black ≈ #1B1814 */
+  --canvas: oklch(0.20 0.011 65);          /* midpoint surface for tree playground */
   --foreground: oklch(0.89 0.018 80);      /* warm parchment ≈ #E8DFD0 */
   --card: oklch(0.22 0.012 70);            /* paper-on-dark ≈ #241F18 */
   --card-foreground: oklch(0.89 0.018 80);
