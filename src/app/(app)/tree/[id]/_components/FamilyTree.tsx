@@ -55,7 +55,7 @@ import type { PersonRow } from '../_lib/types'
 import { AddRelativeFab } from './AddRelativeFab'
 import { PersonActionMenu, type ActionAnchor } from './PersonActionMenu'
 import { PersonDetailSheet } from './PersonDetailSheet'
-import { TreeOverviewButton } from './TreeOverviewButton'
+import { ZoomControls } from './ZoomControls'
 // PersonHoverPlus and PersonForm removed in 8b polish FIX 1:
 // "+" is now an in-card button child of .mtf-node; form is owned by AddRelativeFab
 // via CustomEvent('mtf-add-relative') dispatched from setOnCardClick.
@@ -279,6 +279,43 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
     chartRef.current?.updateTree({ initial: true })
   }, [])
 
+  // Programmatic zoom via d3-zoom internals. family-chart doesn't expose a
+  // JS zoom API, but d3-zoom stores its state on the SVG element:
+  //   svg.__zoom  — current Transform {k, x, y}
+  //   svg.__zoomObj — the zoom behaviour (needs d3.select to invoke)
+  //
+  // We avoid importing d3 (same pattern as non-spouse-parent-links.ts) by
+  // reading __zoom, computing the new transform centred on the SVG midpoint,
+  // updating __zoom so the next wheel/pinch event picks up the right baseline,
+  // and applying the attribute to the inner <g> directly.
+  const applyZoomDelta = useCallback((factor: number) => {
+    const cont = containerRef.current
+    if (!cont) return
+    const svg = cont.querySelector<SVGSVGElement>('svg.main_svg')
+    if (!svg) return
+    const t = (svg as SVGSVGElement & { __zoom?: { k: number; x: number; y: number } }).__zoom
+    if (!t) return
+    // Zoom around the SVG centre so the visible content stays centred.
+    const cx = svg.clientWidth / 2
+    const cy = svg.clientHeight / 2
+    const newK = t.k * factor
+    const newX = cx - (cx - t.x) * factor
+    const newY = cy - (cy - t.y) * factor
+    const ts = `translate(${newX},${newY}) scale(${newK})`
+    // Update d3's stored transform so wheel/pinch starts from the new baseline.
+    ;(svg as SVGSVGElement & { __zoom: unknown }).__zoom = {
+      k: newK,
+      x: newX,
+      y: newY,
+      toString: () => ts,
+    }
+    const g = svg.querySelector('g')
+    if (g) g.setAttribute('transform', ts)
+  }, [])
+
+  const zoomIn = useCallback(() => applyZoomDelta(1.2), [applyZoomDelta])
+  const zoomOut = useCallback(() => applyZoomDelta(1 / 1.2), [applyZoomDelta])
+
   const handleRecenter = useCallback((personId: string) => {
     // Hash is the single source of truth — write it and let the
     // useSyncExternalStore subscription propagate. history.replaceState
@@ -307,7 +344,7 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
   return (
     <>
       {/*
-        Outer wrapper: position:relative so TreeOverviewButton can use
+        Outer wrapper: position:relative so ZoomControls can use
         `absolute` positioning relative to the canvas area. The inner f3 div
         keeps overflow:hidden for family-chart's own pan/zoom chrome; the
         overlay sits on top, outside the clip region.
@@ -321,7 +358,7 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
             ['--text-color' as string]: 'var(--foreground)',
           }}
         />
-        {!readOnly && <TreeOverviewButton onActivate={zoomToFit} />}
+        <ZoomControls onZoomIn={zoomIn} onZoomOut={zoomOut} onFit={zoomToFit} />
       </div>
       <PersonDetailSheet
         person={detailPerson}
