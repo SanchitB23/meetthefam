@@ -249,6 +249,22 @@
 }
 
 /*
+ * POC — issue #69 option (d): hide the synthetic __super_root__ layout node.
+ * The card still occupies its 158×110 px layout slot (family-chart reserves
+ * it in the d3 hierarchy), which produces a blank row above the Gen-1 nodes.
+ * This is a known POC limitation; the full implementation can address it by
+ * returning a zero-dim foreignObject via a per-node setCardDim variant if
+ * the library exposes one, or by removing the row from the generated CSS.
+ * For now: invisible, non-interactive, non-selectable.
+ */
+.f3 .card_cont[data-id="__super_root__"],
+.f3 foreignObject[data-id="__super_root__"] {
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+/*
  * 8c-4 — LinkProgress top-edge accent bar keyframe.
  * Animates from 0 → 1 scaleX while a next/link navigation is pending
  * (useLinkStatus). The bar is position:fixed so it always appears at the

@@ -48,6 +48,10 @@ import {
   transformToFamilyChartShape,
   type FamilyChartDatum,
 } from '../_lib/family-chart-data'
+import {
+  transformToFamilyChartShapeShowAll,
+  SUPER_ROOT_ID,
+} from '../_lib/family-chart-data-show-all'
 import { attachNonSpouseParentLinkRewriter } from '../_lib/non-spouse-parent-links'
 import { personNodeHtml } from '../_lib/person-node-html'
 import { usePressActions } from '../_lib/usePressActions'
@@ -74,6 +78,29 @@ type Props = {
 }
 
 type Chart = ReturnType<typeof f3.createChart>
+
+// POC flag (issue #69) — set NEXT_PUBLIC_SHOW_ALL_PEOPLE=true to enable the
+// super-root layout that keeps all people visible regardless of focus.
+const SHOW_ALL_PEOPLE = process.env.NEXT_PUBLIC_SHOW_ALL_PEOPLE === 'true'
+
+// Suppress SVG connector lines that connect root-level people to the hidden
+// __super_root__ node. Called from setAfterUpdate on each chart update.
+// Uses the same `path.__data__` inspection pattern as non-spouse-parent-links.ts.
+function suppressSuperRootLinks(container: HTMLElement): void {
+  const svgRoot = container.querySelector<SVGSVGElement>('svg.main_svg')
+  if (!svgRoot) return
+  const linksView = svgRoot.querySelector<SVGGElement>('g.links_view')
+  if (!linksView) return
+  type PathWithData = SVGPathElement & { __data__?: unknown }
+  type LinkDatum = { is_ancestry?: boolean; target?: Array<{ data?: { id?: unknown } }> }
+  linksView.querySelectorAll<SVGPathElement>('path.link').forEach((path) => {
+    const datum = (path as PathWithData).__data__ as LinkDatum | undefined
+    if (!datum?.is_ancestry || !Array.isArray(datum.target)) return
+    if (datum.target.some((t) => t?.data?.id === SUPER_ROOT_ID)) {
+      path.setAttribute('d', 'M0,0')
+    }
+  })
+}
 
 const HASH_PATTERN = /^#p=(.+)$/
 
@@ -147,7 +174,9 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
     const cont = containerRef.current
     if (!cont) return
 
-    const data: FamilyChartDatum[] = transformToFamilyChartShape(people)
+    const data: FamilyChartDatum[] = SHOW_ALL_PEOPLE
+      ? transformToFamilyChartShapeShowAll(people)
+      : transformToFamilyChartShape(people)
 
     const chart = f3.createChart(cont, data)
       .setTransitionTime(800)
@@ -169,12 +198,19 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
     const linkRewriter = attachNonSpouseParentLinkRewriter(cont, peopleByIdRef)
     chart.setAfterUpdate(() => {
       linkRewriter.kick()
+      if (SHOW_ALL_PEOPLE) suppressSuperRootLinks(cont)
     })
 
     chart
       .setCardHtml()
       .setCardDim({ w: 158, h: 110 })
-      .setCardInnerHtmlCreator((d) => personNodeHtml(d, { readOnly }))
+      .setCardInnerHtmlCreator((d) => {
+        // Super-root is a hidden layout scaffold — render nothing.
+        if (SHOW_ALL_PEOPLE && (d.data as unknown as FamilyChartDatum).id === SUPER_ROOT_ID) {
+          return '<div aria-hidden="true" style="width:0;height:0;overflow:hidden;opacity:0;"></div>'
+        }
+        return personNodeHtml(d, { readOnly })
+      })
       .setOnCardClick((e: Event, d: TreeDatum) => {
         if (shouldSuppressNextClickRef.current) {
           shouldSuppressNextClickRef.current = false
