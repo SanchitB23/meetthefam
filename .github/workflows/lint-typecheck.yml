@@ -1,0 +1,25 @@
+name: Lint + Typecheck
+
+on:
+  pull_request:
+    branches: [qa, main]
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        # reads version from "packageManager" field in package.json (currently 10.15.1)
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm typecheck
+
+      - run: pnpm lint
