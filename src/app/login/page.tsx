@@ -1,5 +1,7 @@
+import { redirect } from 'next/navigation'
 import { signInWithGoogle, signInWithMagicLink } from './actions'
 import { SubmitButton } from '@/components/ui/submit-button'
+import { createClient } from '@/lib/supabase/server'
 
 type SearchParams = Promise<{
   sent?: string
@@ -23,6 +25,12 @@ export default async function LoginPage({
 }) {
   const { sent, error, email, next: nextParam } = await searchParams
   const next = safeNext(nextParam)
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (user) redirect(next ?? '/dashboard')
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
