@@ -8,6 +8,7 @@
   "packageManager": "pnpm@10.15.1",
   "scripts": {
     "dev": "next dev",
+    "generate-favicon": "node scripts/generate-favicon.mjs",
     "prebuild": "node scripts/derive-version.mjs",
     "build": "next build",
     "start": "next start",
