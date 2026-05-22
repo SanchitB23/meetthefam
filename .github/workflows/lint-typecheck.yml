@@ -1,0 +1,31 @@
+name: Lint + Typecheck
+
+on:
+  pull_request:
+    branches: [qa, main]
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        # reads version from "packageManager" field in package.json (currently 10.15.1)
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Next.js 16 generates route/page TypeScript types (PageProps<...> etc.)
+      # at dev / build time into .next/types. Without this step, tsc fails with
+      # "Cannot find name 'PageProps'" on src/app/(app)/tree/[id]/page.tsx and
+      # src/app/share/[token]/page.tsx (first observed on PR #104's own CI run).
+      - run: pnpm exec next typegen
+
+      - run: pnpm typecheck
+
+      - run: pnpm lint
