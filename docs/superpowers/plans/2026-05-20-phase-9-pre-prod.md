@@ -1,8 +1,10 @@
 # Phase 9 (Pre-prod) — implementation plan
 
+> **⚠️ Restructured 2026-05-22 — phase numbering shifted.** This plan was written on 2026-05-20 against the 3-bucket Phase 9 / 10 / 11 layout. On 2026-05-22 the operational follow-through (review-and-merge, brainstorms, post-brainstorm implementation, verification, release cut) was lifted into a **new Phase 10**, with the old Phase 10 (For-prod cut-over) becoming **Phase 11** and the old Phase 11 (Post-prod backlog) becoming **Phase 12**. Every "Phase 10" / "Phase 11" reference below is the OLD numbering — add 1 to align with the current [`../../tasks/phase-backlog.md`](../../tasks/phase-backlog.md). The wave plan itself remains a faithful record of how Phase 9 was originally scoped; Waves 0–6 of this doc now map onto Phase 10 Waves A–F in `phase-backlog.md`.
+>
 > **Source brainstorm:** in-session `/superpowers:brainstorming` on 2026-05-20.
-> **Phase boundary reference:** [`../../tasks/phase-backlog.md`](../../tasks/phase-backlog.md) → "Phase 9 — Pre-prod" (lines 112–199).
-> **Companion docs (Phase 10 / 11):** [`../../dev/prod-readiness.md`](../../dev/prod-readiness.md) for the launch-day index; [`../../tasks/phase-backlog.md`](../../tasks/phase-backlog.md) → "Phase 11 — Post-prod" for deferred backlog.
+> **Phase boundary reference:** [`../../tasks/phase-backlog.md`](../../tasks/phase-backlog.md) → "Phase 9 — Pre-prod" + "Phase 10 — Review, merge, brainstorms, verification, release cut".
+> **Companion docs (Phase 11 / 12 in current numbering):** [`../../dev/prod-readiness.md`](../../dev/prod-readiness.md) for the launch-day index; [`../../tasks/phase-backlog.md`](../../tasks/phase-backlog.md) → "Phase 12 — Post-prod" for deferred backlog.
 
 ## Context
 
