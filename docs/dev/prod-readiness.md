@@ -114,7 +114,7 @@
 - [ ] DNS verified (A / AAAA / CNAME records resolve correctly; CAA records permit Let's Encrypt if Vercel uses it).
 - [ ] DB backup taken pre-launch (manual snapshot via Supabase dashboard).
 - [ ] Status-page URL linked from the repo README.
-- [ ] Postmortem template ready at `docs/runbooks/postmortem-template.md` (create if missing).
+- [ ] Postmortem template ready at [`docs/runbooks/postmortem-template.md`](../runbooks/postmortem-template.md).
 - [ ] On-call / contact info documented (even if it's just the maintainer's email + WhatsApp).
 
 ---
