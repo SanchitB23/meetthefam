@@ -279,40 +279,43 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
     chartRef.current?.updateTree({ initial: true })
   }, [])
 
-  // Programmatic zoom via d3-zoom internals. family-chart doesn't expose a
-  // JS zoom API, but d3-zoom stores its state as `__zoom` on the listener
-  // element and the behaviour itself as `__zoomObj`. The listener may be the
-  // SVG or its parent — we must find the element with `__zoomObj` first.
+  // Programmatic zoom via a synthetic wheel event. family-chart doesn't
+  // expose a JS zoom API, so dispatch a `wheel` event on d3-zoom's listener
+  // element — d3-zoom's own wheel handler then computes the new transform
+  // and routes it through `zoom.transform`, which fires the 'zoom' event
+  // family-chart subscribes to (line 1138 of family-chart.js sets
+  // `transform` on `g.view`). Going through d3's apply path is the only
+  // reliable way: directly mutating `el.__zoom` + setting the inner `<g>`
+  // transform attribute (the previous approach) doesn't survive d3-zoom's
+  // next tick — d3 reads from its own internal state and overwrites the
+  // manually-set transform, so the +/− buttons appeared to do nothing.
+  //
+  // d3-zoom's default wheelDelta(): `event.deltaY * -0.002` for
+  // `deltaMode 0` (pixels). The scale multiplier d3 applies is
+  // `Math.pow(2, wheelDelta)`. To apply a factor f, we need
+  // wheelDelta = log2(f), so deltaY = -log2(f) / 0.002.
   const applyZoomDelta = useCallback((factor: number) => {
     const cont = containerRef.current
     if (!cont) return
     const svg = cont.querySelector<SVGSVGElement>('svg.main_svg')
     if (!svg) return
 
-    // family-chart attaches d3-zoom to whichever element has __zoomObj.
+    // d3-zoom listener — family-chart attaches it to either svg or parent.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const el = ((svg as any).__zoomObj ? svg : svg.parentNode) as any
-    if (!el?.__zoomObj) return
+    const el = ((svg as any).__zoomObj ? svg : svg.parentNode) as HTMLElement | SVGElement | null
+    if (!el) return
 
-    const t: { k: number; x: number; y: number } = el.__zoom ?? { k: 1, x: 0, y: 0 }
-    // Zoom around the SVG centre so the visible content stays centred.
-    const cx = svg.clientWidth / 2
-    const cy = svg.clientHeight / 2
-    const k = t.k * factor
-    const x = cx - (cx - t.x) * factor
-    const y = cy - (cy - t.y) * factor
-
-    // Write back a d3-ZoomTransform-compatible object. `invert()` is
-    // required by d3-zoom's pointer-centred wheel handler; without it the
-    // next scroll would throw "t.invert is not a function".
-    el.__zoom = {
-      k, x, y,
-      toString: () => `translate(${x},${y}) scale(${k})`,
-      invert: (p: [number, number]): [number, number] => [(p[0] - x) / k, (p[1] - y) / k],
-    }
-
-    const g = svg.querySelector<SVGGElement>(':scope > g')
-    if (g) g.setAttribute('transform', el.__zoom.toString())
+    const deltaY = -Math.log2(factor) / 0.002
+    const rect = svg.getBoundingClientRect()
+    const evt = new WheelEvent('wheel', {
+      deltaY,
+      deltaMode: 0,
+      clientX: rect.left + rect.width / 2,
+      clientY: rect.top + rect.height / 2,
+      bubbles: true,
+      cancelable: true,
+    })
+    el.dispatchEvent(evt)
   }, [])
 
   const zoomIn = useCallback(() => applyZoomDelta(1.2), [applyZoomDelta])
