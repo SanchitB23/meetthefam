@@ -20,7 +20,7 @@ type Props = {
 }
 
 const btnClass =
-  'h-10 w-10 flex items-center justify-center text-foreground/80 hover:bg-card hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-colors'
+  'h-10 w-10 cursor-pointer flex items-center justify-center text-foreground/80 hover:bg-card hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-colors'
 
 export function ZoomControls({ onZoomIn, onZoomOut, onFit }: Props) {
   return (

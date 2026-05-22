@@ -280,37 +280,39 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
   }, [])
 
   // Programmatic zoom via d3-zoom internals. family-chart doesn't expose a
-  // JS zoom API, but d3-zoom stores its state on the SVG element:
-  //   svg.__zoom  — current Transform {k, x, y}
-  //   svg.__zoomObj — the zoom behaviour (needs d3.select to invoke)
-  //
-  // We avoid importing d3 (same pattern as non-spouse-parent-links.ts) by
-  // reading __zoom, computing the new transform centred on the SVG midpoint,
-  // updating __zoom so the next wheel/pinch event picks up the right baseline,
-  // and applying the attribute to the inner <g> directly.
+  // JS zoom API, but d3-zoom stores its state as `__zoom` on the listener
+  // element and the behaviour itself as `__zoomObj`. The listener may be the
+  // SVG or its parent — we must find the element with `__zoomObj` first.
   const applyZoomDelta = useCallback((factor: number) => {
     const cont = containerRef.current
     if (!cont) return
     const svg = cont.querySelector<SVGSVGElement>('svg.main_svg')
     if (!svg) return
-    const t = (svg as SVGSVGElement & { __zoom?: { k: number; x: number; y: number } }).__zoom
-    if (!t) return
+
+    // family-chart attaches d3-zoom to whichever element has __zoomObj.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const el = ((svg as any).__zoomObj ? svg : svg.parentNode) as any
+    if (!el?.__zoomObj) return
+
+    const t: { k: number; x: number; y: number } = el.__zoom ?? { k: 1, x: 0, y: 0 }
     // Zoom around the SVG centre so the visible content stays centred.
     const cx = svg.clientWidth / 2
     const cy = svg.clientHeight / 2
-    const newK = t.k * factor
-    const newX = cx - (cx - t.x) * factor
-    const newY = cy - (cy - t.y) * factor
-    const ts = `translate(${newX},${newY}) scale(${newK})`
-    // Update d3's stored transform so wheel/pinch starts from the new baseline.
-    ;(svg as SVGSVGElement & { __zoom: unknown }).__zoom = {
-      k: newK,
-      x: newX,
-      y: newY,
-      toString: () => ts,
+    const k = t.k * factor
+    const x = cx - (cx - t.x) * factor
+    const y = cy - (cy - t.y) * factor
+
+    // Write back a d3-ZoomTransform-compatible object. `invert()` is
+    // required by d3-zoom's pointer-centred wheel handler; without it the
+    // next scroll would throw "t.invert is not a function".
+    el.__zoom = {
+      k, x, y,
+      toString: () => `translate(${x},${y}) scale(${k})`,
+      invert: (p: [number, number]): [number, number] => [(p[0] - x) / k, (p[1] - y) / k],
     }
-    const g = svg.querySelector('g')
-    if (g) g.setAttribute('transform', ts)
+
+    const g = svg.querySelector<SVGGElement>(':scope > g')
+    if (g) g.setAttribute('transform', el.__zoom.toString())
   }, [])
 
   const zoomIn = useCallback(() => applyZoomDelta(1.2), [applyZoomDelta])
