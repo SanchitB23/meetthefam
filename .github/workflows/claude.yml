@@ -29,6 +29,19 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          # Base agent branches off `qa` (the active dev integration branch),
+          # not the default `main`. Without this, claude-code-action branches
+          # from main and misses every PR that has landed on qa since the
+          # last release tag — catastrophic for consumer issues (e.g.
+          # #91/#92/#93) that depend on foundation files (ErrorAlert,
+          # mapErrorCode from #102) which live on qa but not yet on main.
+          # Symptom: agent diffs show accidental deletion of post-release
+          # files. Discovered 2026-05-22 during Phase 10 Wave C kickoff —
+          # all three Wave C consumers branched off `3b2a45c` (v0.4.0 tag)
+          # instead of the qa head, so their diffs vs qa would delete
+          # everything merged in Wave A. Force-targeting `qa` here means
+          # the agent always works against the current integration state.
+          ref: qa
 
       - name: Run Claude Code
         id: claude
