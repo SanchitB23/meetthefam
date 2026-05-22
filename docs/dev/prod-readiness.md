@@ -102,7 +102,7 @@
 ## 9. Backups + DR
 
 - [ ] Tier decision: Supabase Free (1-day backup retention) vs Pro (7-day + point-in-time recovery). Pro is $25/mo; consider closer to launch.
-- [ ] Document a DB restore runbook (Supabase Project Settings → Database → Backups → Restore). Should fit on one page.
+- [ ] DB restore runbook: [`docs/runbooks/db-restore.md`](../runbooks/db-restore.md) — covers PITR via Supabase dashboard, pre-checks, verification, and comms. (≤200 lines, no screenshots required for v1.)
 - [ ] Optional: scheduled `pg_dump` snapshots to S3 / R2 for offsite backups. Skip if Pro covers the SLA needs.
 - [ ] Storage `photos` bucket — Supabase's built-in backup covers it; no separate plan needed.
 
