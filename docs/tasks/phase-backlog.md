@@ -107,11 +107,11 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 - [ ] **Tree settings unified sheet** *(parked from a Phase 6 brainstorm — `feedback_pr_template_compliance.md`-style notes only; full brainstorm at Phase 8 kick-off)*. Today the dashboard 3-dots menu has three items (Rename / Manage members / Delete) each driving its own dialog. Phase 8 polish brainstorm should evaluate folding them into a single "Tree settings" entry that opens one Sheet/Dialog containing Rename field + Members list + invite form + Danger zone (Delete), plus future Phase-7 share-link toggle. Pros: tidier menu, one place for tree-level actions. Cons: bigger refactor (compose `RenameTreeModal` + `DeleteTreeDialog` + `MembersSheet` into a new container), and the MembersSheet inside the dashboard context shifts the "tree-page is the home for member management" decision from Phase 6. Don't ship without re-brainstorming the boundary.
 - [x] **Revoke-member confirm copy** *(Phase 6 Q4 follow-up)*. The MembersSheet revoke-member two-click confirm currently shows "Confirm" + "Cancel revoke" buttons with no explanation. Spec'd answer to "what happens to people the editor added" is: people stay in the tree (verified — `revokeMember` only deletes the `tree_members` row; `people.created_by` is `on delete set null` for `auth.users` deletes which doesn't trigger here anyway). Phase 8 polish: render a short inline `<p>` next to the Confirm button — e.g. "X will lose access. The people they added stay in your tree." — using the heirloom muted-text style. Files affected: `src/app/tree/[id]/_components/MembersSheet.tsx` `MemberListRow` component. *(Sub-task 8c-6 — landed 2026-05-18. `MembersSheet.tsx` `MemberListRow` restructured: the chip row (avatar + name + role + action buttons) now sits inside a flex-col wrapper. When `confirmRevoke === true`, a `text-sm text-muted-foreground` explanatory `<p>` renders below: `"{displayName} will lose access. The people they added stay in your tree."` verbatim from the canonical plan. Error row moved to the wrapper level so the previously-broken `col-span-full` on a flex-row child is gone.)*
 
-> **Phase 9 / 10 / 11 split (set 2026-05-18, post-v0.4.0 audit).** The original Phase 9 ("QA + edge cases + launch") was split into three buckets so the launch-day operator work (Phase 10) is separable from the code/docs work that has to land first (Phase 9) and the genuinely-deferred backlog (Phase 11). Every item from the old Phase 9 list is consumed below — SMTP + `--turbopack` cleanup land in Phase 9; `cacheComponents` / `reactCompiler` / Devtools-MCP-on-prod land in Phase 11. The spec ([`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing") still numbers Phase 9 as the single "QA + edge cases + launch" row; that's the architectural view. This file is the operational view and uses the 3-bucket split.
+> **Phase 9 / 10 / 11 / 12 split (revised 2026-05-22).** Originally set 2026-05-18 as a 3-bucket split (Pre-prod / For-prod / Post-prod). On 2026-05-22 the operational follow-through (review-and-merge of in-flight PRs, brainstorm decisions, post-brainstorm implementation, verification matrix, release cut) was lifted out of Phase 9 into a **new Phase 10**, with the old Phase 10 (launch-day cut-over) renumbered to **Phase 11** and the old Phase 11 (deferred backlog) renumbered to **Phase 12**. Reason: Phase 9 was conflating "what the agents code" with "what the human reviews and decides"; the new Phase 10 is the human-driven follow-through. Phase 9 closes when its agent-coded PRs all merge to `qa`; Phase 10 owns the merging plus everything that runs from that point until `release/v1.0.0`. The spec ([`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing") still numbers Phase 9 as the single "QA + edge cases + launch" row; that's the architectural view. This file is the operational view and now uses the 4-bucket split.
 
 ## Phase 9 — Pre-prod: bugs, polish, verification, SMTP, legal
 
-> Work that has to *land in the codebase / docs* before tagging `v1.0`. Everything here is a feature-branch on `qa`. When this section is fully ticked we cut the `release/v1.0.0` branch — the actual production cut-over (env vars, prod migrations, domain) is Phase 10.
+> Implementation work — the agent-coded PRs that have to *land in the codebase / docs* before tagging `v1.0`. Everything here is a feature-branch on `qa`. **Review-and-merge for these PRs, plus all post-brainstorm implementation and verification, moved to Phase 10 on 2026-05-22** (see the intro note above). When every PR listed here is merged into `qa`, Phase 9 closes and Phase 10 owns the rest of the path to `release/v1.0.0`. The actual production cut-over (env vars, prod migrations, domain) is Phase 11.
 
 ### Bug fixes (open GitHub issues)
 
@@ -199,9 +199,78 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 
 ---
 
-## Phase 10 — For-prod: the v1.0 launch cut-over
+## Phase 10 — Review, merge, brainstorms, verification, release cut
+
+> Operational follow-through to Phase 9, introduced 2026-05-22. Owns the human-driven work between "Phase 9 PRs are open" and "`release/v1.0.0` is cut from `qa`". When this section is fully ticked, we hand off to Phase 11 (launch-day cut-over).
+
+### Wave A — Batch-review + merge the Phase 9 PRs
+
+> All 12 are draft as of 2026-05-22. User reviews and marks ready; only ready PRs merge.
+
+- [ ] [PR #88](https://github.com/SanchitB23/meetthefam/pull/88) — [#58](https://github.com/SanchitB23/meetthefam/issues/58) postcss CVE override.
+- [ ] [PR #89](https://github.com/SanchitB23/meetthefam/pull/89) — [#49](https://github.com/SanchitB23/meetthefam/issues/49) /login redirect for authed users.
+- [ ] [PR #94](https://github.com/SanchitB23/meetthefam/pull/94) — Phase 9 kick-off docs + this 9 / 10 / 11 / 12 restructure.
+- [ ] [PR #95](https://github.com/SanchitB23/meetthefam/pull/95) — [#62](https://github.com/SanchitB23/meetthefam/issues/62) tree re-center undo.
+- [ ] [PR #96](https://github.com/SanchitB23/meetthefam/pull/96) — [#72](https://github.com/SanchitB23/meetthefam/issues/72) zoom control cluster.
+- [ ] [PR #97](https://github.com/SanchitB23/meetthefam/pull/97) — [#73](https://github.com/SanchitB23/meetthefam/issues/73) person-card contrast.
+- [ ] [PR #98](https://github.com/SanchitB23/meetthefam/pull/98) — [#75](https://github.com/SanchitB23/meetthefam/issues/75) heirloom favicon.
+- [ ] [PR #99](https://github.com/SanchitB23/meetthefam/pull/99) — [#78](https://github.com/SanchitB23/meetthefam/issues/78) derive-version on tagged builds.
+- [ ] [PR #100](https://github.com/SanchitB23/meetthefam/pull/100) — [#81](https://github.com/SanchitB23/meetthefam/issues/81) DB restore runbook.
+- [ ] [PR #101](https://github.com/SanchitB23/meetthefam/pull/101) — [#82](https://github.com/SanchitB23/meetthefam/issues/82) postmortem template.
+- [ ] [PR #102](https://github.com/SanchitB23/meetthefam/pull/102) — [#90](https://github.com/SanchitB23/meetthefam/issues/90) ErrorAlert foundation (blocks Wave C #91/#92/#93).
+- [ ] [PR #104](https://github.com/SanchitB23/meetthefam/pull/104) — [#84](https://github.com/SanchitB23/meetthefam/issues/84) lint+typecheck CI workflow.
+
+### Wave B — Brainstorm tracks (parallel; user-driven)
+
+> Run any time alongside Wave A. Each decision unblocks Wave C work.
+
+- [ ] **(b1) SMTP provider pick** ([#25](https://github.com/SanchitB23/meetthefam/issues/25)) — Resend / Postmark / SES / SendGrid. Unblocks Wave C SMTP code.
+- [ ] **(b2) Legal pages catalog** ([#56](https://github.com/SanchitB23/meetthefam/issues/56)) — privacy / terms / cookies / about / contact. Also decide whether @claude generates prose or only scaffolds pages.
+- [ ] **(b3) Observability stack pick** ([#103](https://github.com/SanchitB23/meetthefam/issues/103)) — Sentry y/n + uptime monitor (BetterStack / UptimeRobot / Vercel built-in). Unblocks [#83](https://github.com/SanchitB23/meetthefam/issues/83) and optional Sentry SDK in Wave C.
+
+### Wave C — Post-brainstorm implementation
+
+> Held until Wave A's #90 PR merges (consumers) and the relevant Wave B decision lands.
+
+- [ ] [#91](https://github.com/SanchitB23/meetthefam/issues/91) — auth flow typed errors (consumer of #90).
+- [ ] [#92](https://github.com/SanchitB23/meetthefam/issues/92) — dashboard server actions (consumer of #90).
+- [ ] [#93](https://github.com/SanchitB23/meetthefam/issues/93) — tree-page server actions (consumer of #90).
+- [ ] [#83](https://github.com/SanchitB23/meetthefam/issues/83) — status-page link in README + footer (needs Wave B (b3) decision).
+- [ ] SMTP SDK wire-in (`src/lib/email/inviteEmail.ts`) — opens after Wave B (b1) decision. Drop the `throw new Error('Email delivery not yet implemented')` line.
+- [ ] [#61](https://github.com/SanchitB23/meetthefam/issues/61) — brand the magic-link email template.
+- [ ] Brand the invite email template.
+- [ ] "Send via email" button next to Copy URL in `MembersSheet.tsx` invite form.
+- [ ] Build `/privacy` page (opens after Wave B (b2) decision).
+- [ ] Build `/terms` page (opens after Wave B (b2) decision).
+- [ ] Footer with policy + contact links wired into the landing page.
+- [ ] *(if Sentry chosen)* Sentry SDK wire-in — `SENTRY_DSN` env-var deferred to Phase 11.
+
+### Wave D — Phase 8 polish carry-overs + CI test gate
+
+- [ ] [#85](https://github.com/SanchitB23/meetthefam/issues/85) — `pnpm test` CI workflow with Supabase service container.
+- [ ] Tree settings unified sheet (Rename + Members + Danger zone) — Phase 8 carry-over, brainstorm required.
+- [ ] [#71](https://github.com/SanchitB23/meetthefam/issues/71) — Add-person FAB: link relationship from inside the form (brainstorm UX).
+- [ ] Tree-nav within-canvas animations (if still wanted post-merge).
+
+### Wave E — Verification matrix + security hardening
+
+- [ ] All 10 boxes of [#86](https://github.com/SanchitB23/meetthefam/issues/86) — verification matrix epic (two-account smoke, mobile gestures, editor round-trip, share-link incognito, RLS negative, 200-person perf, person-delete Storage cleanup, tree-delete cascade, Lighthouse ≥ 90 mobile, real-4G photo upload, `--turbopack` flag sweep).
+- [ ] Execute key rotation per [`project_pre_prod_key_rotation.md`](../../../.claude/projects/-Users-sqb6461-Workspace-SelfProjects-meetthefam/memory/project_pre_prod_key_rotation.md) (includes the 2026-05-12 `SUPABASE_ACCESS_TOKEN` exposure).
+- [ ] Confirm pre-commit secret-scanning hook fires on a fake AWS key.
+- [ ] Confirm GitHub branch-protection ruleset `16283379` still active on `main`.
+- [ ] Document on-call / contact info (single page in `docs/runbooks/` or appended to README).
+
+### Wave F — Release cut
+
+- [ ] Branch cut: `qa` → `release/v1.0.0`. From here Phase 11 (launch-day cut-over) takes over.
+
+---
+
+## Phase 11 — For-prod: the v1.0 launch cut-over
 
 > Mechanical operator work executed during the v1.0 release. The detailed checklist lives in [`../dev/prod-readiness.md`](../dev/prod-readiness.md) — this section is the *index*, prod-readiness has the boxes. When all 10 sections of prod-readiness are ticked, the launch is done.
+
+*(Renumbered from Phase 10 → Phase 11 on 2026-05-22 alongside the new operational Phase 10.)*
 
 - [ ] **§1 Supabase `family-tree-prod` parity** — replay all queued post-v0.1.0 migrations in timestamp order (Phase 6 `tree_invites`, Phase 7 share-link, any Phase 8 entries); cross-check via `list_migrations`; run `get_advisors` (security + performance); verify RLS-enabled-flag parity vs QA via `list_tables`; enable "Leaked Password Protection"; bump Auth rate limits for launch traffic; verify `photos` bucket settings + 4 RLS policies; set a strong prod DB password.
 - [ ] **§2 Vercel production project** — env vars (`NEXT_PUBLIC_SUPABASE_URL` / `_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` plus any Phase 7-9 additions); custom production domain + SSL provisioned; Vercel production branch set to `main` (unpin from the `v0.1.0` tag if it was pinned during the pre-v1 freeze); Vercel password protection OFF on prod; plan-tier decision (Hobby vs Pro); confirm Analytics + Speed Insights reporting in prod.
@@ -213,9 +282,11 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 
 ---
 
-## Phase 11 — Post-prod: v1.x backlog
+## Phase 12 — Post-prod: v1.x backlog
 
 > Items deliberately deferred past v1.0. Each one carries either a "default: don't enable" stance in earlier ADRs, a `post-v1.0` GitHub label, or an ADR-0007 rationale that ties adoption to the `"use cache"` segment work we don't want to take on at launch.
+
+*(Renumbered from Phase 11 → Phase 12 on 2026-05-22 alongside the new operational Phase 10.)*
 
 ### Labeled `post-v1.0` on GitHub
 
