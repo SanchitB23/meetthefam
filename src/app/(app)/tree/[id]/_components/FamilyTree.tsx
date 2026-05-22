@@ -347,10 +347,12 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
       <div className="relative">
         <div
           ref={containerRef}
-          className="f3 w-full h-[calc(100vh-9rem)] rounded-lg border border-border bg-card overflow-hidden"
+          className="f3 w-full h-[calc(100vh-9rem)] rounded-lg border border-border bg-canvas overflow-hidden"
           style={{
-            ['--background-color' as string]: 'var(--card)',
+            ['--background-color' as string]: 'var(--canvas)',
             ['--text-color' as string]: 'var(--foreground)',
+            backgroundImage: 'radial-gradient(circle, var(--border) 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
           }}
         />
         {!readOnly && <TreeOverviewButton onActivate={zoomToFit} />}
