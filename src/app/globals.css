@@ -252,6 +252,20 @@
 }
 
 /*
+ * Spike POC #69 — hide the synthetic __super_root__ layout-anchor card.
+ * When NEXT_PUBLIC_SHOW_ALL_PEOPLE=true, family-chart-data-show-all.ts
+ * injects a __super_root__ node as the universal parent of all root nodes.
+ * Its card HTML returns a zero-size sentinel div with data-person-id set.
+ * This rule targets the family-chart foreignObject wrapper via :has() and
+ * makes it fully invisible + non-interactive. The layout slot (158×110px)
+ * is still reserved — the blank row above Gen-1 is a known POC limitation.
+ */
+.f3 foreignObject:has([data-person-id="__super_root__"]) {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/*
  * 8c-4 — LinkProgress top-edge accent bar keyframe.
  * Animates from 0 → 1 scaleX while a next/link navigation is pending
  * (useLinkStatus). The bar is position:fixed so it always appears at the

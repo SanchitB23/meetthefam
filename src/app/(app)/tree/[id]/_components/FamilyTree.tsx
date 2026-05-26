@@ -50,6 +50,11 @@ import {
   transformToFamilyChartShape,
   type FamilyChartDatum,
 } from '../_lib/family-chart-data'
+// Spike POC #69 — option (d) super-root. Gate: NEXT_PUBLIC_SHOW_ALL_PEOPLE=true
+import {
+  transformToFamilyChartShapeShowAll,
+  SUPER_ROOT_ID,
+} from '../_lib/family-chart-data-show-all'
 import { attachNonSpouseParentLinkRewriter } from '../_lib/non-spouse-parent-links'
 import { personNodeHtml } from '../_lib/person-node-html'
 import { usePressActions } from '../_lib/usePressActions'
@@ -76,6 +81,33 @@ type Props = {
 }
 
 type Chart = ReturnType<typeof f3.createChart>
+
+// Spike POC #69 — feature flag read once at module load (compile-time constant).
+const SHOW_ALL_PEOPLE = process.env.NEXT_PUBLIC_SHOW_ALL_PEOPLE === 'true'
+
+/**
+ * Spike POC #69 — suppress SVG connector lines that lead to the synthetic
+ * __super_root__ layout anchor. Called in setAfterUpdate when SHOW_ALL_PEOPLE
+ * is true. Sets d='M0,0' on ancestry paths whose parent target is __super_root__.
+ *
+ * Known limitation: d3's 800ms transition tweens `d=` back each tick, so lines
+ * may briefly flash. A full implementation would add a MutationObserver.
+ */
+function suppressSuperRootLinks(container: HTMLElement): void {
+  const linksView = container.querySelector<SVGGElement>('svg.main_svg g.links_view')
+  if (!linksView) return
+  const paths = linksView.querySelectorAll<SVGPathElement>('path.link')
+  paths.forEach((path) => {
+    const datum = (path as SVGPathElement & { __data__?: unknown }).__data__
+    if (!datum || typeof datum !== 'object') return
+    const d = datum as { is_ancestry?: boolean; target?: unknown[] }
+    if (!d.is_ancestry || !Array.isArray(d.target)) return
+    const targetId = (d.target[0] as { data?: { id?: unknown } } | undefined)?.data?.id
+    if (targetId === SUPER_ROOT_ID && path.getAttribute('d') !== 'M0,0') {
+      path.setAttribute('d', 'M0,0')
+    }
+  })
+}
 
 const HASH_PATTERN = /^#p=(.+)$/
 
@@ -154,7 +186,10 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
     const cont = containerRef.current
     if (!cont) return
 
-    const data: FamilyChartDatum[] = transformToFamilyChartShape(people)
+    // Spike POC #69: use super-root transform when flag is on, otherwise production path.
+    const data: FamilyChartDatum[] = SHOW_ALL_PEOPLE
+      ? transformToFamilyChartShapeShowAll(people)
+      : transformToFamilyChartShape(people)
 
     const chart = f3.createChart(cont, data)
       .setTransitionTime(800)
@@ -176,12 +211,22 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
     const linkRewriter = attachNonSpouseParentLinkRewriter(cont, peopleByIdRef)
     chart.setAfterUpdate(() => {
       linkRewriter.kick()
+      // Spike POC #69: suppress connector lines to the synthetic super-root.
+      if (SHOW_ALL_PEOPLE) suppressSuperRootLinks(cont)
     })
 
     chart
       .setCardHtml()
       .setCardDim({ w: 158, h: 110 })
-      .setCardInnerHtmlCreator((d) => personNodeHtml(d, { readOnly }))
+      .setCardInnerHtmlCreator((d) => {
+        // Spike POC #69: super-root is invisible — return a zero-size sentinel
+        // div so CSS can target the foreignObject via :has() without content.
+        const datumId = (d.data as unknown as FamilyChartDatum).id
+        if (datumId === SUPER_ROOT_ID) {
+          return '<div data-person-id="__super_root__" aria-hidden="true" style="width:0;height:0;overflow:hidden;"></div>'
+        }
+        return personNodeHtml(d, { readOnly })
+      })
       .setOnCardClick((e: Event, d: TreeDatum) => {
         if (shouldSuppressNextClickRef.current) {
           shouldSuppressNextClickRef.current = false
