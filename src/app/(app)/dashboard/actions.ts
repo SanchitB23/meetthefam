@@ -18,7 +18,7 @@ export async function createTree(
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return { error: 'Not signed in' }
+  if (!user) return { error: 'not_signed_in' }
 
   const name = (formData.get('name') as string | null)?.trim() ?? ''
   const description =
@@ -35,7 +35,10 @@ export async function createTree(
     p_owner_id: user.id,
   })
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error('[createTree] DB error:', error)
+    return { error: 'unknown' }
+  }
   revalidatePath('/dashboard')
   return { success: true, treeId: treeId as string }
 }
@@ -55,7 +58,7 @@ export async function renameTree(
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return { error: 'Not signed in' }
+  if (!user) return { error: 'not_signed_in' }
 
   const treeId = formData.get('treeId') as string
   const name = (formData.get('name') as string | null)?.trim() ?? ''
@@ -69,7 +72,10 @@ export async function renameTree(
     .eq('id', treeId)
     .eq('owner_id', user.id)
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error('[renameTree] DB error:', error)
+    return { error: 'unknown' }
+  }
   revalidatePath('/dashboard')
   return { success: true }
 }
@@ -89,7 +95,7 @@ export async function deleteTree(
   const {
     data: { user },
   } = await supabase.auth.getUser()
-  if (!user) return { error: 'Not signed in' }
+  if (!user) return { error: 'not_signed_in' }
 
   const treeId = formData.get('treeId') as string
 
@@ -134,7 +140,10 @@ export async function deleteTree(
     .eq('id', treeId)
     .eq('owner_id', user.id)
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error('[deleteTree] DB error:', error)
+    return { error: 'unknown' }
+  }
   revalidatePath('/dashboard')
   return { success: true }
 }
