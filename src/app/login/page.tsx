@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { signInWithGoogle, signInWithMagicLink } from './actions'
 import { SubmitButton } from '@/components/ui/submit-button'
 import { createClient } from '@/lib/supabase/server'
+import { ErrorAlert } from '@/components/ui/error-alert'
+import { mapErrorCode } from '@/lib/errors'
 
 type SearchParams = Promise<{
   sent?: string
@@ -54,7 +56,7 @@ export default async function LoginPage({
           </div>
         ) : (
           <div className="space-y-4">
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <ErrorAlert size="sm" message={mapErrorCode(error)} />}
 
             <form action={signInWithGoogle}>
               {next && <input type="hidden" name="next" value={next} />}
