@@ -20,6 +20,8 @@ import {
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { useIsDesktop } from '@/components/ui/use-is-desktop'
+import { ErrorAlert } from '@/components/ui/error-alert'
+import { mapErrorCode } from '@/lib/errors'
 
 import {
   createPerson,
@@ -655,7 +657,7 @@ export function PersonForm({
           </div>
         </div>
         {photoError && (
-          <p className="text-xs text-destructive mt-1">{photoError}</p>
+          <ErrorAlert size="sm" message={mapErrorCode(photoError, photoError)} />
         )}
       </div>
 
@@ -921,9 +923,7 @@ export function PersonForm({
       </div>
 
       {submitError && (
-        <p className="text-sm text-destructive" role="alert">
-          {submitError}
-        </p>
+        <ErrorAlert size="sm" message={mapErrorCode(submitError, submitError)} />
       )}
 
       {/*

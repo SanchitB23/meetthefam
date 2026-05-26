@@ -251,6 +251,6 @@ describe('createPerson with linkSpec', () => {
     )
     expect(res.ok).toBe(false)
     if (res.ok) return
-    expect(res.error.toLowerCase()).toContain('same family tree')
+    expect(res.error).toBe('cross_tree')
   })
 })

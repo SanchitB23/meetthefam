@@ -10,6 +10,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { ErrorAlert } from '@/components/ui/error-alert'
+import { mapErrorCode } from '@/lib/errors'
 
 import { deletePerson } from '../actions'
 
@@ -71,9 +73,7 @@ export function DeletePersonDialog({
           </DialogDescription>
         </DialogHeader>
         {error && (
-          <p className="text-sm text-destructive" role="alert">
-            {error}
-          </p>
+          <ErrorAlert size="sm" message={mapErrorCode(error, error)} />
         )}
         <div className="flex justify-end gap-2 mt-4">
           <Button
