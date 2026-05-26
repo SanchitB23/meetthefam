@@ -29,6 +29,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/ui/avatar'
 import { useIsDesktop } from '@/components/ui/use-is-desktop'
+import { ErrorAlert } from '@/components/ui/error-alert'
+import { mapErrorCode } from '@/lib/errors'
 
 import {
   inviteEditor,
@@ -270,9 +272,7 @@ function InviteForm({ treeId }: { treeId: string }) {
       )}
 
       {result?.status === 'error' && (
-        <p className="text-sm text-destructive" role="alert">
-          {result.message}
-        </p>
+        <ErrorAlert size="sm" message={mapErrorCode(result.message, result.message)} />
       )}
     </div>
   )
@@ -395,7 +395,7 @@ function MemberListRow({
         </p>
       )}
       {error && (
-        <p className="mt-1 text-xs text-destructive">{error}</p>
+        <ErrorAlert size="sm" message={mapErrorCode(error, error)} />
       )}
     </div>
   )
@@ -547,7 +547,7 @@ function PendingInviteListRow({
       )}
 
       {error && (
-        <p className="text-xs text-destructive">{error}</p>
+        <ErrorAlert size="sm" message={mapErrorCode(error, error)} />
       )}
     </div>
   )

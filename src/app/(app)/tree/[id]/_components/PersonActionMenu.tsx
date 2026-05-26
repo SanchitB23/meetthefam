@@ -30,6 +30,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 import { clearSpouse, setSpouse } from '../actions'
+import { ErrorAlert } from '@/components/ui/error-alert'
+import { mapErrorCode } from '@/lib/errors'
 import {
   collectAncestors,
   collectDescendants,
@@ -219,9 +221,7 @@ export function PersonActionMenu({
           onSelect={handleSelectSpouse}
           footer={
             spouseError ? (
-              <p className="text-sm text-destructive" role="alert">
-                {spouseError}
-              </p>
+              <ErrorAlert size="sm" message={mapErrorCode(spouseError, spouseError)} />
             ) : undefined
           }
         />

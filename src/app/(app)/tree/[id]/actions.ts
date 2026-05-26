@@ -50,6 +50,17 @@ export type LinkSpecInput =
   | { relation: 'mother'; focusPersonId: string }
   | { relation: 'child'; focusPersonId: string }
 
+// Maps Postgres RPC rejection messages to typed error codes.
+// Strings matched here are the exact `raise exception` texts from the
+// people_link_rpcs migration — do not change without updating that file too.
+function mapRpcError(message: string): string {
+  if (message.includes('Cannot set a person as their own spouse.')) return 'self_spouse'
+  if (message.includes('Spouses must belong to the same family tree.')) return 'cross_tree'
+  if (message.includes('Parents must belong to the same family tree as the person.')) return 'cross_tree'
+  if (message.includes('This would create a circular ancestry.')) return 'ancestor_cycle'
+  return 'unknown'
+}
+
 /** Trim string fields and coerce empty strings to null. */
 function clean<T extends string | null | undefined>(value: T): string | null {
   if (value == null) return null
@@ -174,7 +185,8 @@ export async function createPerson(
     .single<{ id: string }>()
 
   if (error || !row) {
-    return { ok: false, error: error?.message ?? 'Insert failed' }
+    console.error('[createPerson] DB error:', error)
+    return { ok: false, error: 'unknown' }
   }
 
   const newPersonId = row.id
@@ -219,7 +231,8 @@ async function applyLinkSpec(
       p_person_a: newPersonId,
       p_person_b: linkSpec.focusPersonId,
     })
-    return error?.message ?? null
+    if (error) return mapRpcError(error.message)
+    return null
   }
 
   if (linkSpec.relation === 'father' || linkSpec.relation === 'mother') {
@@ -232,7 +245,8 @@ async function applyLinkSpec(
       .eq('id', linkSpec.focusPersonId)
       .single<{ father_id: string | null; mother_id: string | null }>()
     if (selErr || !focus) {
-      return selErr?.message ?? 'Could not load focus person'
+      console.error('[applyLinkSpec] DB error loading focus person:', selErr)
+      return 'unknown'
     }
     const fatherId =
       linkSpec.relation === 'father' ? newPersonId : focus.father_id
@@ -244,7 +258,8 @@ async function applyLinkSpec(
       p_father_id: fatherId,
       p_mother_id: motherId,
     })
-    return error?.message ?? null
+    if (error) return mapRpcError(error.message)
+    return null
   }
 
   // relation === 'child': the focus becomes one of the new person's
@@ -261,7 +276,8 @@ async function applyLinkSpec(
     .eq('id', linkSpec.focusPersonId)
     .single<{ gender: 'm' | 'f' | 'other' | 'unknown'; spouse_id: string | null }>()
   if (selErr || !focus) {
-    return selErr?.message ?? 'Could not load focus person'
+    console.error('[applyLinkSpec] DB error loading focus person:', selErr)
+    return 'unknown'
   }
 
   const focusIsMother = focus.gender === 'f'
@@ -283,7 +299,8 @@ async function applyLinkSpec(
     p_father_id: fatherId,
     p_mother_id: motherId,
   })
-  return error?.message ?? null
+  if (error) return mapRpcError(error.message)
+  return null
 }
 
 // ---- updatePerson ----
@@ -412,7 +429,10 @@ export async function updatePerson(
 
   const { error } = await supabase.from('people').update(patch).eq('id', personId)
 
-  if (error) return { ok: false, error: error.message }
+  if (error) {
+    console.error('[updatePerson] DB error:', error)
+    return { ok: false, error: 'unknown' }
+  }
 
   revalidatePath(`/tree/${treeId}`)
   return { ok: true }
@@ -497,7 +517,8 @@ export async function uploadPersonPhoto(
       contentType: STORAGE_MIME,
     })
   if (uploadError) {
-    return { ok: false, error: uploadError.message }
+    console.error('[uploadPersonPhoto] storage error:', uploadError)
+    return { ok: false, error: 'unknown' }
   }
 
   const {
@@ -521,7 +542,8 @@ export async function uploadPersonPhoto(
         `uploadPersonPhoto: orphan cleanup failed for ${path}: ${cleanupError.message}`,
       )
     }
-    return { ok: false, error: dbError.message }
+    console.error('[uploadPersonPhoto] DB error:', dbError)
+    return { ok: false, error: 'unknown' }
   }
 
   refresh()
@@ -555,7 +577,8 @@ export async function removePersonPhoto(
     .update({ photo_url: null })
     .eq('id', personId)
   if (dbError) {
-    return { ok: false, error: dbError.message }
+    console.error('[removePersonPhoto] DB error:', dbError)
+    return { ok: false, error: 'unknown' }
   }
 
   const { error: storageError } = await supabase.storage
@@ -604,7 +627,10 @@ export async function deletePerson(
     p_person_id: personId,
   })
 
-  if (error) return { ok: false, error: error.message }
+  if (error) {
+    console.error('[deletePerson] DB error:', error)
+    return { ok: false, error: 'unknown' }
+  }
 
   const avatarPath = personPhotoPath(treeId, personId)
   const { error: storageError } = await supabase.storage
@@ -657,7 +683,7 @@ export async function setSpouse(
     p_person_b: personB,
   })
 
-  if (error) return { ok: false, error: error.message }
+  if (error) return { ok: false, error: mapRpcError(error.message) }
 
   revalidatePath(`/tree/${treeId}`)
   return { ok: true }
@@ -681,7 +707,7 @@ export async function setParents(
     p_mother_id: motherId,
   })
 
-  if (error) return { ok: false, error: error.message }
+  if (error) return { ok: false, error: mapRpcError(error.message) }
 
   revalidatePath(`/tree/${treeId}`)
   return { ok: true }
@@ -701,7 +727,10 @@ export async function clearSpouse(
     p_person_id: personId,
   })
 
-  if (error) return { ok: false, error: error.message }
+  if (error) {
+    console.error('[clearSpouse] DB error:', error)
+    return { ok: false, error: 'unknown' }
+  }
 
   revalidatePath(`/tree/${treeId}`)
   return { ok: true }

@@ -18,6 +18,8 @@ import {
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/ui/avatar'
+import { ErrorAlert } from '@/components/ui/error-alert'
+import { mapErrorCode } from '@/lib/errors'
 import { useIsDesktop } from '@/components/ui/use-is-desktop'
 
 import { setParents } from '../actions'
@@ -158,9 +160,7 @@ export function SetParentsDialog({
       />
 
       {submitError && (
-        <p className="text-sm text-destructive" role="alert">
-          {submitError}
-        </p>
+        <ErrorAlert size="sm" message={mapErrorCode(submitError, submitError)} />
       )}
 
       <div className="flex justify-end gap-2 mt-2">
