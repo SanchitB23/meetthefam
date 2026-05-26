@@ -250,7 +250,7 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 > *(`pnpm test` CI gate was originally listed here; deferred to Phase 12 on 2026-05-26 — the three existing quality gates (local test discipline + #104 lint+typecheck CI + Vercel preview build) plus Wave E's [#86](https://github.com/SanchitB23/meetthefam/issues/86) RLS-negative verification cover the launch-blocking risk without the per-PR CI cost.)*
 
 - [ ] Tree settings unified sheet (Rename + Members + Danger zone) — Phase 8 carry-over, brainstorm required.
-- [ ] [#71](https://github.com/SanchitB23/meetthefam/issues/71) — Add-person FAB: link relationship from inside the form (brainstorm UX).
+- [x] [#71](https://github.com/SanchitB23/meetthefam/issues/71) — Add-person FAB: always-on Link-to picker + standalone-confirm dialog. Brainstorm + wireframes locked A+D combined; implementation in `feat/71-link-to-picker`.
 - [ ] Tree-nav within-canvas animations (if still wanted post-merge).
 
 ### Wave E — Verification matrix + security hardening
