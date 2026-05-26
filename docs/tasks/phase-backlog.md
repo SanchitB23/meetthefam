@@ -245,9 +245,10 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 - [ ] Footer with policy + contact links wired into the landing page.
 - [ ] *(if Sentry chosen)* Sentry SDK wire-in — `SENTRY_DSN` env-var deferred to Phase 11.
 
-### Wave D — Phase 8 polish carry-overs + CI test gate
+### Wave D — Phase 8 polish carry-overs
 
-- [ ] [#85](https://github.com/SanchitB23/meetthefam/issues/85) — `pnpm test` CI workflow with Supabase service container.
+> *(`pnpm test` CI gate was originally listed here; deferred to Phase 12 on 2026-05-26 — the three existing quality gates (local test discipline + #104 lint+typecheck CI + Vercel preview build) plus Wave E's [#86](https://github.com/SanchitB23/meetthefam/issues/86) RLS-negative verification cover the launch-blocking risk without the per-PR CI cost.)*
+
 - [ ] Tree settings unified sheet (Rename + Members + Danger zone) — Phase 8 carry-over, brainstorm required.
 - [ ] [#71](https://github.com/SanchitB23/meetthefam/issues/71) — Add-person FAB: link relationship from inside the form (brainstorm UX).
 - [ ] Tree-nav within-canvas animations (if still wanted post-merge).
@@ -294,6 +295,10 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 - [ ] [#69](https://github.com/SanchitB23/meetthefam/issues/69) — Spike: render the entire tree without focus-driven hiding (pan/zoom over recenter).
 - [ ] [#70](https://github.com/SanchitB23/meetthefam/issues/70) — Spike: notification system (Success / Info / Warn / Error toasts) across the app.
 - [ ] [#74](https://github.com/SanchitB23/meetthefam/issues/74) — React 19.2 `<ViewTransition>` for cross-page animations. Blocked on `<ViewTransition>` reaching the React stable channel (likely React 19.3 / 20.0) or a Next.js public shim landing.
+
+### CI hardening (deferred from earlier phases)
+
+- [ ] [#85](https://github.com/SanchitB23/meetthefam/issues/85) — `pnpm test` CI workflow with Supabase service container. *(Moved from Phase 10 Wave D → Phase 12 on 2026-05-26. Justification: solo dev's three quality gates — local test discipline + [#104](https://github.com/SanchitB23/meetthefam/pull/104) lint+typecheck CI + Vercel preview's `next build` — cover the regression surface for v1.0. Phase 10 Wave E's [#86](https://github.com/SanchitB23/meetthefam/issues/86) verification matrix tests RLS negatives pre-launch. Re-evaluate when a collaborator joins, new RLS policies churn, or CI cost becomes immaterial.)*
 
 ### Caching / perf flags (default off per [ADR 0007](../adrs/0007-nextjs-16-and-async-idioms.md))
 
