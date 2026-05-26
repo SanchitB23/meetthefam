@@ -57,7 +57,7 @@ import type { PersonRow } from '../_lib/types'
 import { AddRelativeFab } from './AddRelativeFab'
 import { PersonActionMenu, type ActionAnchor } from './PersonActionMenu'
 import { PersonDetailSheet } from './PersonDetailSheet'
-import { TreeOverviewButton } from './TreeOverviewButton'
+import { ZoomControls } from './ZoomControls'
 // PersonHoverPlus and PersonForm removed in 8b polish FIX 1:
 // "+" is now an in-card button child of .mtf-node; form is owned by AddRelativeFab
 // via CustomEvent('mtf-add-relative') dispatched from setOnCardClick.
@@ -315,6 +315,48 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
     chartRef.current?.updateTree({ initial: true })
   }, [])
 
+  // Programmatic zoom via a synthetic wheel event. family-chart doesn't
+  // expose a JS zoom API, so dispatch a `wheel` event on d3-zoom's listener
+  // element — d3-zoom's own wheel handler then computes the new transform
+  // and routes it through `zoom.transform`, which fires the 'zoom' event
+  // family-chart subscribes to (line 1138 of family-chart.js sets
+  // `transform` on `g.view`). Going through d3's apply path is the only
+  // reliable way: directly mutating `el.__zoom` + setting the inner `<g>`
+  // transform attribute (the previous approach) doesn't survive d3-zoom's
+  // next tick — d3 reads from its own internal state and overwrites the
+  // manually-set transform, so the +/− buttons appeared to do nothing.
+  //
+  // d3-zoom's default wheelDelta(): `event.deltaY * -0.002` for
+  // `deltaMode 0` (pixels). The scale multiplier d3 applies is
+  // `Math.pow(2, wheelDelta)`. To apply a factor f, we need
+  // wheelDelta = log2(f), so deltaY = -log2(f) / 0.002.
+  const applyZoomDelta = useCallback((factor: number) => {
+    const cont = containerRef.current
+    if (!cont) return
+    const svg = cont.querySelector<SVGSVGElement>('svg.main_svg')
+    if (!svg) return
+
+    // d3-zoom listener — family-chart attaches it to either svg or parent.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const el = ((svg as any).__zoomObj ? svg : svg.parentNode) as HTMLElement | SVGElement | null
+    if (!el) return
+
+    const deltaY = -Math.log2(factor) / 0.002
+    const rect = svg.getBoundingClientRect()
+    const evt = new WheelEvent('wheel', {
+      deltaY,
+      deltaMode: 0,
+      clientX: rect.left + rect.width / 2,
+      clientY: rect.top + rect.height / 2,
+      bubbles: true,
+      cancelable: true,
+    })
+    el.dispatchEvent(evt)
+  }, [])
+
+  const zoomIn = useCallback(() => applyZoomDelta(1.2), [applyZoomDelta])
+  const zoomOut = useCallback(() => applyZoomDelta(1 / 1.2), [applyZoomDelta])
+
   const handleRecenter = useCallback((personId: string) => {
     // Hash is the single source of truth — write it via window.location.hash
     // so the native hashchange fires and browser back can undo the re-center
@@ -339,7 +381,7 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
   return (
     <>
       {/*
-        Outer wrapper: position:relative so TreeOverviewButton can use
+        Outer wrapper: position:relative so ZoomControls can use
         `absolute` positioning relative to the canvas area. The inner f3 div
         keeps overflow:hidden for family-chart's own pan/zoom chrome; the
         overlay sits on top, outside the clip region.
@@ -355,7 +397,7 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
             backgroundSize: '24px 24px',
           }}
         />
-        {!readOnly && <TreeOverviewButton onActivate={zoomToFit} />}
+        <ZoomControls onZoomIn={zoomIn} onZoomOut={zoomOut} onFit={zoomToFit} />
       </div>
       <PersonDetailSheet
         person={detailPerson}
