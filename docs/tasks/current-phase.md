@@ -1,62 +1,102 @@
-# Current phase: 9 — Pre-prod: bugs, polish, verification, SMTP, legal
+# Current phase: 10 — Review, merge, brainstorms, verification, release cut
 
-> **Restructured 2026-05-22.** Phase 9 now covers only the agent-coded implementation work that has to land in `qa`. The follow-through — review-and-merge of the in-flight PRs, brainstorm decisions, post-brainstorm implementation, verification matrix, release cut — moved to a **new Phase 10**, with the old Phase 10 (launch-day cut-over) renumbered to **Phase 11** and the old Phase 11 (deferred backlog) renumbered to **Phase 12**. See [`./phase-backlog.md`](./phase-backlog.md) "Phase 9 / 10 / 11 / 12 split (revised 2026-05-22)" for the full rationale. Phase 9 closes when every PR listed in the in-flight inventory below merges to `qa`; Phase 10 becomes the active phase at that point.
+> **Phase 9 is COMPLETE as of 2026-05-29.** All 12 Phase 9 implementation PRs (Wave A) merged to `qa`; Wave C consumers #91/#92/#93 + #83 merged; #71 merged. Phase 10 owns the remaining path to `release/v1.0.0`: Wave B brainstorm decisions (SMTP #25, legal #56) and their Wave C implementation, Wave E verification matrix, and Wave F release cut.
 
-Spec → [`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → Phase 9 row (architectural view — single row). Operational view (the 4-bucket Pre-prod / Operational / For-prod / Post-prod split) → [`./phase-backlog.md`](./phase-backlog.md). Canonical implementation plan (wave breakdown + cadence) → [`../superpowers/plans/2026-05-20-phase-9-pre-prod.md`](../superpowers/plans/2026-05-20-phase-9-pre-prod.md) *(historic — numbering predates the 2026-05-22 restructure; phase numbers past 9 shifted by 1)*.
+Spec → [`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → Phase 9 row (architectural view). Operational view (4-bucket split) → [`./phase-backlog.md`](./phase-backlog.md) → "Phase 10". Phase 9 implementation plan (historic) → [`../superpowers/plans/2026-05-20-phase-9-pre-prod.md`](../superpowers/plans/2026-05-20-phase-9-pre-prod.md) *(phase numbers past 9 shifted by 1 post-2026-05-22 restructure)*.
 
-**Ship gate** (paraphrased from the plan doc above):
+**Ship gate** (Phase 10 closes when all of the following are met):
 
-- Every checkbox under [`./phase-backlog.md`](./phase-backlog.md) → "Phase 9 — Pre-prod" is `[x]` (bug fixes, Phase 8 polish carry-overs, custom SMTP code, legal pages, verification matrix, security hardening, observability docs, CI gate).
-- All PRs from Waves 0–4 of the plan merged to `qa`; CI green on `qa`.
+- Wave B brainstorm decisions landed: SMTP provider picked ([#25](https://github.com/SanchitB23/meetthefam/issues/25)) and legal pages catalog agreed ([#56](https://github.com/SanchitB23/meetthefam/issues/56)).
+- Wave C post-brainstorm implementation complete (SMTP SDK, email templates, legal pages, footer links).
 - All 10 verification-matrix boxes in epic [#86](https://github.com/SanchitB23/meetthefam/issues/86) ticked (two-account smoke, mobile gestures, editor round-trip, share-link incognito, RLS negative, 200-person perf, Storage cleanup, Lighthouse ≥ 90 mobile, real-4G photo upload, `--turbopack` flag sweep).
 - `pnpm typecheck && pnpm lint && pnpm test` clean on `qa`.
-- `e2e-smoke-tester` passes Phase 1–7 flows against the QA preview, plus the new Phase 9 verification flows.
-- `release/v1.0.0` cut from `qa` and ready for Phase 11 cut-over (per [`../dev/prod-readiness.md`](../dev/prod-readiness.md)). *(The release cut itself runs in the new Phase 10, Wave F; Phase 11 picks up at the launch-day env-flip / prod-migration stage.)*
+- `release/v1.0.0` cut from `qa`; Phase 11 (launch-day cut-over) takes over from there.
 
 ---
 
-### Phase 9 progress — wave-driven, per-issue feature branches
+### Phase 10 progress
 
-**Branch strategy** — Phase 9 reverts to the standard per-issue feature-branch workflow ([ADR 0010](../adrs/0010-feature-branch-workflow.md)), NOT the phase-branch override Phase 8 used. Each agent-handled issue lands on its own `fix/N-slug` or `feat/N-slug` branch via the official Claude GitHub Action (`@claude` on an `agent-ready` issue spins a `claude/issue-N-...` branch + "Create PR ➔" link); the human opens the PR; review + squash-merge into `qa`. The plan's cadence note caps queue depth at ≤ 2 open PRs before opening the next batch.
+**Wave A — all 12 Phase 9 PRs merged** *(complete as of 2026-05-29)*:
 
-**In-flight inventory** *(2026-05-22 — updated post-restructure)*:
+PRs #88, #89, #94, #95, #96, #97, #98, #99, #100, #101, #102, #104 — all merged to `qa`. Closes issues #49, #58, #62, #72, #73, #75, #78, #81, #82, #84, #90 (and the Phase 9 kick-off docs PR).
 
-All 12 implementation PRs are now drafted and tracked in Phase 10 → Wave A (batch review + merge). Phase 9 closes when these all merge to `qa`.
+**Wave C consumers merged** *(complete)*:
 
-- **Wave 0 (Phase 9 → Phase 10 Wave A):**
-  - [PR #88](https://github.com/SanchitB23/meetthefam/pull/88) ([#58](https://github.com/SanchitB23/meetthefam/issues/58)) postcss CVE — DRAFT
-  - [PR #89](https://github.com/SanchitB23/meetthefam/pull/89) ([#49](https://github.com/SanchitB23/meetthefam/issues/49)) /login redirect — DRAFT
-- **Wave 1 (Phase 9 → Phase 10 Wave A):**
-  - [PR #102](https://github.com/SanchitB23/meetthefam/pull/102) ([#90](https://github.com/SanchitB23/meetthefam/issues/90)) ErrorAlert foundation — DRAFT *(consumers #91/#92/#93 held in Phase 10 Wave C)*
-  - [PR #104](https://github.com/SanchitB23/meetthefam/pull/104) ([#84](https://github.com/SanchitB23/meetthefam/issues/84)) CI lint+typecheck — DRAFT *(manual-paste workaround after Claude action push-rejection)*
-- **Wave 2 (Phase 9 → Phase 10 Wave A):**
-  - [PR #95](https://github.com/SanchitB23/meetthefam/pull/95) ([#62](https://github.com/SanchitB23/meetthefam/issues/62)) tree re-center undo — DRAFT
-  - [PR #96](https://github.com/SanchitB23/meetthefam/pull/96) ([#72](https://github.com/SanchitB23/meetthefam/issues/72)) zoom control cluster — DRAFT
-  - [PR #97](https://github.com/SanchitB23/meetthefam/pull/97) ([#73](https://github.com/SanchitB23/meetthefam/issues/73)) person-card contrast — DRAFT
-  - [PR #98](https://github.com/SanchitB23/meetthefam/pull/98) ([#75](https://github.com/SanchitB23/meetthefam/issues/75)) heirloom favicon — DRAFT
-  - [PR #99](https://github.com/SanchitB23/meetthefam/pull/99) ([#78](https://github.com/SanchitB23/meetthefam/issues/78)) derive-version on tagged builds — DRAFT
-  - [PR #100](https://github.com/SanchitB23/meetthefam/pull/100) ([#81](https://github.com/SanchitB23/meetthefam/issues/81)) DB restore runbook — DRAFT
-  - [PR #101](https://github.com/SanchitB23/meetthefam/pull/101) ([#82](https://github.com/SanchitB23/meetthefam/issues/82)) postmortem template — DRAFT
-- **Docs PR (this restructure):**
-  - [PR #94](https://github.com/SanchitB23/meetthefam/pull/94) Phase 9 kick-off + 2026-05-22 restructure — DRAFT
-- **Moved to Phase 10 — held until dependencies clear:**
-  - #91 / #92 / #93 (consumers of #90 — picked up in Phase 10 Wave C after PR #102 merges)
-  - [#83](https://github.com/SanchitB23/meetthefam/issues/83) status-page link — ✅ RESOLVED: BetterStack chosen (b3 uptime-monitor decision); README + footer wired, footer gated on `NEXT_PUBLIC_STATUS_URL`. Launch-day infra in [`prod-readiness.md`](../dev/prod-readiness.md) §10a.
-- **Moved to Phase 10 — brainstorm tracks:**
-  - (b1) SMTP provider pick ([#25](https://github.com/SanchitB23/meetthefam/issues/25))
-  - (b2) Legal pages catalog ([#56](https://github.com/SanchitB23/meetthefam/issues/56))
-  - (b3) Observability stack pick ([#103](https://github.com/SanchitB23/meetthefam/issues/103))
+- [PR #113](https://github.com/SanchitB23/meetthefam/pull/113) ([#91](https://github.com/SanchitB23/meetthefam/issues/91)) auth-flow typed errors — merged
+- [PR #114](https://github.com/SanchitB23/meetthefam/pull/114) ([#92](https://github.com/SanchitB23/meetthefam/issues/92)) dashboard server actions — merged
+- [PR #115](https://github.com/SanchitB23/meetthefam/pull/115) ([#93](https://github.com/SanchitB23/meetthefam/issues/93)) tree-page server actions — merged
+- [PR #122](https://github.com/SanchitB23/meetthefam/pull/122) ([#83](https://github.com/SanchitB23/meetthefam/issues/83)) status-page link (BetterStack) — merged
 
-**Plan doc** — wave breakdown, dependency chain, brainstorm scaffolding, and the cadence note all live at [`../superpowers/plans/2026-05-20-phase-9-pre-prod.md`](../superpowers/plans/2026-05-20-phase-9-pre-prod.md). When resuming mid-phase, read that doc first, then check the in-flight inventory above for which issues already have @claude comments and which are still held.
+**Wave D carry-overs merged**:
 
-**Out of scope** (handed to Phase 10 / 11 / 12 per the 2026-05-22 restructure):
+- [PR #118](https://github.com/SanchitB23/meetthefam/pull/118) ([#71](https://github.com/SanchitB23/meetthefam/issues/71)) always-on Link-to picker + standalone-confirm — merged
 
-- All review-and-merge of the in-flight PRs, all post-brainstorm implementation, all verification matrix work, and the release cut — **Phase 10** (new). Full breakdown in [`./phase-backlog.md`](./phase-backlog.md) → "Phase 10 — Review, merge, brainstorms, verification, release cut".
-- Production env-var flips (`MEETTHEFAM_EMAIL_INVITES_ENABLED`, `SENTRY_DSN`, custom-domain DNS, prod migrations) — **Phase 11** (was 10), indexed against [`../dev/prod-readiness.md`](../dev/prod-readiness.md).
-- React 19.2 `<ViewTransition>` polish for cross-page animations ([#74](https://github.com/SanchitB23/meetthefam/issues/74)) — **Phase 12** (was 11); blocked on React stable channel or a Next.js public shim.
-- All other `post-v1.0`-labeled issues ([#60](https://github.com/SanchitB23/meetthefam/issues/60), [#69](https://github.com/SanchitB23/meetthefam/issues/69), [#70](https://github.com/SanchitB23/meetthefam/issues/70), [#74](https://github.com/SanchitB23/meetthefam/issues/74)) and the `cacheComponents` / `reactCompiler` / GDPR-endpoint backlog — **Phase 12** (was 11).
+**Observability decision — RESOLVED** ([#103](https://github.com/SanchitB23/meetthefam/issues/103)):
 
-> **Next session** — start by pulling `qa` (`git checkout qa && git pull --ff-only`), reviewing PRs #88 + #89 (Wave 0), and skimming the in-flight inventory above for what landed since this doc was edited. While agent PRs are in flight, drive at least one of the three brainstorm tracks (SMTP / legal / observability) so Wave 3 isn't blocked when #90 merges. Honour the cadence note's queue-depth rule (≤ 2 open PRs before opening the next batch).
+BetterStack chosen for uptime monitoring (free tier, shipped via #83 / PR #122). **Sentry = NO for v1.0** — Vercel built-in error logging + BetterStack uptime monitoring are sufficient for a solo-dev v1.0 launch; Sentry revisit deferred post-launch. Launch-day BetterStack infra setup steps live at [`../dev/prod-readiness.md`](../dev/prod-readiness.md) §10a.
+
+**Remaining work — critical path**:
+
+- **(b1) SMTP provider pick** ([#25](https://github.com/SanchitB23/meetthefam/issues/25)) — Resend / Postmark / SES / SendGrid. **Unblocks Wave C SMTP code.** This is the critical-path blocker for the email-invite flow landing before v1.0.
+- **(b2) Legal pages catalog** ([#56](https://github.com/SanchitB23/meetthefam/issues/56)) — privacy / terms / cookies / about / contact. Unblocks legal page builds.
+- **Wave E verification matrix** ([#86](https://github.com/SanchitB23/meetthefam/issues/86)) — all 10 boxes unstarted; the big unstarted block before the release cut.
+- **Wave F release cut** — `release/v1.0.0` branch from `qa`.
+
+**Out of scope** (Phase 11 / 12):
+
+- Production env-var flips (`MEETTHEFAM_EMAIL_INVITES_ENABLED`, custom-domain DNS, prod migrations) — **Phase 11**, indexed against [`../dev/prod-readiness.md`](../dev/prod-readiness.md).
+- React 19.2 `<ViewTransition>` ([#74](https://github.com/SanchitB23/meetthefam/issues/74)) — **Phase 12**.
+- All other `post-v1.0`-labeled issues ([#60](https://github.com/SanchitB23/meetthefam/issues/60), [#69](https://github.com/SanchitB23/meetthefam/issues/69), [#70](https://github.com/SanchitB23/meetthefam/issues/70)) and the `cacheComponents` / `reactCompiler` / GDPR-endpoint backlog — **Phase 12**.
+
+> **Next session** — Wave B decisions are the critical path. Drive the SMTP provider pick ([#25](https://github.com/SanchitB23/meetthefam/issues/25)) first (it unblocks the most Wave C work), then legal catalog ([#56](https://github.com/SanchitB23/meetthefam/issues/56)). After decisions land, wave through Wave C implementation. Then run Wave E verification matrix ([#86](https://github.com/SanchitB23/meetthefam/issues/86)) — all 10 boxes require human time on a real device / two accounts. Wave F (release cut) is the final step.
+
+---
+
+## Previous phase: 9 — Pre-prod: bugs, polish, verification, SMTP, legal (✅ closed)
+
+> **Implementation complete.** All agent-coded PRs landed in `qa`; review/merge/verify/release owned by Phase 10.
+
+Spec → [`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → Phase 9 row. Canonical plan → [`../superpowers/plans/2026-05-20-phase-9-pre-prod.md`](../superpowers/plans/2026-05-20-phase-9-pre-prod.md) *(historic — phase numbers past 9 shifted by 1 in the 2026-05-22 restructure)*.
+
+**Ship gate (met — implementation complete)**:
+
+- All 12 Phase 9 implementation PRs merged to `qa` (Wave A) — bug fixes #49/#58/#62/#68/#73/#75/#78, ErrorAlert foundation #90/#84, ops docs #81/#82, Phase 9 docs PR #94.
+- Wave C consumers of #90 merged (#91/#92/#93).
+- Status-page link #83 merged (BetterStack chosen, README + footer wired).
+- Phase 8 carry-over #71 (always-on Link-to picker) merged.
+- #72 zoom control cluster merged (PR #96).
+- Observability decision resolved: BetterStack for uptime; Sentry = NO for v1.0.
+- `pnpm typecheck && pnpm lint && pnpm test` clean on `qa`.
+
+**Merged PRs**:
+
+- [PR #88](https://github.com/SanchitB23/meetthefam/pull/88) ([#58](https://github.com/SanchitB23/meetthefam/issues/58)) postcss CVE — merged
+- [PR #89](https://github.com/SanchitB23/meetthefam/pull/89) ([#49](https://github.com/SanchitB23/meetthefam/issues/49)) /login redirect — merged
+- [PR #94](https://github.com/SanchitB23/meetthefam/pull/94) Phase 9 kick-off docs + 2026-05-22 restructure — merged
+- [PR #95](https://github.com/SanchitB23/meetthefam/pull/95) ([#62](https://github.com/SanchitB23/meetthefam/issues/62)) tree re-center undo — merged
+- [PR #96](https://github.com/SanchitB23/meetthefam/pull/96) ([#72](https://github.com/SanchitB23/meetthefam/issues/72)) zoom control cluster — merged
+- [PR #97](https://github.com/SanchitB23/meetthefam/pull/97) ([#73](https://github.com/SanchitB23/meetthefam/issues/73)) person-card contrast — merged
+- [PR #98](https://github.com/SanchitB23/meetthefam/pull/98) ([#75](https://github.com/SanchitB23/meetthefam/issues/75)) heirloom favicon — merged
+- [PR #99](https://github.com/SanchitB23/meetthefam/pull/99) ([#78](https://github.com/SanchitB23/meetthefam/issues/78)) derive-version on tagged builds — merged
+- [PR #100](https://github.com/SanchitB23/meetthefam/pull/100) ([#81](https://github.com/SanchitB23/meetthefam/issues/81)) DB restore runbook — merged
+- [PR #101](https://github.com/SanchitB23/meetthefam/pull/101) ([#82](https://github.com/SanchitB23/meetthefam/issues/82)) postmortem template — merged
+- [PR #102](https://github.com/SanchitB23/meetthefam/pull/102) ([#90](https://github.com/SanchitB23/meetthefam/issues/90)) ErrorAlert foundation — merged
+- [PR #104](https://github.com/SanchitB23/meetthefam/pull/104) ([#84](https://github.com/SanchitB23/meetthefam/issues/84)) CI lint+typecheck workflow — merged
+- [PR #113](https://github.com/SanchitB23/meetthefam/pull/113) ([#91](https://github.com/SanchitB23/meetthefam/issues/91)) auth-flow typed errors — merged
+- [PR #114](https://github.com/SanchitB23/meetthefam/pull/114) ([#92](https://github.com/SanchitB23/meetthefam/issues/92)) dashboard server actions — merged
+- [PR #115](https://github.com/SanchitB23/meetthefam/pull/115) ([#93](https://github.com/SanchitB23/meetthefam/issues/93)) tree-page server actions — merged
+- [PR #118](https://github.com/SanchitB23/meetthefam/pull/118) ([#71](https://github.com/SanchitB23/meetthefam/issues/71)) always-on Link-to picker — merged
+- [PR #122](https://github.com/SanchitB23/meetthefam/pull/122) ([#83](https://github.com/SanchitB23/meetthefam/issues/83)) BetterStack status-page link — merged
+
+**Not landed in Phase 9** (Wave B brainstorm decisions + their Wave C implementation, Wave E verification, Wave F release cut — all owned by Phase 10):
+
+- SMTP provider pick ([#25](https://github.com/SanchitB23/meetthefam/issues/25)) + SMTP SDK / email templates / MembersSheet "Send via email"
+- Legal pages catalog ([#56](https://github.com/SanchitB23/meetthefam/issues/56)) + /privacy / /terms / landing footer links
+- Verification matrix epic ([#86](https://github.com/SanchitB23/meetthefam/issues/86))
+- Key rotation ([`project_pre_prod_key_rotation.md`](../../../.claude/projects/-Users-sqb6461-Workspace-SelfProjects-meetthefam/memory/project_pre_prod_key_rotation.md))
+- `release/v1.0.0` cut
+
+> **Note on release version**: the versioning table in [`../dev/releases.md`](../dev/releases.md) pre-dates the 2026-05-22 restructure and still labels "End of Phase 9" as `v1.0.0`. In practice, Phase 9 = implementation-complete only; `v1.0.0` cuts at the end of Phase 10 (Wave F) once Wave E verification passes. The table should be updated to reflect this boundary shift.
 
 ---
 
