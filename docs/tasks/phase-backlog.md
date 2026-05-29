@@ -72,7 +72,7 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 ## Phase 7 — Share link
 
 - [ ] On share-token toggle / regenerate, call `updateTag('share:<treeId>')` so the dashboard's "share status" reflects immediately.
-- [ ] `/share/[token]/route.ts` is a Route Handler using `service_role`. Read `params.token` via `await context.params` (Next.js 16 async).
+- [x] `/share/[token]/route.ts` is a Route Handler using `service_role`. Read `params.token` via `await context.params` (Next.js 16 async). *(Shipped as a Server Component page at `src/app/share/[token]/page.tsx` (not Route Handler), using `createServiceRoleClient()` per the architectural note at the top of that file. Equivalent end result for an anonymous, server-rendered public read — RLS deliberately bypassed because the token IS the auth — and `await props.params` is read at the page level. Spec wording "Route Handler" was stale.)*
 - [ ] **(Optional)** If we cache the public share-tree response, use `revalidateTag('share:<treeId>', 'max')` with the explicit `cacheLife` profile (the single-arg form is deprecated in v16). Default: don't cache yet — re-evaluate at v1.0 ship.
 
 ## Phase 8 — Visual polish + landing
@@ -84,8 +84,8 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 - [ ] If tree navigation animations weren't done in Phase 4, do them here.
 - [ ] **(Optional)** Try `useEffectEvent` for any "non-reactive" effect logic (theme listeners, focus trapping in the bottom sheet) — only if existing code is awkward.
 - [x] **Brand icon set (per [ADR 0008](../adrs/0008-design-system.md) → Hybrid icon set)** — extract `Branch`, `Leaf`, `Quote`, `Family`, `Sparkle`, `Heart` SVG paths from [`../ux/inspiration/kintree/project/shared.jsx`](../ux/inspiration/kintree/project/shared.jsx) → `Icon` and re-implement as React components at `src/components/icons/` (one component per icon). Lucide stays for everything else. *(Sub-task 8a-4 — landed 2026-05-16. Six brand icons extracted from Kintree (Knot fallback not needed — all six glyphs are present in Kintree's `shared.jsx`). `Branch` is the standalone 200×80 section-divider motif (with `flip` prop); the other five are 24×24 line glyphs at 1.6px stroke. All `currentColor`-friendly with `aria-hidden=true`.)*
-- [ ] **Decorative motifs** — branch-SVG section dividers between major page sections (landing especially), leaf icons in section headings, sparkle icon for "new" indicators. Reference: [`../ux/inspiration/kintree/project/shared.jsx`](../ux/inspiration/kintree/project/shared.jsx) → `Branch` component.
-- [ ] **Italic Cormorant whitelist enforcement (per [ADR 0008](../adrs/0008-design-system.md))** — italic only on: landing-hero kicker, section taglines, empty-state hero copy, share-link footer pull-quotes, person-bio nicknames. Audit all copy after Phase 8 components land; flag any italic Cormorant outside the whitelist.
+- [x] **Decorative motifs** — branch-SVG section dividers between major page sections (landing especially), leaf icons in section headings, sparkle icon for "new" indicators. Reference: [`../ux/inspiration/kintree/project/shared.jsx`](../ux/inspiration/kintree/project/shared.jsx) → `Branch` component. *(Branch dividers landed in 8c-2 via `LandingFeatures.tsx` (above + flipped below the cards). Leaf-in-section-headings + Sparkle-for-new completed post-v0.4.0 on `feat/phase-8-leftover-polish` (2026-05-18): `LandingFeatures.tsx` already had `<Leaf size={24} className="text-primary" />` inline next to the section H2 from 8c-2; the dashboard `DashboardContent.tsx` "Your Trees" H1 gains the same `<Leaf size={22} className="text-primary" />` treatment. Sparkle "new" indicator ships on `TreeCard.tsx` only — when `isRecent(tree.created_at, 7)` is true the card title renders a 14px `<Sparkle className="text-accent" />` wrapped in a `<span role="img" aria-label="Recently created">`. `isRecent()` helper lives at `src/lib/dates/isRecent.ts` with `withinDays` defaulting to 7 and an injectable `now` clock for deterministic tests (9 Vitest cases covering boundary, future-clock-skew, null/undefined, unparseable strings, custom thresholds). One surface only — keep it sparingly used per the heirloom aesthetic; widen later if QA wants more.)*
+- [x] **Italic Cormorant whitelist enforcement (per [ADR 0008](../adrs/0008-design-system.md))** — italic only on: landing-hero kicker, section taglines, empty-state hero copy, share-link footer pull-quotes, person-bio nicknames. Audit all copy after Phase 8 components land; flag any italic Cormorant outside the whitelist. *(Sub-task 8c-6 — landed 2026-05-18. Grep audit (`italic.*font-serif|font-serif.*italic`) found 5 in-tree uses — `LandingHero.tsx` kicker, `LandingFooter.tsx` tagline, `not-found.tsx` kicker tagline, `ShareBanner.tsx` pull-quote, `PersonDetailSheet.tsx` nickname — all on the ADR 0008 whitelist. No deviations to document. Recorded in [`current-phase.md`](current-phase.md) line 119.)*
 - [x] **Visual gender hint via avatar SHAPE** — concrete design landed via a Claude Design brainstorm on 2026-05-12 (handoff bundle re-fetchable from `https://api.anthropic.com/v1/design/h/T1xQD0K10waKCBAu_dHEkw`; primary file `meetmyfamily/project/shared.jsx` — see the `radiusForGender()` helper at lines 65-70 and the `<Avatar>` deceased treatment at lines 75-119). Tones stay NON-demographic per [`../ux/avatars-and-tones.md`](../ux/avatars-and-tones.md); the gender signal is carried by avatar **shape**, classical genealogy convention softened to fit the heirloom-journal aesthetic:
   - `gender === 'm'` → rounded-square, `border-radius: Math.round(size * 0.18)px`
   - `gender === 'other'` → squircle, `border-radius: Math.round(size * 0.34)px` (design uses `'n'`; map our `'other'` here)
@@ -101,19 +101,234 @@ Not phase-specific TODOs — discipline reminders for every session. These never
   - **Tweaks panel deferred** — the design exposed both conventions as user-togglable A/B switches; we ship them on by default. If we later want toggles, that's a separate v1.1+ conversation. *(Sub-task 8b-1 — landed 2026-05-17. All three signals shipped: desaturated avatar + † badge (top-right, `aria-hidden`) + `<Memoriam>` name prefix. `personNodeHtml` mirrors the treatment in raw HTML. `.f3 .mtf-node--deceased` CSS rule in `globals.css` softens card chrome.)*
 - [x] **Tree-overview / zoom-to-fit control** *(user-requested 2026-05-13 during Phase 4 manual QA; landed Phase 8 sub-task 8b-2 — 2026-05-17)*. `TreeOverviewButton` at `absolute top-3 right-3` of the canvas wrapper, `Maximize2` icon (16px), `aria-label="View whole tree"`. `zoomToFit` clears the URL hash + calls `chart.updateTree({ initial: true })` for bounding-box auto-fit.
 - [x] **Duplicate-card handling — design decision** *(user flagged 2026-05-13 during Phase 4 manual QA as confusing; landed Phase 8 sub-task 8b-3 — 2026-05-17)*. Shipped **option 2 — visual marker** (dashed border + `↑` corner badge at `top:-6px;left:-6px` on the card wrapper + "Already shown above" tooltip + tap-to-jump-to-primary via `window.location.hash = '#p=' + id`). Avatar stays full-color (no opacity/saturate from the duplicate path — that's reserved for the deceased treatment from 8b-1, so they compose cleanly). Ellipsis action button omitted on duplicate cards. `d.duplicate` is read from the node level (family-chart sets `d.duplicate = duplicates.length` at `esm.js:880`). QA feedback gate per locked decision #13 fires AFTER implementation, BEFORE commit.
-- [ ] **Replace create-next-app `src/app/page.tsx`** with the actual landing screen, modeled on the Kintree landing screen in the original prototype bundle (not vendored — see [`../ux/inspiration/README.md`](../ux/inspiration/README.md) for re-fetch URL).
-- [ ] **Empty / loading / error states per screen** — apply heirloom palette + Cormorant for hero copy.
-- [ ] **Slow-nav loading affordance** *(surfaced during Phase 6 smoke walk)*. Server-Component-driven routes (`/dashboard`, `/tree/[id]`) feel stuck for the duration of the data fetch — the user clicks a link and sees nothing happen until the server returns. Two complementary fixes: (a) Wrap the data-fetching part of each route in `<Suspense>` with a heirloom skeleton fallback (avatar circles + line-clamp placeholders that match the real layout). (b) Use Next 16's `useLinkStatus()` (from `next/link`) on the most-traversed links — back-to-dashboard, tree-card links, the Members icon button — to render a subtle progress indicator (a thin top-edge bar or an inline spinner) while the navigation is in flight. Reference: [Next 16 docs on `useLinkStatus`](https://nextjs.org/docs/app/api-reference/functions/use-link-status). Phase 5's photo-upload optimistic-blob preview is the precedent for "never lie to the user about in-flight state." Same principle applied to nav.
+- [x] **Replace create-next-app `src/app/page.tsx`** with the actual landing screen, modeled on the Kintree landing screen in the original prototype bundle (not vendored — see [`../ux/inspiration/README.md`](../ux/inspiration/README.md) for re-fetch URL). *(Sub-task 8c-2 — landed 2026-05-18 (closes [#44](https://github.com/SanchitB23/meetthefam/issues/44)). `src/app/page.tsx` is now a Server Component that reads the Supabase user via `await createClient()` + `auth.getUser()` and redirects authed users to `/dashboard` server-side; unauthed visitors get the heirloom landing — new `src/components/landing/LandingHero.tsx` (Logo + Cormorant italic kicker + serif H1 + primary CTA), `LandingFeatures.tsx` (Family/Heart/Leaf brand-icon cards with Branch SVG dividers above + below, lower one with `flip` prop), `LandingFooter.tsx` (Cormorant italic tagline + sign-in link). All brand tokens only — no hex.)*
+- [x] **Empty / loading / error states per screen** — apply heirloom palette + Cormorant for hero copy. *(Empty + loading landed in 8c-3 (heirloom palette pass on `(app)/dashboard/loading.tsx` + `(app)/tree/[id]/loading.tsx`, dashboard empty-state already heirloom-correct, not-found pages already heirloom). Error boundaries completed post-v0.4.0 on `feat/phase-8-leftover-polish` (2026-05-18): 3 new `error.tsx` files — `src/app/(app)/dashboard/error.tsx`, `src/app/(app)/tree/[id]/error.tsx`, `src/app/share/[token]/error.tsx`. Each is a `'use client'` component taking `{ error, reset }`, matches the `not-found.tsx` chrome (Cormorant kicker + serif H1 + Manrope body), wires the primary button to `reset()`, and `console.error`s the cause in a `useEffect` so Vercel runtime logs catch it (no Sentry/Datadog wiring — that's v1.0 scope). Share-page CTA omits the dashboard link because the anonymous visitor has no session. No root `src/app/error.tsx` — root layout has no data fetch of its own and the three route-level boundaries cover the actual data-fetching segments.)*
+- [x] **Slow-nav loading affordance** *(surfaced during Phase 6 smoke walk)*. Server-Component-driven routes (`/dashboard`, `/tree/[id]`) feel stuck for the duration of the data fetch — the user clicks a link and sees nothing happen until the server returns. Two complementary fixes: (a) Wrap the data-fetching part of each route in `<Suspense>` with a heirloom skeleton fallback (avatar circles + line-clamp placeholders that match the real layout). (b) Use Next 16's `useLinkStatus()` (from `next/link`) on the most-traversed links — back-to-dashboard, tree-card links, the Members icon button — to render a subtle progress indicator (a thin top-edge bar or an inline spinner) while the navigation is in flight. Reference: [Next 16 docs on `useLinkStatus`](https://nextjs.org/docs/app/api-reference/functions/use-link-status). Phase 5's photo-upload optimistic-blob preview is the precedent for "never lie to the user about in-flight state." Same principle applied to nav. *(Sub-task 8c-4 — landed 2026-05-18 (closes [#50](https://github.com/SanchitB23/meetthefam/issues/50) 2/3). New `src/components/ui/LinkProgress.tsx` (client) wraps `next/link`; a `<PendingBar>` child reads `useLinkStatus()` and renders a 2px `position: fixed top:0` accent-coloured bar animated via the new `@keyframes mtf-link-progress` in `globals.css`. Suspense split: `dashboard/page.tsx` does auth only, then `<Suspense fallback={<DashboardLoading/>}><DashboardContent userId={...}/></Suspense>`; `tree/[id]/page.tsx` does auth + permission gates, then `<Suspense fallback={<TreeLoading/>}><TreeContent .../></Suspense>` with deferred bulk fetches. `TreeCard` + back-arrow swap to `<LinkProgress>`. 2 new Vitest tests for LinkProgress.)*
 - [ ] **Tree settings unified sheet** *(parked from a Phase 6 brainstorm — `feedback_pr_template_compliance.md`-style notes only; full brainstorm at Phase 8 kick-off)*. Today the dashboard 3-dots menu has three items (Rename / Manage members / Delete) each driving its own dialog. Phase 8 polish brainstorm should evaluate folding them into a single "Tree settings" entry that opens one Sheet/Dialog containing Rename field + Members list + invite form + Danger zone (Delete), plus future Phase-7 share-link toggle. Pros: tidier menu, one place for tree-level actions. Cons: bigger refactor (compose `RenameTreeModal` + `DeleteTreeDialog` + `MembersSheet` into a new container), and the MembersSheet inside the dashboard context shifts the "tree-page is the home for member management" decision from Phase 6. Don't ship without re-brainstorming the boundary.
-- [ ] **Revoke-member confirm copy** *(Phase 6 Q4 follow-up)*. The MembersSheet revoke-member two-click confirm currently shows "Confirm" + "Cancel revoke" buttons with no explanation. Spec'd answer to "what happens to people the editor added" is: people stay in the tree (verified — `revokeMember` only deletes the `tree_members` row; `people.created_by` is `on delete set null` for `auth.users` deletes which doesn't trigger here anyway). Phase 8 polish: render a short inline `<p>` next to the Confirm button — e.g. "X will lose access. The people they added stay in your tree." — using the heirloom muted-text style. Files affected: `src/app/tree/[id]/_components/MembersSheet.tsx` `MemberListRow` component.
+- [x] **Revoke-member confirm copy** *(Phase 6 Q4 follow-up)*. The MembersSheet revoke-member two-click confirm currently shows "Confirm" + "Cancel revoke" buttons with no explanation. Spec'd answer to "what happens to people the editor added" is: people stay in the tree (verified — `revokeMember` only deletes the `tree_members` row; `people.created_by` is `on delete set null` for `auth.users` deletes which doesn't trigger here anyway). Phase 8 polish: render a short inline `<p>` next to the Confirm button — e.g. "X will lose access. The people they added stay in your tree." — using the heirloom muted-text style. Files affected: `src/app/tree/[id]/_components/MembersSheet.tsx` `MemberListRow` component. *(Sub-task 8c-6 — landed 2026-05-18. `MembersSheet.tsx` `MemberListRow` restructured: the chip row (avatar + name + role + action buttons) now sits inside a flex-col wrapper. When `confirmRevoke === true`, a `text-sm text-muted-foreground` explanatory `<p>` renders below: `"{displayName} will lose access. The people they added stay in your tree."` verbatim from the canonical plan. Error row moved to the wrapper level so the previously-broken `col-span-full` on a flex-row child is gone.)*
 
-## Phase 9 — QA + edge cases + launch
+> **Phase 9 / 10 / 11 / 12 split (revised 2026-05-22).** Originally set 2026-05-18 as a 3-bucket split (Pre-prod / For-prod / Post-prod). On 2026-05-22 the operational follow-through (review-and-merge of in-flight PRs, brainstorm decisions, post-brainstorm implementation, verification matrix, release cut) was lifted out of Phase 9 into a **new Phase 10**, with the old Phase 10 (launch-day cut-over) renumbered to **Phase 11** and the old Phase 11 (deferred backlog) renumbered to **Phase 12**. Reason: Phase 9 was conflating "what the agents code" with "what the human reviews and decides"; the new Phase 10 is the human-driven follow-through. Phase 9 closes when its agent-coded PRs all merge to `qa`; Phase 10 owns the merging plus everything that runs from that point until `release/v1.0.0`. The spec ([`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing") still numbers Phase 9 as the single "QA + edge cases + launch" row; that's the architectural view. This file is the operational view and now uses the 4-bucket split.
 
-- [ ] **Brainstorm: custom SMTP provider for transactional emails.** Tracked in GitHub [issue #25](https://github.com/SanchitB23/meetthefam/issues/25). Today we use Supabase's built-in SMTP for magic-links, which caps at ~3–4 emails/hour per project (memory entry [`project_smtp_rate_limit.md`](../../../.claude/projects/-Users-sqb6461-Workspace-SelfProjects-meetthefam/memory/project_smtp_rate_limit.md)) — fine for solo dev, not viable for "Aunt Sue invites 8 cousins back-to-back" or launch traffic. **Provider candidates to evaluate**: Resend (best Next.js / TS DX, fair pricing), Postmark (best transactional-email reputation, slightly higher cost), Amazon SES (cheapest at scale, manual DKIM / SPF setup), SendGrid (most enterprise features, complex pricing). **Brainstorm before implementing** — pick provider → set up account → verify sending domain (DKIM + SPF + DMARC) → wire SDK → test deliverability across Gmail / Outlook / Apple Mail (light + dark). **Phase 6's email-invite path stays flag-gated** behind `MEETTHEFAM_EMAIL_INVITES_ENABLED` (currently unset everywhere) until the brainstorm lands. Once decided + wired: drop the `throw new Error('Email delivery not yet implemented')` in `src/lib/email/inviteEmail.ts`, flip the flag in prod env, add a "Send via email" button next to Copy URL in `MembersSheet.tsx`'s invite form, and update the Supabase Auth → Email Templates section to ship via the custom path. Cross-references: [`../dev/prod-readiness.md`](../dev/prod-readiness.md) §4, Phase 6 close-out workflow note.
-- [ ] **(Optional)** Evaluate `cacheComponents: true` for the share-link page and any landing page — only if perf data justifies it. Default: don't enable.
-- [ ] **(Optional)** Evaluate `reactCompiler: true` if profiler shows wasted renders. Default: don't enable.
-- [ ] Verify no `--turbopack` flags lurking in `package.json` (cleanup if any survived).
-- [ ] Verify Next.js Devtools MCP still works against the production deployment (or document that it's dev-only).
+## Phase 9 — Pre-prod: bugs, polish, verification, SMTP, legal
+
+> ✅ Phase 9 closed — implementation complete; review/merge/verify/release owned by Phase 10.
+
+> Implementation work — the agent-coded PRs that had to *land in the codebase / docs* before tagging `v1.0`. **Review-and-merge for these PRs, plus all post-brainstorm implementation and verification, moved to Phase 10 on 2026-05-22** (see the intro note above). All 12 Phase 9 implementation PRs merged to `qa` by 2026-05-29; Phase 10 owns the rest of the path to `release/v1.0.0`. The actual production cut-over (env vars, prod migrations, domain) is Phase 11.
+
+### Bug fixes (open GitHub issues)
+
+- [x] [#49](https://github.com/SanchitB23/meetthefam/issues/49) — Logged-in user visiting `/login` is not redirected to `/dashboard`. *(merged — PR #89)*
+- [x] [#58](https://github.com/SanchitB23/meetthefam/issues/58) — Dependabot: `postcss < 8.5.10` XSS (CVE-2026-41305, transitive via Next.js). *(merged — PR #88)*
+- [x] [#62](https://github.com/SanchitB23/meetthefam/issues/62) — Tree re-center has no undo; `replaceState` vs hash-assignment inconsistency. *(merged — PR #95)*
+- [x] [#68](https://github.com/SanchitB23/meetthefam/issues/68) — User-facing error handling: friendly alerts everywhere (not just login). *(merged — PR #102 foundation + PR #113/#114/#115 consumers)*
+- [x] [#73](https://github.com/SanchitB23/meetthefam/issues/73) — Person cards "swim" into the canvas (same colour); needs contrast tweak. *(merged — PR #97)*
+- [x] [#75](https://github.com/SanchitB23/meetthefam/issues/75) — Verify favicon is the heirloom logomark, not legacy create-next-app `.ico`. *(merged — PR #98)*
+- [x] [#78](https://github.com/SanchitB23/meetthefam/issues/78) — `derive-version.mjs` emits bare version on tagged-commit prod build (Vercel shallow-clone limitation). *(merged — PR #99)*
+
+### Phase 8 polish carry-overs
+
+> Still unchecked in the Phase 8 section above; pulled forward because Phase 8 closed without them. Tick in their original Phase 8 location when done — these are pointers, not duplicates.
+
+- [x] Replace create-next-app `src/app/page.tsx` with the actual landing screen. *(landed Phase 8 sub-task 8c-2)*
+- [x] Empty / loading / error states per screen — heirloom palette + Cormorant for hero copy. *(landed Phase 8 sub-task 8c-3 + post-v0.4.0 polish)*
+- [x] Slow-nav loading affordance — `<Suspense>` skeletons + `useLinkStatus()` on `<Link>`. *(landed Phase 8 sub-task 8c-4)*
+- [ ] Tree settings unified sheet (Rename + Members + Danger zone). *(deferred to Phase 10 Wave D — [#119](https://github.com/SanchitB23/meetthefam/issues/119))*
+- [x] Revoke-member confirm copy. *(landed Phase 8 sub-task 8c-6)*
+- [x] Decorative motifs — branch SVG dividers, leaf headings, sparkle "new" markers. *(landed Phase 8 + post-v0.4.0 polish)*
+- [x] Italic Cormorant whitelist enforcement audit. *(landed Phase 8 sub-task 8c-6)*
+- [x] [#71](https://github.com/SanchitB23/meetthefam/issues/71) — Add-person FAB: link relationship from inside the form (brainstorm UX). *(merged — PR #118)*
+- [x] [#72](https://github.com/SanchitB23/meetthefam/issues/72) — Zoom control cluster (in / out / fit 100%) on canvas. *(merged — PR #96)*
+- [ ] "If tree navigation animations weren't done in Phase 4, do them here." *(deferred to Phase 10 Wave D — [#120](https://github.com/SanchitB23/meetthefam/issues/120))*
+
+### Custom SMTP + email branding ([#25](https://github.com/SanchitB23/meetthefam/issues/25), [#61](https://github.com/SanchitB23/meetthefam/issues/61))
+
+*(Carried from the original Phase 9 list. Implementation lands in Phase 9; the env-var flip + Supabase template re-route happen in Phase 10.)*
+
+- [ ] **Brainstorm + pick a provider.** Today we use Supabase's built-in SMTP for magic-links, which caps at ~3–4 emails/hour per project (memory entry [`project_smtp_rate_limit.md`](../../../.claude/projects/-Users-sqb6461-Workspace-SelfProjects-meetthefam/memory/project_smtp_rate_limit.md)) — fine for solo dev, not viable for "Aunt Sue invites 8 cousins back-to-back" or launch traffic. **Candidates**: Resend (best Next.js / TS DX, fair pricing), Postmark (best transactional-email reputation, slightly higher cost), Amazon SES (cheapest at scale, manual DKIM / SPF setup), SendGrid (most enterprise features, complex pricing).
+- [ ] Set up the provider account.
+- [ ] Verify sending domain — DKIM + SPF + DMARC records in DNS.
+- [ ] Test deliverability across Gmail / Outlook / Apple Mail (light + dark).
+- [ ] Wire the provider SDK in `src/lib/email/inviteEmail.ts`; drop the `throw new Error('Email delivery not yet implemented')` line.
+- [ ] Add the "Send via email" button next to Copy URL in `MembersSheet.tsx`'s invite form.
+- [ ] [#61](https://github.com/SanchitB23/meetthefam/issues/61) — Brand the magic-link email template (HTML, heirloom palette, CTA button).
+- [ ] Brand the invite email template to match.
+
+> Phase 6's email-invite path stays flag-gated behind `MEETTHEFAM_EMAIL_INVITES_ENABLED` (currently unset everywhere) until the above lands. Cross-ref: [`../dev/prod-readiness.md`](../dev/prod-readiness.md) §4.
+
+### Legal pages ([#56](https://github.com/SanchitB23/meetthefam/issues/56))
+
+- [ ] Catalog the required pages (privacy, terms, cookies, about, contact, …).
+- [ ] Build `/privacy`.
+- [ ] Build `/terms`.
+- [ ] Footer with policy + contact links wired into the landing page.
+
+### Phase 9 verification matrix (from spec §Verification)
+
+- [ ] Two-account smoke walk — signup → tree → 10 people across 3 generations → photos.
+- [ ] Mobile gesture pass — tap, long-press, pinch-zoom, re-center on tap; bottom sheet feels native.
+- [ ] Editor invite + edit round-trip (account A invites B; B edits a person).
+- [ ] Share-link incognito read-only round-trip (no auth).
+- [ ] RLS negative test — a 3rd unrelated account cannot fetch A's tree by guessing IDs.
+- [ ] 200-person tree perf — pan / zoom / re-center stay smooth on mobile (seed via script).
+- [ ] Person-delete → photo file in Storage is also gone.
+- [ ] Tree-delete cascade — all people + members + photos removed.
+- [ ] Lighthouse pass on landing + dashboard + tree; performance ≥ 90 mobile. Cross-ref: [`../dev/prod-readiness.md`](../dev/prod-readiness.md) §7.
+- [ ] Photo upload smoke on a real 4G mobile connection (not DevTools throttling).
+- [ ] **Verify no `--turbopack` flags lurking** in `package.json` (cleanup if any survived). *(carried from the original Phase 9 list — Turbopack is the default in Next.js 16; the flag is a no-op.)*
+
+### Security hardening (pre-cut)
+
+> Cross-ref [`../dev/prod-readiness.md`](../dev/prod-readiness.md) §5.
+
+- [ ] Execute the key rotation from [`project_pre_prod_key_rotation.md`](../../../.claude/projects/-Users-sqb6461-Workspace-SelfProjects-meetthefam/memory/project_pre_prod_key_rotation.md), including the `SUPABASE_ACCESS_TOKEN` exposed 2026-05-12.
+- [ ] Confirm pre-commit secret-scanning hooks fire (stage a fake AWS key; the commit should be blocked).
+- [ ] Confirm GitHub branch-protection ruleset `16283379` on `main` is still active.
+
+### Observability decisions + ops docs
+
+> Cross-ref [`../dev/prod-readiness.md`](../dev/prod-readiness.md) §6 + §9 + §10. Decision-making + doc-writing only; SDK wiring against the prod env is Phase 10.
+
+- [x] Error tracking decision: **Sentry = NO for v1.0.** Vercel built-in runtime logs + BetterStack uptime monitoring are sufficient for a solo-dev v1.0 launch. Revisit post-launch if structured error tracking becomes a real need. *(decided 2026-05-29 — resolves [#103](https://github.com/SanchitB23/meetthefam/issues/103))*
+- [x] Uptime monitoring choice — **BetterStack** (free tier: 10 monitors, 3-min checks + hosted status page). Setup steps in [`prod-readiness.md`](../dev/prod-readiness.md) §10a.
+- [x] Write the DB restore runbook (one-pager). *(merged — PR #100, closes [#81](https://github.com/SanchitB23/meetthefam/issues/81))*
+- [x] Create `docs/runbooks/postmortem-template.md`. *(merged — PR #101, closes [#82](https://github.com/SanchitB23/meetthefam/issues/82))*
+- [x] Link a status-page URL from the repo README — BetterStack; README + footer wired ([#83](https://github.com/SanchitB23/meetthefam/issues/83), PR #122). Footer link gated on `NEXT_PUBLIC_STATUS_URL`; launch-day infra in §10a.
+- [ ] Document on-call / contact info (email + WhatsApp is fine for solo).
+
+### CI gate that "has a place at v1.0"
+
+- [x] GitHub Action: `pnpm lint` + `pnpm typecheck` on PR — landed via PR #104 ([#84](https://github.com/SanchitB23/meetthefam/issues/84)).
+- [ ] GitHub Action: `pnpm test` on PR with a Supabase service container (~2 min/PR, ~50 lines of yaml). *(Deferred to Phase 12 on 2026-05-26 — three existing quality gates cover the launch-blocking risk. Re-evaluate when a collaborator joins or new RLS policies churn.)*
+
+---
+
+## Phase 10 — Review, merge, brainstorms, verification, release cut
+
+> Operational follow-through to Phase 9, introduced 2026-05-22. Owns the human-driven work between "Phase 9 PRs are open" and "`release/v1.0.0` is cut from `qa`". When this section is fully ticked, we hand off to Phase 11 (launch-day cut-over).
+
+### Wave A — Batch-review + merge the Phase 9 PRs
+
+> All 12 merged as of 2026-05-29.
+
+- [x] [PR #88](https://github.com/SanchitB23/meetthefam/pull/88) — [#58](https://github.com/SanchitB23/meetthefam/issues/58) postcss CVE override.
+- [x] [PR #89](https://github.com/SanchitB23/meetthefam/pull/89) — [#49](https://github.com/SanchitB23/meetthefam/issues/49) /login redirect for authed users.
+- [x] [PR #94](https://github.com/SanchitB23/meetthefam/pull/94) — Phase 9 kick-off docs + this 9 / 10 / 11 / 12 restructure.
+- [x] [PR #95](https://github.com/SanchitB23/meetthefam/pull/95) — [#62](https://github.com/SanchitB23/meetthefam/issues/62) tree re-center undo.
+- [x] [PR #96](https://github.com/SanchitB23/meetthefam/pull/96) — [#72](https://github.com/SanchitB23/meetthefam/issues/72) zoom control cluster.
+- [x] [PR #97](https://github.com/SanchitB23/meetthefam/pull/97) — [#73](https://github.com/SanchitB23/meetthefam/issues/73) person-card contrast.
+- [x] [PR #98](https://github.com/SanchitB23/meetthefam/pull/98) — [#75](https://github.com/SanchitB23/meetthefam/issues/75) heirloom favicon.
+- [x] [PR #99](https://github.com/SanchitB23/meetthefam/pull/99) — [#78](https://github.com/SanchitB23/meetthefam/issues/78) derive-version on tagged builds.
+- [x] [PR #100](https://github.com/SanchitB23/meetthefam/pull/100) — [#81](https://github.com/SanchitB23/meetthefam/issues/81) DB restore runbook.
+- [x] [PR #101](https://github.com/SanchitB23/meetthefam/pull/101) — [#82](https://github.com/SanchitB23/meetthefam/issues/82) postmortem template.
+- [x] [PR #102](https://github.com/SanchitB23/meetthefam/pull/102) — [#90](https://github.com/SanchitB23/meetthefam/issues/90) ErrorAlert foundation (consumers in Wave C).
+- [x] [PR #104](https://github.com/SanchitB23/meetthefam/pull/104) — [#84](https://github.com/SanchitB23/meetthefam/issues/84) lint+typecheck CI workflow.
+
+### Wave B — Brainstorm tracks (parallel; user-driven)
+
+> Run any time alongside Wave A. Each decision unblocks Wave C work.
+
+- [ ] **(b1) SMTP provider pick** ([#25](https://github.com/SanchitB23/meetthefam/issues/25)) — Resend / Postmark / SES / SendGrid. Unblocks Wave C SMTP code. **Critical path.**
+- [ ] **(b2) Legal pages catalog** ([#56](https://github.com/SanchitB23/meetthefam/issues/56)) — privacy / terms / cookies / about / contact. Also decide whether @claude generates prose or only scaffolds pages.
+- [x] **(b3) Observability stack pick** ([#103](https://github.com/SanchitB23/meetthefam/issues/103)) — **RESOLVED 2026-05-29.** BetterStack for uptime monitoring (shipped via PR #122 / [#83](https://github.com/SanchitB23/meetthefam/issues/83)). **Sentry = NO for v1.0** — Vercel built-in + BetterStack suffice; revisit post-launch. Launch-day BetterStack infra in [`prod-readiness.md`](../dev/prod-readiness.md) §10a.
+
+### Wave C — Post-brainstorm implementation
+
+> #90 consumers merged. SMTP/legal items still blocked on Wave B decisions.
+
+- [x] [#91](https://github.com/SanchitB23/meetthefam/issues/91) — auth flow typed errors (consumer of #90). *(merged — PR #113)*
+- [x] [#92](https://github.com/SanchitB23/meetthefam/issues/92) — dashboard server actions (consumer of #90). *(merged — PR #114)*
+- [x] [#93](https://github.com/SanchitB23/meetthefam/issues/93) — tree-page server actions (consumer of #90). *(merged — PR #115)*
+- [x] [#83](https://github.com/SanchitB23/meetthefam/issues/83) — status-page link in README + footer. **BetterStack** chosen; README "Service status" quick link + landing footer "Status" link gated on `NEXT_PUBLIC_STATUS_URL`. Launch-day infra in [`prod-readiness.md`](../dev/prod-readiness.md) §10a. *(merged — PR #122)*
+- [ ] SMTP SDK wire-in (`src/lib/email/inviteEmail.ts`) — opens after Wave B (b1) decision. Drop the `throw new Error('Email delivery not yet implemented')` line.
+- [ ] [#61](https://github.com/SanchitB23/meetthefam/issues/61) — brand the magic-link email template.
+- [ ] Brand the invite email template.
+- [ ] "Send via email" button next to Copy URL in `MembersSheet.tsx` invite form.
+- [ ] Build `/privacy` page (opens after Wave B (b2) decision).
+- [ ] Build `/terms` page (opens after Wave B (b2) decision).
+- [ ] Footer with policy + contact links wired into the landing page.
+- n/a Sentry SDK wire-in — **Sentry = NO for v1.0** (decided 2026-05-29). No `SENTRY_DSN` needed.
+
+### Wave D — Phase 8 polish carry-overs
+
+> *(`pnpm test` CI gate was originally listed here; deferred to Phase 12 on 2026-05-26 — the three existing quality gates (local test discipline + #104 lint+typecheck CI + Vercel preview build) plus Wave E's [#86](https://github.com/SanchitB23/meetthefam/issues/86) RLS-negative verification cover the launch-blocking risk without the per-PR CI cost.)*
+
+- [ ] [#119](https://github.com/SanchitB23/meetthefam/issues/119) — Tree settings unified sheet (Rename + Members + Danger zone). Brainstorm required (seam between dashboard + tree page).
+- [x] [#71](https://github.com/SanchitB23/meetthefam/issues/71) — Add-person FAB: always-on Link-to picker + standalone-confirm dialog. Brainstorm + wireframes locked A+D combined; implementation in `feat/71-link-to-picker` (PR [#118](https://github.com/SanchitB23/meetthefam/pull/118)). *(merged — PR #118)*
+- [ ] [#120](https://github.com/SanchitB23/meetthefam/issues/120) — Tree-nav within-canvas animations. Deferred per Phase 8 locked decision #5; revisit only if a jarring boundary surfaces post-merge.
+
+### Wave E — Verification matrix + security hardening
+
+- [ ] All 10 boxes of [#86](https://github.com/SanchitB23/meetthefam/issues/86) — verification matrix epic (two-account smoke, mobile gestures, editor round-trip, share-link incognito, RLS negative, 200-person perf, person-delete Storage cleanup, tree-delete cascade, Lighthouse ≥ 90 mobile, real-4G photo upload, `--turbopack` flag sweep).
+- [ ] Execute key rotation per [`project_pre_prod_key_rotation.md`](../../../.claude/projects/-Users-sqb6461-Workspace-SelfProjects-meetthefam/memory/project_pre_prod_key_rotation.md) (includes the 2026-05-12 `SUPABASE_ACCESS_TOKEN` exposure).
+- [ ] Confirm pre-commit secret-scanning hook fires on a fake AWS key.
+- [ ] Confirm GitHub branch-protection ruleset `16283379` still active on `main`.
+- [ ] Document on-call / contact info (single page in `docs/runbooks/` or appended to README).
+
+### Wave F — Release cut
+
+- [ ] Branch cut: `qa` → `release/v1.0.0`. From here Phase 11 (launch-day cut-over) takes over.
+
+---
+
+## Phase 11 — For-prod: the v1.0 launch cut-over
+
+> Mechanical operator work executed during the v1.0 release. The detailed checklist lives in [`../dev/prod-readiness.md`](../dev/prod-readiness.md) — this section is the *index*, prod-readiness has the boxes. When all 10 sections of prod-readiness are ticked, the launch is done.
+
+*(Renumbered from Phase 10 → Phase 11 on 2026-05-22 alongside the new operational Phase 10.)*
+
+- [ ] **§1 Supabase `family-tree-prod` parity** — replay all queued post-v0.1.0 migrations in timestamp order (Phase 6 `tree_invites`, Phase 7 share-link, any Phase 8 entries); cross-check via `list_migrations`; run `get_advisors` (security + performance); verify RLS-enabled-flag parity vs QA via `list_tables`; enable "Leaked Password Protection"; bump Auth rate limits for launch traffic; verify `photos` bucket settings + 4 RLS policies; set a strong prod DB password.
+- [ ] **§2 Vercel production project** — env vars (`NEXT_PUBLIC_SUPABASE_URL` / `_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` plus any Phase 7-9 additions); custom production domain + SSL provisioned; Vercel production branch set to `main` (unpin from the `v0.1.0` tag if it was pinned during the pre-v1 freeze); Vercel password protection OFF on prod; plan-tier decision (Hobby vs Pro); confirm Analytics + Speed Insights reporting in prod.
+- [ ] **§3 Auth + OAuth for prod** — Google OAuth Client ID + Secret configured; authorized redirect URIs include `https://<prod-domain>/auth/callback`; OAuth Consent Screen flipped from "Testing" to "In production"; prod domain added to Supabase Auth → Site URL + Redirect URLs allowlist; smoke-test the auth flow + `?next=` round-trip against the prod URL.
+- [ ] **§4 Email final flip** — provider API key added to prod env vars; Supabase Auth → Email Templates routed via custom SMTP path; flip `MEETTHEFAM_EMAIL_INVITES_ENABLED=true` in prod env. *(Brand templates + drop the `throw` are Phase 9; this is just the env-var + Supabase toggle.)*
+- [ ] **§5 Security final pass** — `gh secret-scanning alerts` clean (or all open alerts triaged with documented decisions); decide repo visibility for v1.0 (currently public — flip to private OR pay for GitHub Pro and re-private).
+- [ ] **§9 Backups + DR** — Supabase tier decision (Free 1-day retention vs Pro 7-day + PITR @ $25/mo); take a manual DB snapshot pre-launch.
+- [ ] **§10 Launch-day ops** — final smoke pass on the production URL walking every flow in [`../qa/smoke-flows.md`](../qa/smoke-flows.md); DNS verified (A / AAAA / CNAME resolve correctly; CAA records permit Let's Encrypt if Vercel uses it).
+
+---
+
+## Phase 12 — Post-prod: v1.x backlog
+
+> Items deliberately deferred past v1.0. Each one carries either a "default: don't enable" stance in earlier ADRs, a `post-v1.0` GitHub label, or an ADR-0007 rationale that ties adoption to the `"use cache"` segment work we don't want to take on at launch.
+
+*(Renumbered from Phase 11 → Phase 12 on 2026-05-22 alongside the new operational Phase 10.)*
+
+### Labeled `post-v1.0` on GitHub
+
+- [ ] [#60](https://github.com/SanchitB23/meetthefam/issues/60) — Export tree as image / PDF (photographer hand-off, archival prints).
+- [ ] [#69](https://github.com/SanchitB23/meetthefam/issues/69) — Spike: render the entire tree without focus-driven hiding (pan/zoom over recenter).
+- [ ] [#70](https://github.com/SanchitB23/meetthefam/issues/70) — Spike: notification system (Success / Info / Warn / Error toasts) across the app.
+- [ ] [#74](https://github.com/SanchitB23/meetthefam/issues/74) — React 19.2 `<ViewTransition>` for cross-page animations. Blocked on `<ViewTransition>` reaching the React stable channel (likely React 19.3 / 20.0) or a Next.js public shim landing.
+
+### CI hardening (deferred from earlier phases)
+
+- [ ] [#85](https://github.com/SanchitB23/meetthefam/issues/85) — `pnpm test` CI workflow with Supabase service container. *(Moved from Phase 10 Wave D → Phase 12 on 2026-05-26. Justification: solo dev's three quality gates — local test discipline + [#104](https://github.com/SanchitB23/meetthefam/pull/104) lint+typecheck CI + Vercel preview's `next build` — cover the regression surface for v1.0. Phase 10 Wave E's [#86](https://github.com/SanchitB23/meetthefam/issues/86) verification matrix tests RLS negatives pre-launch. Re-evaluate when a collaborator joins, new RLS policies churn, or CI cost becomes immaterial.)*
+
+### Caching / perf flags (default off per [ADR 0007](../adrs/0007-nextjs-16-and-async-idioms.md))
+
+- [ ] Adopt `updateTag('tree:<id>')` / `updateTag('user-trees:<userId>')` plumbing across Phase 2 / 3 / 5 / 6 mutation actions — gated on the project adopting `"use cache"` segments. Until then the existing `revalidatePath` calls stay.
+- [ ] Adopt `updateTag('share:<treeId>')` on share-token toggle / regenerate (Phase 7 backlog item).
+- [ ] **(Optional)** Evaluate `cacheComponents: true` for the share-link page and any landing page — only if perf data justifies it. *(carried from the original Phase 9 list — default: don't enable.)*
+- [ ] **(Optional)** Evaluate `reactCompiler: true` if profiler shows wasted renders. *(carried from the original Phase 9 list — default: don't enable.)*
+- [ ] **(Optional)** Cache the public share-tree response with `revalidateTag('share:<treeId>', 'max')` using the explicit `cacheLife` profile (Phase 7 backlog item).
+
+### Compliance / privacy (v1.x scope per spec)
+
+- [ ] Cookie consent banner (only if EU traffic materialises). Cross-ref [`../dev/prod-readiness.md`](../dev/prod-readiness.md) §8.
+- [ ] GDPR data-export endpoint.
+- [ ] GDPR full-account-delete endpoint. *(Today: tree-delete + person-delete cover the data; full-account is v1.x territory.)*
+
+### Backlog deviations / nice-to-haves
+
+- [ ] `PageProps<'/dashboard'>` with `searchParams` — revisit when sort / filter UI lands (Phase 2 backlog).
+- [ ] Bottom-tab-bar mobile pattern decision — top-nav-only deemed fine for v1 (Phase 2 backlog).
+- [ ] Phase 3 mobile pattern: side-drawer on desktop vs current centered Dialog — design deviation stands (Phase 3 backlog).
+- [ ] `editor-card-no-menu` fixture loader for `e2e-smoke-tester` (Playwright-side equivalent of the Vitest helper — see Tooling / Agents section below).
+- [ ] Scheduled `pg_dump` to S3 / R2 for offsite backups — skip if Supabase Pro SLA covers (prod-readiness §9).
+- [ ] Supabase Logs → Logflare for searchable retention (prod-readiness §6).
+- [ ] Datadog / full APM — out of scope for v1.0 unless free-tier ceiling hits (prod-readiness §6).
+- [ ] **Verify Next.js Devtools MCP still works against the production deployment** (or document that it's dev-only). *(carried from the original Phase 9 list.)*
+- [ ] GitHub Action: `pnpm lint` + `pnpm typecheck` on PR — low value while solo; real value once a collaborator joins (see CI / Repo settings section).
+- [ ] Custom SMTP operational tuning post-launch — raise Supabase Auth rate limits / move to paid Supabase plan once SMTP delivery is settled and we have a sense of actual launch-day volume.
 
 ## Tooling / Agents
 

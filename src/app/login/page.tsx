@@ -1,5 +1,9 @@
+import { redirect } from 'next/navigation'
 import { signInWithGoogle, signInWithMagicLink } from './actions'
 import { SubmitButton } from '@/components/ui/submit-button'
+import { createClient } from '@/lib/supabase/server'
+import { ErrorAlert } from '@/components/ui/error-alert'
+import { mapErrorCode } from '@/lib/errors'
 
 type SearchParams = Promise<{
   sent?: string
@@ -24,6 +28,12 @@ export default async function LoginPage({
   const { sent, error, email, next: nextParam } = await searchParams
   const next = safeNext(nextParam)
 
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (user) redirect(next ?? '/dashboard')
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm space-y-6">
@@ -46,7 +56,7 @@ export default async function LoginPage({
           </div>
         ) : (
           <div className="space-y-4">
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <ErrorAlert size="sm" message={mapErrorCode(error)} />}
 
             <form action={signInWithGoogle}>
               {next && <input type="hidden" name="next" value={next} />}

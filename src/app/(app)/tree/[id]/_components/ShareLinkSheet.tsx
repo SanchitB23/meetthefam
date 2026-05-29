@@ -39,6 +39,8 @@ import {
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { useIsDesktop } from '@/components/ui/use-is-desktop'
+import { ErrorAlert } from '@/components/ui/error-alert'
+import { mapErrorCode } from '@/lib/errors'
 
 import {
   enableShareLink,
@@ -307,9 +309,7 @@ export function ShareLinkSheet({
       )}
 
       {error && (
-        <p className="text-sm text-destructive" role="alert">
-          {error}
-        </p>
+        <ErrorAlert size="sm" message={mapErrorCode(error, error)} />
       )}
     </div>
   )

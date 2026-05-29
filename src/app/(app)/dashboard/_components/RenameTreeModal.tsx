@@ -10,6 +10,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { ErrorAlert } from '@/components/ui/error-alert'
+import { mapErrorCode } from '@/lib/errors'
 
 type Props = {
   treeId: string
@@ -64,7 +66,7 @@ export function RenameTreeModal({ treeId, currentName, open, onClose }: Props) {
             />
           </div>
           {state?.error && (
-            <p className="text-sm text-destructive">{state.error}</p>
+            <ErrorAlert size="sm" message={mapErrorCode(state.error, 'Something went wrong.')} />
           )}
           <div className="flex justify-end gap-2 mt-2">
             <Button

@@ -1,129 +1,123 @@
-# Current phase: 8 — Visual polish + landing
+# Current phase: 10 — Review, merge, brainstorms, verification, release cut
 
-Spec → [`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → Phase 8 row. Phase 8 design (brainstorm output) → [`../superpowers/specs/2026-05-16-phase-8-visual-polish-design.md`](../superpowers/specs/2026-05-16-phase-8-visual-polish-design.md).
+> **Phase 9 is COMPLETE as of 2026-05-29.** All 12 Phase 9 implementation PRs (Wave A) merged to `qa`; Wave C consumers #91/#92/#93 + #83 merged; #71 merged. Phase 10 owns the remaining path to `release/v1.0.0`: Wave B brainstorm decisions (SMTP #25, legal #56) and their Wave C implementation, Wave E verification matrix, and Wave F release cut.
 
-**Ship gate** (brainstormed 2026-05-16 — full rationale in the design spec above):
+Spec → [`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → Phase 9 row (architectural view). Operational view (4-bucket split) → [`./phase-backlog.md`](./phase-backlog.md) → "Phase 10". Phase 9 implementation plan (historic) → [`../superpowers/plans/2026-05-20-phase-9-pre-prod.md`](../superpowers/plans/2026-05-20-phase-9-pre-prod.md) *(phase numbers past 9 shifted by 1 post-2026-05-22 restructure)*.
 
-- **8a — Brand foundations**: Knot brand-guide pull-review + decisions doc landed; warm-shifted `.dark` tokens map verified; logo + favicon + metadata wired; brand icon set (`Branch`, `Leaf`, `Quote`, `Family`, `Sparkle`, `Heart`) shipped.
-- **8b — Person + tree polish**: gender-shape avatar variation + deceased treatment + `<Memoriam>` component ship together; tree-overview / zoom-to-fit control + floating "+" hover affordance land; duplicate-card visual marker shipped (option 2 — dashed border + `↑` badge + tooltip + tap-to-jump; **NOT** opacity-based, composes cleanly with deceased treatment); QA feedback gate on duplicate marker before phase close.
-- **8c — Landing + nav + animations**: shared `(app)` route group closes [#45](https://github.com/SanchitB23/meetthefam/issues/45); real landing screen replaces `create-next-app` scaffold and closes [#44](https://github.com/SanchitB23/meetthefam/issues/44); heirloom skeletons + `<Suspense>` + `useLinkStatus()` + React 19.2 `<ViewTransition>` (cross-page only, ≤ 200 ms) collectively close [#50](https://github.com/SanchitB23/meetthefam/issues/50); revoke-member confirm copy + italic-Cormorant whitelist audit complete; `APP_VERSION` footer micro-version is the first consumer of [ADR 0009 Amendment 4](../adrs/0009-versioning-and-releases.md)'s build-time-derived version.
-- `pnpm typecheck && pnpm lint && pnpm test` clean.
-- e2e-smoke-tester passes Phase 1–7 flows against the QA preview (no regressions in the `(app)` route group refactor).
+**Ship gate** (Phase 10 closes when all of the following are met):
 
----
-
-### Phase 8 progress — running draft PR #55 opened for visibility
-
-**Branch strategy** *(unchanged from the plan)* — ONE phase branch `feat/phase-8-visual-polish-landing` holds ALL 14 sub-tasks (8a-1..8a-4, 8b-1..8b-3, 8c-1..8c-7). The single squash-merge into `qa` happens once 8c-7 + phase close-out land. `v0.4.0` releases at that point per [ADR 0009 Amendment 4](../adrs/0009-versioning-and-releases.md).
-
-PR #55 is a **running draft** opened mid-phase for review-visibility while the work is in flight — it is NOT a "slice PR" and 8b/8c commits will be added to this same PR (same branch).
-
-**Commits on `feat/phase-8-visual-polish-landing` so far (6 ahead of qa)**:
-
-| SHA | Sub-task |
-|---|---|
-| `a3ce6ad` | 8a-1 Knot brand-decisions doc |
-| `6f86816` | 8a-2 warm-shifted dark-mode tokens |
-| `45bc84a` | 8a-3 Logo logomark + favicon + metadata |
-| `96aa207` | 8a-4 brand icon set (`Branch`, `Leaf`, `Quote`, `Family`, `Sparkle`, `Heart`) |
-| `a60ea87` | 8a polish (favicon `aria`, "An heirloom", drop Logo snapshot, `BRANCH_ASPECT_RATIO` const) |
-| `49d9d61` | docs: next-session handoff notes (this section's first draft; superseded by the current revision) |
-
-**Draft PR**: [#55](https://github.com/SanchitB23/meetthefam/pull/55) — full Phase 8 running draft, `feat/phase-8-visual-polish-landing` → `qa`. Will be marked ready ONLY after 8c-7 + phase close-out land.
-
-**Gates at the most recent code-touching HEAD (`a60ea87`)**:
-
-- `pnpm typecheck` clean.
-- `pnpm lint` clean (only the pre-existing `PersonForm` `react-hooks/incompatible-library` warning).
-- `pnpm test --run` **178 / 178** pass.
-
-### Phase 8b / 8c — next session
-
-**Continue on the SAME branch `feat/phase-8-visual-polish-landing`.** No fresh branch. Pull origin first (`git checkout feat/phase-8-visual-polish-landing && git pull --ff-only`), then start at the first unticked sub-task in the canonical plan: **8c-1**.
-
-The canonical reference is the plan at [`../superpowers/plans/2026-05-16-phase-8-visual-polish-landing.md`](../superpowers/plans/2026-05-16-phase-8-visual-polish-landing.md) — sub-task numbering, locked decisions, internal milestone smokes (8a-done / 8b-done / 8c-done), and phase close-out + release recipe are all unchanged.
-
-**Still-pending sub-tasks**: 8c-1, 8c-2, 8c-3, 8c-4, 8c-5, 8c-6, 8c-7 → phase close-out → `v0.4.0` release (single phase PR squash-merge into qa, then ADR 0009 Amendment 4 release flow).
-
-### Infrastructure blockers — smoke runner status (2026-05-17)
-
-Originally two stacked blockers from the 8a-done smoke attempt. Status as of the 8a/8b-done smoke run on 2026-05-17:
-
-1. **Playwright MCP not surfacing at runtime — STILL BLOCKED.** The Playwright plugin (`playwright@claude-plugins-official`) is correctly listed in `~/.claude/settings.json` (`enabledPlugins`) and in `.claude/settings.local.json` (`enabledMcpjsonServers`), and the `mcp__plugin_playwright_playwright__*` tool names are pre-allowed in `settings.local.json` permissions. Despite this, the tools do NOT surface at call time — even in the controller session (not just dispatched subagents). Root cause: the Claude Code session needs a full restart after adding/enabling the Playwright plugin. Fix: restart Claude Code, confirm `mcp__plugin_playwright_playwright__browser_navigate` appears in the session's tool list before dispatching the smoke agent.
-2. **Vercel preview SSO gate — RESOLVED (2026-05-17).** Bypass secret configured and verified: `curl` without bypass returns 401; with `?x-vercel-protection-bypass=$VERCEL_PROTECTION_BYPASS&x-vercel-set-bypass-cookie=true` returns 307 (app redirect). The bypass pattern is now documented in `docs/qa/smoke-flows.md` § "Vercel preview deployment protection". Secret stored as `VERCEL_PROTECTION_BYPASS` in `.env.local` (gitignored). The partial 8a/8b-done smoke run completed all curl-verifiable assertions against the preview.
-
-**8a-done + 8b-done milestone smoke — PARTIAL PASS (Playwright gap; all curl-verifiable gates green):**
-- `proxy-redirect-unauth`: PASS — `/dashboard` unauthed returns 307 to `/login?next=%2Fdashboard`
-- `proxy-skip-share-link`: PASS — `/share/<token>` unauthed returns 404 (not redirected to login)
-- Phase 8a brand assets (8a-2, 8a-3, 8a-4): PASS — favicon (25KB ICO), `logo.svg` (three-ring + terracotta dot SVG), Manrope + Cormorant fonts, heirloom description meta, warm dark tokens (`#15110d` background in `.dark` CSS block) all confirmed deployed
-- Phase 8b-1 CSS: PASS — `mtf-node--deceased` class confirmed present in deployed main CSS bundle
-- `people-crud-and-link` (phase-3): SKIPPED — needs Playwright + `pre-authed-cookie` for QA
-- `phase-4-tree-visualization`: SKIPPED — needs Playwright + `pre-authed-cookie` for QA
-- `phase-5-photo-upload`: SKIPPED — needs Playwright + `pre-authed-cookie` + ≥5 MB fixture JPEG
-- `phase-6-collaboration`: SKIPPED — `env: local` only (local Supabase stack required)
-- `phase-7-share-link`: SKIPPED — `env: local` only (local Supabase stack required)
-
-The interactive CRUD flows (phase-3 through phase-7) remain unrun against QA. They are not regressed by Phase 8 (no RLS or data-model changes in 8a/8b). Run them locally against `pnpm dev` + `supabase start` after Playwright MCP is confirmed surfacing.
-
-### Carry-forward review items from 8a (deferred / non-blocking)
-
-The 8a pull-review of Knot's brand bundle surfaced **zero blocking issues** — all four sub-tasks landed cleanly. The four items below are explicitly captured in [`../architecture/brand-decisions.md`](../architecture/brand-decisions.md) § Open questions and queued for v0.5+ (NOT for the remaining Phase 8 work):
-
-- Spacing scale audit — Tailwind v4 default vs Knot `tokens.json`'s 4 / 8 / 12 / 16 / 20 / 24 / 32 / 40 / 48 px scale.
-- Type-size scale alignment — Knot named scale (xs / sm / base / lg / xl / 2xl / 3xl / 4xl / 5xl) vs our current ad-hoc Tailwind usage.
-- Automated WCAG contrast budget Vitest test — replaces the manual screenshot walk currently used to verify 8a-2's warm-shifted dark mode.
-- `base-nova` shadcn preset smoke test against the new radius scale — once 8a-1's adopted radius scale lands in `globals.css` it'd be worth confirming the shadcn primitives still render correctly.
+- Wave B brainstorm decisions landed: SMTP provider picked ([#25](https://github.com/SanchitB23/meetthefam/issues/25)) and legal pages catalog agreed ([#56](https://github.com/SanchitB23/meetthefam/issues/56)).
+- Wave C post-brainstorm implementation complete (SMTP SDK, email templates, legal pages, footer links).
+- All 10 verification-matrix boxes in epic [#86](https://github.com/SanchitB23/meetthefam/issues/86) ticked (two-account smoke, mobile gestures, editor round-trip, share-link incognito, RLS negative, 200-person perf, Storage cleanup, Lighthouse ≥ 90 mobile, real-4G photo upload, `--turbopack` flag sweep).
+- `pnpm typecheck && pnpm lint && pnpm test` clean on `qa`.
+- `release/v1.0.0` cut from `qa`; Phase 11 (launch-day cut-over) takes over from there.
 
 ---
 
-**Sub-tasks** (14 total — 8a (4) + 8b (3) + 8c (7)):
+### Phase 10 progress
 
-**8a — Brand foundations**
+**Wave A — all 12 Phase 9 PRs merged** *(complete as of 2026-05-29)*:
 
-- [x] **Sub-task 8a-1** — Knot brand-guide pull-review + decisions doc. No code. Decisions captured in [`../architecture/brand-decisions.md`](../architecture/brand-decisions.md). No ADR amendment needed; ADR 0008 light-touch amendment to follow when 8a-1 lands. Tone-encoding decision: `oklch(from #HEX)` syntax.
-- [x] **Sub-task 8a-2** — Warm-shifted dark-mode tokens in `globals.css`; WCAG re-verify. *(landed 2026-05-16 — `.dark` block replaced with the warm-shifted palette per the Knot bundle; contrast verification deferred to QA preview / 8a-done milestone.)*
-- [x] **Sub-task 8a-3** — Logo / logomark adoption into top-nav + favicon + metadata. *(landed 2026-05-16 — Logo component + favicon + layout metadata + dashboard top-nav wired. Three overlapping rings on `currentColor`, terracotta accent dot on `var(--accent)` for theme-aware swap.)*
-- [x] **Sub-task 8a-4** — Brand icon set (`Branch`, `Leaf`, `Quote`, `Family`, `Sparkle`, `Heart`) at `src/components/icons/`. *(landed 2026-05-16 — six brand icons extracted from Kintree (no Knot fallback needed; all six glyphs are present in Kintree's `shared.jsx`). `Branch` is the standalone 200×80 section-divider motif with a `flip` prop; the other five are 24×24 line glyphs at 1.6px stroke from Kintree's `Icon` map. All `currentColor`-friendly with `aria-hidden=true`.)*
+PRs #88, #89, #94, #95, #96, #97, #98, #99, #100, #101, #102, #104 — all merged to `qa`. Closes issues #49, #58, #62, #72, #73, #75, #78, #81, #82, #84, #90 (and the Phase 9 kick-off docs PR).
 
-**8b — Person + tree canvas polish**
+**Wave C consumers merged** *(complete)*:
 
-- [x] **Sub-task 8b-1** — Gender-shape avatar variation + deceased treatment + `<Memoriam>` component. *(landed 2026-05-17 — `<Avatar>` gains `gender` + `deceased` props with `borderRadiusForGender` helper (18%/34%/50%); new `<Memoriam>` component in serif italic with `†` aria-hidden glyph; `personNodeHtml` reads `data.gender_raw`, emits `mtf-node--deceased` class, † badge at top-right, † name prefix; `PersonPicker` + `PersonDetailSheet` thread the new props; `.f3 .mtf-node--deceased` CSS rule in `globals.css`. 11 new Vitest tests; full suite 189/189 pass.)*
-- [x] **Sub-task 8b-2** — Tree-overview / zoom-to-fit control + floating "+" hover affordance. *(landed 2026-05-17 — `TreeOverviewButton` (top-right of canvas, `absolute top-3 right-3`, `Maximize2` icon, `aria-label="View whole tree"`) calls `zoomToFit` which clears the URL hash + calls `chart.updateTree({ initial: true })` for bounding-box auto-fit. `PersonHoverPlus` is a presentational overlay receiving `position: { top, left } | null` and `onActivate` from `FamilyTree`; returns null when no node is hovered. Hover wiring is a SEPARATE `useEffect` (NOT inside chart-init) that attaches delegated `pointerover` + `pointerout` listeners to the chart container, scoped to `.mtf-node` via `event.target.closest`; `pointerout` guards against inner-child flicker via `node.contains(event.relatedTarget)`. Long-press callback also sets hover state for mobile parity. Hover "+" opens an inline `PersonForm` (separate from `AddRelativeFab`, no invasive state lift) pre-seeded with `defaultRelation: 'child'` of the hovered person. Both components mount inside the existing `{!readOnly && ...}` block. Chart-init effect deps unchanged. 189/189 tests pass.)*
-- [x] **Sub-task 8b-3** — Duplicate-card visual marker (option 2 — dashed border + `↑` badge + tooltip + tap-to-jump). QA feedback gate before close-out. *(landed 2026-05-17 — `personNodeHtml` reads `d.duplicate` (node-level `number`, set by family-chart when the same `data.id` appears more than once) and emits `mtf-node--duplicate` class + `border:1px dashed` inline + `↑` badge at `top:-6px;left:-6px` on the card wrapper (CARD, not avatar wrapper — so it doesn't collide with the deceased `†` badge at `top:0;right:0` on the avatar wrapper). Duplicate cards set `data-duplicate="true"` attribute and omit the ellipsis action button. `FamilyTree.tsx` `setOnCardClick` gains a new branch BEFORE the action-trigger branch: `if (target.closest('[data-duplicate="true"]')) { window.location.hash = '#p=' + encodeURIComponent(id); return }` — reuses existing hash-driven re-center wiring. `globals.css` gets `.f3 .mtf-node--duplicate { border-style: dashed }` + explanatory comment about solid connector lines (pragmatic compromise). 4 new Vitest tests (duplicate class+dashed border, ↑ badge corner, no ellipsis on duplicate, deceased+duplicate compose without collision); full suite 193/193 pass. QA feedback gate per locked decision #13: controller asks user before commit.)*
+- [PR #113](https://github.com/SanchitB23/meetthefam/pull/113) ([#91](https://github.com/SanchitB23/meetthefam/issues/91)) auth-flow typed errors — merged
+- [PR #114](https://github.com/SanchitB23/meetthefam/pull/114) ([#92](https://github.com/SanchitB23/meetthefam/issues/92)) dashboard server actions — merged
+- [PR #115](https://github.com/SanchitB23/meetthefam/pull/115) ([#93](https://github.com/SanchitB23/meetthefam/issues/93)) tree-page server actions — merged
+- [PR #122](https://github.com/SanchitB23/meetthefam/pull/122) ([#83](https://github.com/SanchitB23/meetthefam/issues/83)) status-page link (BetterStack) — merged
 
-**8c — Landing + nav + animations**
+**Wave D carry-overs merged**:
 
-- [x] **Sub-task 8c-1** — Shared `(app)` route group for chrome (closes [#45](https://github.com/SanchitB23/meetthefam/issues/45)). *(landed 2026-05-18 — new `src/app/(app)/layout.tsx` carries the top-nav (Logo + "meetthefam" wordmark + Sign Out) with `min-h-screen flex flex-col bg-background` so authed routes can grow to fill the viewport for the upcoming `<VersionFooter>`. 33 file renames moved `dashboard/`, `tree/[id]/`, `invite/[token]/` into `(app)/`. Cross-route imports updated in 4 source files (`(app)/dashboard/_components/TreeCardMenu.tsx`, `(app)/invite/[token]/page.tsx`, `share/[token]/page.tsx`, `(app)/_components/SignOutButton.tsx`) + 10 test files. Old `dashboard/actions.ts` was a misleading bundle of `signOut` + tree-CRUD; split: `(app)/_actions/signOut.ts` keeps only `signOut` (shared by the layout's Sign Out button); `(app)/dashboard/actions.ts` holds `createTree`/`renameTree`/`deleteTree`. `proxy.ts` matcher unchanged — route groups are URL-transparent. Public routes (`/`, `/login`, `/auth/*`, `/share/*`) stay at root and don't inherit chrome. Gates: typecheck clean, lint 14 pre-existing warnings, 195/195 tests.)*
-- [x] **Sub-task 8c-2** — Replace `src/app/page.tsx` with real landing screen (closes [#44](https://github.com/SanchitB23/meetthefam/issues/44)). *(landed 2026-05-18 — `src/app/page.tsx` is now a server component that reads the Supabase user via `await createClient()` + `auth.getUser()`; if authed, `redirect('/dashboard')` server-side (closes #44 — post-Google-SSO landing on `/` Next scaffold). Otherwise renders the heirloom landing: new `src/components/landing/LandingHero.tsx` (Logo + Cormorant italic kicker + serif H1 "Build a family tree that feels like home." + muted body + primary CTA `Sign in to begin` → `/login`), `LandingFeatures.tsx` (Family/Heart/Leaf brand-icon cards with Branch SVG dividers above + below, the lower one with `flip` prop), `LandingFooter.tsx` (Cormorant italic tagline + sign-in link). All four files use brand tokens only (no hex). Italic-Cormorant whitelist honored: hero kicker + footer tagline (both on the whitelist). Gates: typecheck clean, lint 14 pre-existing warnings, 195/195 tests.)*
-- [x] **Sub-task 8c-3** — Heirloom palette pass on empty / loading / error states (closes [#50](https://github.com/SanchitB23/meetthefam/issues/50) 1/3). *(landed 2026-05-18 — `src/app/(app)/dashboard/loading.tsx` + `src/app/(app)/tree/[id]/loading.tsx` swap `bg-muted/*` for `bg-secondary/*` brand tokens and add explicit `bg-background` to the outer `<main>` so the browser doesn't fall through to black during route changes (#50 1/3). Tree-loading also gets `min-h-[calc(100vh-3.5rem)]` so the canvas placeholder fills the viewport below the top-nav. `animate-pulse` shifted from outer card to individual skeleton elements for crisper shimmer. Audit confirmed: dashboard's empty-state ("No trees yet") already uses `text-foreground/50`+`font-serif` (heirloom-correct), `src/app/not-found.tsx` + `src/app/share/[token]/not-found.tsx` already use brand tokens. The only remaining `bg-muted/50` use (MembersSheet.tsx:219) is a content panel, not a skeleton — not in scope. Gates clean.)*
-- [x] **Sub-task 8c-4** — Slow-nav loading affordance: `<Suspense>` + `useLinkStatus()` (closes [#50](https://github.com/SanchitB23/meetthefam/issues/50) 2/3). *(landed 2026-05-18 — new `src/components/ui/LinkProgress.tsx` (client) wraps `next/link` with a `<PendingBar>` child that uses Next.js 16's `useLinkStatus()`. When `pending`, renders a 2px `position: fixed top:0` accent-coloured bar animated via the new `@keyframes mtf-link-progress` (scaleX 0 → 0.7 → 1, `transform-origin: left`) appended to `globals.css`. `TreeCard` swaps its stretched-overlay `<Link>` for `<LinkProgress>`. `TreeContent` (new) carries the back-arrow `<LinkProgress>`. Suspense split: `dashboard/page.tsx` does auth only (`getUser` + redirect), then `<Suspense fallback={<DashboardLoading/>}><DashboardContent userId={user.id} /></Suspense>`. `tree/[id]/page.tsx` does auth + permission gates only (`getUser`, `trees` row + `notFound()`, `tree_members` self-membership + `notFound()`), then `<Suspense fallback={<TreeLoading/>}><TreeContent ... /></Suspense>` with deferred bulk fetches (`memberRows`, profiles, `pendingInvites`, `peopleRows`). 2 new Vitest tests for LinkProgress (pending=false renders null; pending=true renders the bar). 197/197 tests, typecheck clean.)*
-- [~] **Sub-task 8c-5** — React 19.2 `<ViewTransition>` for cross-page animations *(DEFERRED post-Phase-8 — tracked at [#74](https://github.com/SanchitB23/meetthefam/issues/74). Runtime audit 2026-05-18 against installed `react@19.2.6` confirms neither `ViewTransition` nor `unstable_ViewTransition` is exported on the stable channel; the API lives in `@types/react/experimental.d.ts` + `canary.d.ts` only. Next.js 16 doesn't ship a public ViewTransition shim. Adopting requires switching the project to `react@experimental` / `react@canary` — a load-bearing dependency change that crosses [`feedback_no_prod_changes_pre_v1`](../../).claude/memory). Effective `#50` impact: 2 of 3 closers landed (8c-3 + 8c-4); the missing piece is the soft cross-page morph polish — perceived as "nice-to-have" rather than blocking. Re-evaluate gate documented in #74: React promotes `<ViewTransition>` to stable, OR Next.js ships a public shim. Issue [#50](https://github.com/SanchitB23/meetthefam/issues/50) will be closed by 8c-3 + 8c-4 only.)*
-- [x] **Sub-task 8c-6** — Revoke-member confirm copy + italic-Cormorant whitelist audit. *(landed 2026-05-18 — `MembersSheet.tsx` `MemberListRow` restructured: the inline `flex items-center` chip-row stays for the avatar + name + role + action buttons, but now sits inside a flex-col wrapper. When `confirmRevoke === true`, a `text-sm text-muted-foreground` explanatory `<p>` appears below: `"{displayName} will lose access. The people they added stay in your tree."` (verbatim from canonical plan line 2746). Error row moved to the wrapper level so the previously-broken `col-span-full` class on a flex-row child is gone. Italic-Cormorant audit (grep `(italic.*font-serif|font-serif.*italic)`): 5 hits — `LandingHero.tsx` kicker, `LandingFooter.tsx` tagline, `not-found.tsx` kicker tagline, `ShareBanner.tsx` pull-quote, `PersonDetailSheet.tsx` nickname. All 5 fit ADR 0008's whitelist (landing-hero kicker + section taglines + empty-state hero copy + share-link footer pull-quotes + person-bio nicknames). No deviations to document.)*
-- [x] **Sub-task 8c-7** — `APP_VERSION` footer micro-version (first consumer of Amendment 4). *(landed 2026-05-18 — new `src/components/ui/VersionFooter.tsx` (server component, no `'use client'` since `APP_VERSION` is build-time-resolved) imports `APP_VERSION` from `@/lib/generated/version` and renders a `<div style={{position:'fixed',bottom:8,right:12,fontSize:11,fontFamily:'var(--font-sans)',color:'var(--muted-foreground)',opacity:0.4,pointerEvents:'none',zIndex:1,letterSpacing:'0.02em'}}>v{APP_VERSION}</div>` per locked decision #7. Mounted globally in `src/app/layout.tsx` (sibling of `<Analytics />` + `<SpeedInsights />`). `pointer-events: none` ensures it never blocks the AddRelativeFab at `bottom-6 right-6` on `/tree/[id]`. 2 new Vitest snapshot/behavior tests in `src/__tests__/components/VersionFooter.test.tsx` (renders `v{APP_VERSION}` with mocked module; sets `pointer-events: none` on the wrapper). Tests 199/199 pass; typecheck + lint clean. First runtime consumer of ADR 0009 Amendment 4's build-time-derived version — at dev-server time the sentinel `0.0.0-dev` renders; on QA / prod previews after `pnpm build`, the derive-version script overwrites `version.ts` and the footer shows e.g. `v0.3.0-dev.{sha}` or `v0.4.0-rc.{sha}`.)*
+- [PR #118](https://github.com/SanchitB23/meetthefam/pull/118) ([#71](https://github.com/SanchitB23/meetthefam/issues/71)) always-on Link-to picker + standalone-confirm — merged
 
-**Out of scope** (per the brainstorm — see spec §"Out of scope"):
+**Observability decision — RESOLVED** ([#103](https://github.com/SanchitB23/meetthefam/issues/103)):
 
-- Task 14 (`useEffectEvent` polish) — dropped; revisit v0.5+.
-- Task 18 (Tree-settings unified sheet refactor) — deferred to v0.5 brainstorm.
-- Tree-nav within-canvas animations — deferred unless 8c-5 reveals a boundary issue.
-- Issue [#49](https://github.com/SanchitB23/meetthefam/issues/49) — standalone `fix/login-redirect-authed-user` hotfix outside Phase 8.
-- Issue [#25](https://github.com/SanchitB23/meetthefam/issues/25) — `post-v1.0` labeled; Phase 9 / pre-launch.
+BetterStack chosen for uptime monitoring (free tier, shipped via #83 / PR #122). **Sentry = NO for v1.0** — Vercel built-in error logging + BetterStack uptime monitoring are sufficient for a solo-dev v1.0 launch; Sentry revisit deferred post-launch. Launch-day BetterStack infra setup steps live at [`../dev/prod-readiness.md`](../dev/prod-readiness.md) §10a.
 
-> **Workflow note** — Phase 8 continues under the phase-branch-as-default workflow (`feedback_feature_branch_workflow.md`). All 14 sub-tasks land as separate commits on `feat/phase-8-visual-polish-landing`; one PR at phase end squash-merges into `qa`. Closes with `v0.4.0` per [ADR 0009 §1](../adrs/0009-versioning-and-releases.md) — **first release using [Amendment 4](../adrs/0009-versioning-and-releases.md)'s zero-commit release-branch + fast-forward-push recipe.** Pre-v1 policy still applies (no prod-DB / prod-Vercel-config changes until v1.0 launch gate).
+**Remaining work — critical path**:
 
-**Phase 8 close-out** *(2026-05-18 — `feat/phase-8-visual-polish-landing` + 14 commits ahead of `qa`)*:
+- **(b1) SMTP provider pick** ([#25](https://github.com/SanchitB23/meetthefam/issues/25)) — Resend / Postmark / SES / SendGrid. **Unblocks Wave C SMTP code.** This is the critical-path blocker for the email-invite flow landing before v1.0.
+- **(b2) Legal pages catalog** ([#56](https://github.com/SanchitB23/meetthefam/issues/56)) — privacy / terms / cookies / about / contact. Unblocks legal page builds.
+- **Wave E verification matrix** ([#86](https://github.com/SanchitB23/meetthefam/issues/86)) — all 10 boxes unstarted; the big unstarted block before the release cut.
+- **Wave F release cut** — `release/v1.0.0` branch from `qa`.
 
-- [x] **13 of 14 sub-tasks landed**; **8c-5 deferred** with a documented re-evaluate gate (React 19.2.6 stable does not export `ViewTransition`; canary-channel swap vetoed by `feedback_no_prod_changes_pre_v1`). #50 closes via 8c-3 + 8c-4 only — perceived-perf wins shipped, soft cross-page morph polish defers.
-- [x] Per-sub-task docs ticks landed in `current-phase.md` in the same commit as each feature commit (per the standing memory rule). 8c-1 → `3a3612e`, 8c-2 → `170b73d`, 8c-3 → `01acf9b`, 8c-4 → `1f6db91`, 8c-5 deferral → `5e8db4f`, 8c-6 → `67acc2d`, 8c-7 → `17c81b0`, 8c-done smoke-flow → `85ff911`.
-- [x] Vitest suite passing at the final code-touching HEAD (`17c81b0`): **199 / 199** tests across 25 files. Net new from Phase 8: 2 LinkProgress + 2 VersionFooter + 11 deceased-shape avatar + 4 duplicate-card + 12 brand-icon = 31 new tests. Baseline 178 → 199.
-- [x] Italic-Cormorant whitelist audit passed (8c-6): 5 in-tree uses (`LandingHero` kicker, `LandingFooter` tagline, `not-found` tagline, `ShareBanner` pull-quote, `PersonDetailSheet` nickname) — all on the ADR 0008 whitelist; no deviations to document.
-- [ ] `e2e-smoke-tester` agent ran the `phase-8c-full` smoke against the QA preview (dispatched 2026-05-18 in background; result pending — Playwright MCP runtime block still possible → partial-pass via curl-verifiable gates expected).
-- [ ] Manual QA pass on the QA preview — user walks the 12-step `phase-8c-full` flow before un-drafting [PR #55](https://github.com/SanchitB23/meetthefam/pull/55).
-- [ ] Release version: **`v0.4.0`** — first run of [ADR 0009 Amendment 4](../adrs/0009-versioning-and-releases.md)'s zero-unique-commit release recipe. Recipe in this overlay's "v0.4.0 release recipe" section.
-- n/a Phase 8 migration applied to QA — **no migration this phase** (pure frontend).
-- n/a Phase 8 migration applied to prod — **no migration + pre-v1 policy** (everything batches at v1.0 per [`../dev/prod-readiness.md`](../dev/prod-readiness.md)).
+**Out of scope** (Phase 11 / 12):
 
-> **Handoff to next session** — phase work is complete; what remains is human-action steps: (a) walk `phase-8c-full` against the QA preview, (b) un-draft + squash-merge [PR #55](https://github.com/SanchitB23/meetthefam/pull/55) into `qa`, (c) run the `v0.4.0` release recipe per the [overlay](../superpowers/plans/2026-05-18-phase-8c-execution.md#v040-release-recipe-adr-0009-amendment-4--first-consumer). After v0.4.0 ships, a separate `docs/phase-9-stub` branch flips this document to **Phase 9 — QA + edge cases + launch** per `phase-backlog.md`.
+- Production env-var flips (`MEETTHEFAM_EMAIL_INVITES_ENABLED`, custom-domain DNS, prod migrations) — **Phase 11**, indexed against [`../dev/prod-readiness.md`](../dev/prod-readiness.md).
+- React 19.2 `<ViewTransition>` ([#74](https://github.com/SanchitB23/meetthefam/issues/74)) — **Phase 12**.
+- All other `post-v1.0`-labeled issues ([#60](https://github.com/SanchitB23/meetthefam/issues/60), [#69](https://github.com/SanchitB23/meetthefam/issues/69), [#70](https://github.com/SanchitB23/meetthefam/issues/70)) and the `cacheComponents` / `reactCompiler` / GDPR-endpoint backlog — **Phase 12**.
+
+> **Next session** — Wave B decisions are the critical path. Drive the SMTP provider pick ([#25](https://github.com/SanchitB23/meetthefam/issues/25)) first (it unblocks the most Wave C work), then legal catalog ([#56](https://github.com/SanchitB23/meetthefam/issues/56)). After decisions land, wave through Wave C implementation. Then run Wave E verification matrix ([#86](https://github.com/SanchitB23/meetthefam/issues/86)) — all 10 boxes require human time on a real device / two accounts. Wave F (release cut) is the final step.
+
+---
+
+## Previous phase: 9 — Pre-prod: bugs, polish, verification, SMTP, legal (✅ closed)
+
+> **Implementation complete.** All agent-coded PRs landed in `qa`; review/merge/verify/release owned by Phase 10.
+
+Spec → [`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → Phase 9 row. Canonical plan → [`../superpowers/plans/2026-05-20-phase-9-pre-prod.md`](../superpowers/plans/2026-05-20-phase-9-pre-prod.md) *(historic — phase numbers past 9 shifted by 1 in the 2026-05-22 restructure)*.
+
+**Ship gate (met — implementation complete)**:
+
+- All 12 Phase 9 implementation PRs merged to `qa` (Wave A) — bug fixes #49/#58/#62/#68/#73/#75/#78, ErrorAlert foundation #90/#84, ops docs #81/#82, Phase 9 docs PR #94.
+- Wave C consumers of #90 merged (#91/#92/#93).
+- Status-page link #83 merged (BetterStack chosen, README + footer wired).
+- Phase 8 carry-over #71 (always-on Link-to picker) merged.
+- #72 zoom control cluster merged (PR #96).
+- Observability decision resolved: BetterStack for uptime; Sentry = NO for v1.0.
+- `pnpm typecheck && pnpm lint && pnpm test` clean on `qa`.
+
+**Merged PRs**:
+
+- [PR #88](https://github.com/SanchitB23/meetthefam/pull/88) ([#58](https://github.com/SanchitB23/meetthefam/issues/58)) postcss CVE — merged
+- [PR #89](https://github.com/SanchitB23/meetthefam/pull/89) ([#49](https://github.com/SanchitB23/meetthefam/issues/49)) /login redirect — merged
+- [PR #94](https://github.com/SanchitB23/meetthefam/pull/94) Phase 9 kick-off docs + 2026-05-22 restructure — merged
+- [PR #95](https://github.com/SanchitB23/meetthefam/pull/95) ([#62](https://github.com/SanchitB23/meetthefam/issues/62)) tree re-center undo — merged
+- [PR #96](https://github.com/SanchitB23/meetthefam/pull/96) ([#72](https://github.com/SanchitB23/meetthefam/issues/72)) zoom control cluster — merged
+- [PR #97](https://github.com/SanchitB23/meetthefam/pull/97) ([#73](https://github.com/SanchitB23/meetthefam/issues/73)) person-card contrast — merged
+- [PR #98](https://github.com/SanchitB23/meetthefam/pull/98) ([#75](https://github.com/SanchitB23/meetthefam/issues/75)) heirloom favicon — merged
+- [PR #99](https://github.com/SanchitB23/meetthefam/pull/99) ([#78](https://github.com/SanchitB23/meetthefam/issues/78)) derive-version on tagged builds — merged
+- [PR #100](https://github.com/SanchitB23/meetthefam/pull/100) ([#81](https://github.com/SanchitB23/meetthefam/issues/81)) DB restore runbook — merged
+- [PR #101](https://github.com/SanchitB23/meetthefam/pull/101) ([#82](https://github.com/SanchitB23/meetthefam/issues/82)) postmortem template — merged
+- [PR #102](https://github.com/SanchitB23/meetthefam/pull/102) ([#90](https://github.com/SanchitB23/meetthefam/issues/90)) ErrorAlert foundation — merged
+- [PR #104](https://github.com/SanchitB23/meetthefam/pull/104) ([#84](https://github.com/SanchitB23/meetthefam/issues/84)) CI lint+typecheck workflow — merged
+- [PR #113](https://github.com/SanchitB23/meetthefam/pull/113) ([#91](https://github.com/SanchitB23/meetthefam/issues/91)) auth-flow typed errors — merged
+- [PR #114](https://github.com/SanchitB23/meetthefam/pull/114) ([#92](https://github.com/SanchitB23/meetthefam/issues/92)) dashboard server actions — merged
+- [PR #115](https://github.com/SanchitB23/meetthefam/pull/115) ([#93](https://github.com/SanchitB23/meetthefam/issues/93)) tree-page server actions — merged
+- [PR #118](https://github.com/SanchitB23/meetthefam/pull/118) ([#71](https://github.com/SanchitB23/meetthefam/issues/71)) always-on Link-to picker — merged
+- [PR #122](https://github.com/SanchitB23/meetthefam/pull/122) ([#83](https://github.com/SanchitB23/meetthefam/issues/83)) BetterStack status-page link — merged
+
+**Not landed in Phase 9** (Wave B brainstorm decisions + their Wave C implementation, Wave E verification, Wave F release cut — all owned by Phase 10):
+
+- SMTP provider pick ([#25](https://github.com/SanchitB23/meetthefam/issues/25)) + SMTP SDK / email templates / MembersSheet "Send via email"
+- Legal pages catalog ([#56](https://github.com/SanchitB23/meetthefam/issues/56)) + /privacy / /terms / landing footer links
+- Verification matrix epic ([#86](https://github.com/SanchitB23/meetthefam/issues/86))
+- Key rotation ([`project_pre_prod_key_rotation.md`](../../../.claude/projects/-Users-sqb6461-Workspace-SelfProjects-meetthefam/memory/project_pre_prod_key_rotation.md))
+- `release/v1.0.0` cut
+
+> **Note on release version**: the versioning table in [`../dev/releases.md`](../dev/releases.md) pre-dates the 2026-05-22 restructure and still labels "End of Phase 9" as `v1.0.0`. In practice, Phase 9 = implementation-complete only; `v1.0.0` cuts at the end of Phase 10 (Wave F) once Wave E verification passes. The table should be updated to reflect this boundary shift.
+
+---
+
+## Previous phase: 8 — Visual polish + landing (✅ closed)
+
+Closed with **`v0.4.0`** on 2026-05-18. See [release notes](https://github.com/SanchitB23/meetthefam/releases/tag/v0.4.0).
+
+Spec → [`../specs/2026-05-10-family-tree-design.md`](../specs/2026-05-10-family-tree-design.md) → "Build phasing" → Phase 8 row. Phase 8 design (brainstorm output) → [`../superpowers/specs/2026-05-16-phase-8-visual-polish-design.md`](../superpowers/specs/2026-05-16-phase-8-visual-polish-design.md). Canonical plan → [`../superpowers/plans/2026-05-16-phase-8-visual-polish-landing.md`](../superpowers/plans/2026-05-16-phase-8-visual-polish-landing.md); execution overlays → [`../superpowers/plans/2026-05-17-phase-8b-execution.md`](../superpowers/plans/2026-05-17-phase-8b-execution.md), [`../superpowers/plans/2026-05-18-phase-8c-execution.md`](../superpowers/plans/2026-05-18-phase-8c-execution.md).
+
+**Ship gate (met)**:
+
+- 8a Brand foundations: Knot brand-guide decisions doc landed; warm-shifted `.dark` tokens verified; logo + favicon + metadata wired; brand icon set (`Branch`, `Leaf`, `Quote`, `Family`, `Sparkle`, `Heart`) shipped.
+- 8b Person + tree polish: gender-shape avatar variation + deceased treatment + `<Memoriam>`; tree-overview / zoom-to-fit; floating "+" hover affordance; duplicate-card visual marker (option 2 — dashed border + `↑` badge + tooltip + tap-to-jump).
+- 8c Landing + nav: shared `(app)` route group ([#45](https://github.com/SanchitB23/meetthefam/issues/45)); heirloom landing screen ([#44](https://github.com/SanchitB23/meetthefam/issues/44)); heirloom skeletons + `<Suspense>` + `useLinkStatus()` ([#50](https://github.com/SanchitB23/meetthefam/issues/50) — 2/3 closers landed, soft cross-page morph polish DEFERRED to Phase 12 via [#74](https://github.com/SanchitB23/meetthefam/issues/74)); revoke-member confirm copy; italic-Cormorant whitelist audit; `APP_VERSION` footer (first consumer of [ADR 0009 Amendment 4](../adrs/0009-versioning-and-releases.md)).
+- 199/199 Vitest tests passing; `pnpm typecheck && pnpm lint` clean.
+
+**Deferral**: 8c-5 (React 19.2 `<ViewTransition>`) deferred to Phase 12 / [#74](https://github.com/SanchitB23/meetthefam/issues/74) — `react@19.2.6` stable doesn't export `ViewTransition`; canary-channel swap vetoed by `feedback_no_prod_changes_pre_v1`.
+
+**Post-v0.4.0 polish landed on `feat/phase-8-leftover-polish`** (between v0.4.0 ship and Phase 9 kick-off): 3 new `error.tsx` boundaries (`(app)/dashboard`, `(app)/tree/[id]`, `share/[token]`); Sparkle "new" indicator on `TreeCard`; Leaf icon in dashboard "Your Trees" H1; `isRecent()` helper at `src/lib/dates/isRecent.ts` (9 Vitest tests). Commits `688500d` (PR #80) + `8d4f03d` (PR #79).
+
+> **Workflow note** — Phase 8 used the phase-branch override (`feat/phase-8-visual-polish-landing`, 14 sub-task commits, single squash-merge into `qa`). Phase 9 reverts to the standard per-issue feature-branch workflow per [ADR 0010](../adrs/0010-feature-branch-workflow.md).
 
 ---
 

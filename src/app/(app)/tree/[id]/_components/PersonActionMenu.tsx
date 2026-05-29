@@ -30,6 +30,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 import { clearSpouse, setSpouse } from '../actions'
+import { ErrorAlert } from '@/components/ui/error-alert'
+import { mapErrorCode } from '@/lib/errors'
 import {
   collectAncestors,
   collectDescendants,
@@ -90,6 +92,12 @@ export function PersonActionMenu({
     : null
   const editPerson = editForId ? peopleById.get(editForId) ?? null : null
   const deletePerson = deleteForId ? peopleById.get(deleteForId) ?? null : null
+
+  // #71 — alphabetised people list for PersonForm's always-on Link-to picker.
+  const peopleForPicker = useMemo(
+    () => [...people].sort((a, b) => a.full_name.localeCompare(b.full_name)),
+    [people],
+  )
 
   // Excludes for the spouse picker — self + ancestors + descendants.
   const spouseExcludes = useMemo(() => {
@@ -219,9 +227,7 @@ export function PersonActionMenu({
           onSelect={handleSelectSpouse}
           footer={
             spouseError ? (
-              <p className="text-sm text-destructive" role="alert">
-                {spouseError}
-              </p>
+              <ErrorAlert size="sm" message={mapErrorCode(spouseError, spouseError)} />
             ) : undefined
           }
         />
@@ -248,9 +254,9 @@ export function PersonActionMenu({
             if (!v) setAddRelativeForId(null)
           }}
           treeId={treeId}
+          peopleForPicker={peopleForPicker}
           linkSpec={{
             focusPersonId: addRelativePerson.id,
-            focusPersonName: addRelativePerson.full_name,
             defaultRelation: 'child',
           }}
         />

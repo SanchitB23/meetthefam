@@ -2,7 +2,16 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { Controller, useForm, type SubmitHandler } from 'react-hook-form'
-import { Trash2, Heart, UserRound, Baby, type LucideIcon } from 'lucide-react'
+import {
+  Trash2,
+  Heart,
+  UserRound,
+  Baby,
+  AlertCircle,
+  ChevronDown,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 
 import {
   Dialog,
@@ -20,6 +29,8 @@ import {
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { useIsDesktop } from '@/components/ui/use-is-desktop'
+import { ErrorAlert } from '@/components/ui/error-alert'
+import { mapErrorCode } from '@/lib/errors'
 
 import {
   createPerson,
@@ -30,6 +41,7 @@ import {
   type PersonInput,
 } from '../actions'
 import { DeletePersonDialog } from './DeletePersonDialog'
+import { PersonPicker } from './PersonPicker'
 import type { PersonRow } from '../_lib/types'
 import { Avatar, type Tone } from '@/components/ui/avatar'
 import { ImageDecodeError, resizeToJpeg } from '@/lib/image/resize'
@@ -86,7 +98,6 @@ export type LinkRelation = 'spouse' | 'father' | 'mother' | 'child'
 /** Optional create-mode prop wiring the focus person + default selection. */
 export type LinkSpec = {
   focusPersonId: string
-  focusPersonName: string
   /** When set, pre-selects the corresponding radio. */
   defaultRelation?: LinkRelation
 }
@@ -164,11 +175,19 @@ type Props = {
   person?: PersonRow
   /**
    * Sub-task 5 — at-creation linking. Only meaningful in create mode.
-   * When set, the form renders a "How is this person related?" radio
-   * above the name field and on submit the Server Action runs the
-   * matching `set_*_atomic` RPC after the insert.
+   * When set, pre-fills the always-on Link-to picker + relation radio
+   * with the focus person + default relation. The user can still swap
+   * the target via the picker or clear it for a standalone create
+   * (gated by a confirm dialog at submit time).
    */
   linkSpec?: LinkSpec
+  /**
+   * #71 — full tree-scoped people list for the always-on Link-to picker.
+   * When undefined or empty, the form treats this as the first-person
+   * path: the Link-to + Relation block is hidden entirely and a subtext
+   * line replaces the dynamic description. Edit mode ignores this prop.
+   */
+  peopleForPicker?: PersonRow[]
   /** Fired after a successful create OR edit save. */
   onSaved?: (personId: string) => void
 }
@@ -189,13 +208,16 @@ export function PersonForm({
   mode = 'create',
   person,
   linkSpec,
+  peopleForPicker,
   onSaved,
 }: Props) {
   const desktop = useIsDesktop()
   const isEdit = mode === 'edit'
-  // The link picker only renders in create mode with an explicit linkSpec.
-  // The bare "+" FAB path stays radio-free (sub-task 2 behaviour).
-  const showLinkPicker = !isEdit && Boolean(linkSpec)
+  // #71 — the linking block (Link-to picker + Relation grid + hint) is shown
+  // for every create that has candidate people. When there's nobody to link
+  // to (empty-state / first-person path), the entire block is hidden and a
+  // subtext line replaces the dynamic description. Edit mode never shows it.
+  const showLinkingBlock = !isEdit && (peopleForPicker?.length ?? 0) > 0
 
   // Build the defaults once per `person` / `linkSpec` identity. In create
   // mode we start from DEFAULT_VALUES and override `relation` if the
@@ -214,6 +236,7 @@ export function PersonForm({
     watch,
     reset,
     control,
+    getValues,
     formState: { errors },
   } = useForm<PersonFormValues>({ defaultValues: formDefaults })
 
@@ -223,6 +246,28 @@ export function PersonForm({
   const deceased = watch('deceased')
   const birthYear = watch('birth_year')
   const fullNameWatch = watch('full_name')
+
+  // ---- #71: at-creation linking state ----
+  //
+  // `selectedLinkPerson` is the source of truth for the Link-to picker row.
+  // - When the form opens with `linkSpec`, it's pre-filled from peopleForPicker
+  //   (see the reset effect below).
+  // - The user can swap via the PersonPicker sheet or clear via the X.
+  // - When null AND the linking block is visible, the relation grid is replaced
+  //   by an AlertCircle hint and submit triggers the standalone-confirm dialog.
+  //
+  // We hold a ref to peopleForPicker so the open-time effect can resolve
+  // linkSpec.focusPersonId without putting the (unstable) array into the
+  // effect's dep list.
+  const [selectedLinkPerson, setSelectedLinkPerson] = useState<PersonRow | null>(
+    null,
+  )
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [confirmStandaloneOpen, setConfirmStandaloneOpen] = useState(false)
+  const peopleForPickerRef = useRef(peopleForPicker)
+  useEffect(() => {
+    peopleForPickerRef.current = peopleForPicker
+  }, [peopleForPicker])
 
   // ---- Phase 5 sub-task 3: photo-picker state ----
   //
@@ -333,6 +378,23 @@ export function PersonForm({
     }
   }, [])
 
+  // #71 — reset linking state on form (re)open. Pre-fill `selectedLinkPerson`
+  // by looking up the linkSpec target in peopleForPicker (read via ref so
+  // identity changes of the array don't trip this effect on every render).
+  // Keyed on linkSpec.focusPersonId so re-opening with a different focus
+  // person (e.g. in-card "+") repaints correctly.
+  useEffect(() => {
+    if (!open) return
+    const list = peopleForPickerRef.current
+    const initial =
+      linkSpec && list
+        ? list.find((p) => p.id === linkSpec.focusPersonId) ?? null
+        : null
+    setSelectedLinkPerson(initial)
+    setPickerOpen(false)
+    setConfirmStandaloneOpen(false)
+  }, [open, linkSpec])
+
   // ---- Photo picker handlers ----
   //
   // onPick handles both modes:
@@ -428,6 +490,21 @@ export function PersonForm({
 
   const onSubmit: SubmitHandler<PersonFormValues> = (values) => {
     setSubmitError(null)
+
+    // #71 — intercept the standalone path: if the linking block is visible
+    // but no target is picked, ask the user to confirm before creating an
+    // unlinked person. Edit mode + first-person empty-state skip this gate.
+    if (!isEdit && showLinkingBlock && !selectedLinkPerson) {
+      setConfirmStandaloneOpen(true)
+      return
+    }
+
+    runSubmit(values)
+  }
+
+  // Extracted from onSubmit so the standalone-confirm dialog's "Add anyway"
+  // button can re-invoke the full create flow with the current form values.
+  const runSubmit = (values: PersonFormValues) => {
     const payload: PersonInput = {
       full_name: values.full_name,
       nickname: values.nickname || null,
@@ -464,13 +541,16 @@ export function PersonForm({
         return
       }
 
-      const linkPayload: LinkSpecInput | undefined =
-        showLinkPicker && linkSpec
-          ? {
-              relation: values.relation,
-              focusPersonId: linkSpec.focusPersonId,
-            }
-          : undefined
+      // #71 — the link target comes from `selectedLinkPerson`, which the
+      // user may have swapped via the picker or cleared (in which case the
+      // standalone-confirm flow above has already returned `true`). Falling
+      // back to undefined here means createPerson treats it as standalone.
+      const linkPayload: LinkSpecInput | undefined = selectedLinkPerson
+        ? {
+            relation: values.relation,
+            focusPersonId: selectedLinkPerson.id,
+          }
+        : undefined
 
       const result = await createPerson(treeId, payload, linkPayload)
       if (!result.ok) {
@@ -508,16 +588,12 @@ export function PersonForm({
     })
   }
 
-  const title = isEdit
-    ? 'Edit person'
-    : showLinkPicker && linkSpec
-      ? `Add a relative of ${linkSpec.focusPersonName}`
-      : 'Add a person'
+  const title = isEdit ? 'Edit person' : 'Add a person'
   const description = isEdit
     ? 'Update the details below. Changes save when you submit.'
-    : showLinkPicker
+    : showLinkingBlock
       ? 'Pick the relationship and fill in the new person’s details. The link saves with the person.'
-      : 'Add a relative to this family tree. Only the name is required.'
+      : 'This is the first person in your family tree.'
   const submitLabel = isEdit
     ? isPending
       ? 'Saving…'
@@ -532,57 +608,128 @@ export function PersonForm({
       className="flex flex-col gap-4 px-4 pb-4 sm:px-0 sm:pb-0 sm:mt-2"
     >
       {/*
-       * Sub-task 5 — relation radio. Render-gated by `showLinkPicker` so the
-       * bare "+" FAB flow (no focus person) stays radio-free.
+       * #71 — always-on linking block. Shows the Link-to picker row + either
+       * the 4-icon-card Relation grid (when a target is picked) or a muted
+       * AlertCircle hint (when not). Empty-state callers pass an empty
+       * `peopleForPicker`, which suppresses the whole block.
        *
-       * Accessibility mirrors the tone-swatch below: role="radiogroup" on
-       * the wrapper + role="radio" + aria-checked on each option. Each
-       * button is independently tab-focusable; arrow-key handling is left
-       * to a later polish pass (same trade-off the tone swatch makes).
+       * Accessibility on the relation radio mirrors the tone-swatch below:
+       * role="radiogroup" + role="radio" + aria-checked. Independent tab
+       * focus per option; arrow-key handling deferred to a polish pass.
        */}
-      {showLinkPicker && linkSpec && (
-        <div className="flex flex-col gap-2">
-          <span className="text-xs font-medium uppercase tracking-[0.12em] text-foreground/50">
-            Relationship
-          </span>
-          <Controller
-            control={control}
-            name="relation"
-            render={({ field }) => (
-              <div
-                role="radiogroup"
-                aria-label={`Relationship to ${linkSpec.focusPersonName}`}
-                className="grid grid-cols-2 sm:grid-cols-4 gap-2"
+      {showLinkingBlock && (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-foreground/50">
+                Link to
+              </span>
+              <span className="text-[11px] text-foreground/40">(optional)</span>
+            </div>
+            <div className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 focus-within:ring-2 focus-within:ring-primary">
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                aria-label={
+                  selectedLinkPerson
+                    ? `Change link target (currently ${selectedLinkPerson.full_name})`
+                    : 'Pick someone to link to'
+                }
+                className="flex flex-1 items-center gap-2.5 min-w-0 text-left focus:outline-none"
               >
-                {RELATION_OPTIONS.map((opt) => {
-                  const selected = field.value === opt.value
-                  const Icon = opt.icon
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      role="radio"
-                      aria-checked={selected}
-                      onClick={() => field.onChange(opt.value)}
-                      className={`flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl border text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus-visible:ring-offset-background ${
-                        selected
-                          ? 'border-primary bg-foreground/[0.04] text-foreground'
-                          : 'border-border bg-card text-foreground hover:bg-foreground/[0.02]'
-                      }`}
-                    >
-                      <Icon
-                        aria-hidden="true"
-                        className={`h-5 w-5 ${
-                          selected ? 'text-foreground' : 'text-foreground/60'
-                        }`}
-                      />
-                      <span>{opt.label}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-          />
+                {selectedLinkPerson ? (
+                  <>
+                    <Avatar
+                      fullName={selectedLinkPerson.full_name}
+                      photoUrl={selectedLinkPerson.photo_url}
+                      tone={selectedLinkPerson.tone}
+                      gender={selectedLinkPerson.gender}
+                      deceased={selectedLinkPerson.deceased}
+                      size={28}
+                    />
+                    <span className="flex-1 truncate text-sm text-foreground">
+                      {selectedLinkPerson.full_name}
+                    </span>
+                  </>
+                ) : (
+                  <span className="flex-1 text-sm italic text-foreground/50">
+                    Pick someone to link to…
+                  </span>
+                )}
+              </button>
+              {selectedLinkPerson && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedLinkPerson(null)}
+                  aria-label="Clear link target"
+                  className="p-1 text-foreground/60 hover:text-foreground focus:outline-none focus-visible:text-foreground rounded"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
+              )}
+              <ChevronDown
+                className="h-4 w-4 text-foreground/60 shrink-0"
+                aria-hidden="true"
+              />
+            </div>
+          </div>
+
+          {selectedLinkPerson ? (
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-foreground/50">
+                Relationship
+              </span>
+              <Controller
+                control={control}
+                name="relation"
+                render={({ field }) => (
+                  <div
+                    role="radiogroup"
+                    aria-label={`Relationship to ${selectedLinkPerson.full_name}`}
+                    className="grid grid-cols-2 sm:grid-cols-4 gap-2"
+                  >
+                    {RELATION_OPTIONS.map((opt) => {
+                      const selected = field.value === opt.value
+                      const Icon = opt.icon
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          onClick={() => field.onChange(opt.value)}
+                          className={`flex flex-col items-center justify-center gap-1.5 py-3 px-2 rounded-xl border text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1 focus-visible:ring-offset-background ${
+                            selected
+                              ? 'border-primary bg-foreground/[0.04] text-foreground'
+                              : 'border-border bg-card text-foreground hover:bg-foreground/[0.02]'
+                          }`}
+                        >
+                          <Icon
+                            aria-hidden="true"
+                            className={`h-5 w-5 ${
+                              selected ? 'text-foreground' : 'text-foreground/60'
+                            }`}
+                          />
+                          <span>{opt.label}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              />
+            </div>
+          ) : (
+            <div className="flex items-start gap-2 rounded-md border border-dashed border-border bg-card/50 px-3 py-2 text-sm text-foreground/60">
+              <AlertCircle
+                className="h-4 w-4 mt-0.5 shrink-0"
+                aria-hidden="true"
+              />
+              <span>
+                Not linked — won&rsquo;t appear on the tree until linked to
+                someone.
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -655,7 +802,7 @@ export function PersonForm({
           </div>
         </div>
         {photoError && (
-          <p className="text-xs text-destructive mt-1">{photoError}</p>
+          <ErrorAlert size="sm" message={mapErrorCode(photoError, photoError)} />
         )}
       </div>
 
@@ -921,9 +1068,7 @@ export function PersonForm({
       </div>
 
       {submitError && (
-        <p className="text-sm text-destructive" role="alert">
-          {submitError}
-        </p>
+        <ErrorAlert size="sm" message={mapErrorCode(submitError, submitError)} />
       )}
 
       {/*
@@ -989,6 +1134,12 @@ export function PersonForm({
     </Sheet>
   )
 
+  // #71 — interpolate the just-typed name into the standalone confirm copy.
+  // Falls back to "This person" if the user hasn't typed a name yet (RHF's
+  // required-field validation will still catch that on the next submit).
+  const standaloneName =
+    fullNameWatch && fullNameWatch.trim() ? fullNameWatch.trim() : 'This person'
+
   return (
     <>
       {surface}
@@ -1006,6 +1157,60 @@ export function PersonForm({
           }}
         />
       )}
+      {showLinkingBlock && peopleForPicker && (
+        <PersonPicker
+          open={pickerOpen}
+          onOpenChange={setPickerOpen}
+          people={peopleForPicker}
+          excludeIds={[]}
+          title="Link to"
+          description="Pick the person this new person will be related to."
+          onSelect={(personId) => {
+            const found = peopleForPicker.find((p) => p.id === personId)
+            if (found) setSelectedLinkPerson(found)
+            setPickerOpen(false)
+          }}
+        />
+      )}
+      <Dialog
+        open={confirmStandaloneOpen}
+        onOpenChange={(v) => {
+          if (!v && !isPending) setConfirmStandaloneOpen(false)
+        }}
+      >
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-xl">
+              Add as standalone?
+            </DialogTitle>
+            <DialogDescription>
+              {standaloneName} won&rsquo;t appear on the tree until you link
+              them to someone. You can link them later from their person
+              card.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmStandaloneOpen(false)}
+              disabled={isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setConfirmStandaloneOpen(false)
+                runSubmit(getValues())
+              }}
+              disabled={isPending}
+            >
+              {isPending ? 'Adding…' : 'Add anyway'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

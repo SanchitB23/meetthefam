@@ -25,7 +25,7 @@ function buildCallbackUrl(origin: string, next: string | null): string {
 export async function signInWithMagicLink(formData: FormData) {
   const email = formData.get('email')
   if (!email || typeof email !== 'string') {
-    redirect('/login?error=Email+required')
+    redirect('/login?error=email_required')
   }
 
   const next = safeNextPath(formData.get('next'))
@@ -38,7 +38,17 @@ export async function signInWithMagicLink(formData: FormData) {
   })
 
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`)
+    let tag: string
+    const status = 'status' in error ? (error as { status?: number }).status : undefined
+    if (error.message.includes('rate limit')) {
+      tag = 'email_rate_limit'
+    } else if (error.message.includes('invalid') || status === 422) {
+      tag = 'email_invalid'
+    } else {
+      console.error('[login] OTP failed:', error)
+      tag = 'unknown'
+    }
+    redirect(`/login?error=${tag}`)
   }
 
   const sentParams = new URLSearchParams({ sent: 'true', email })
@@ -57,9 +67,8 @@ export async function signInWithGoogle(formData: FormData) {
   })
 
   if (error || !data?.url) {
-    redirect(
-      `/login?error=${encodeURIComponent(error?.message ?? 'Google sign-in failed')}`
-    )
+    console.error('[login] OAuth failed:', error)
+    redirect('/login?error=unknown')
   }
 
   redirect(data.url)
