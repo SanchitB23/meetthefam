@@ -15,7 +15,7 @@
 //   - `variant="empty-state"` — inline pill button, used by the
 //     empty-state branch in `page.tsx`. Same form, different chrome.
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 
 import { PersonForm } from './PersonForm'
@@ -83,6 +83,18 @@ export function AddRelativeFab({
     ? `Add a relative to ${focusPerson.full_name}`
     : 'Add a person'
 
+  // #71 — the always-on Link-to picker inside PersonForm needs the full
+  // candidate list. We feed it from peopleById, sorted by full_name. Empty-
+  // state callers pass no peopleById → EMPTY_MAP default → empty list →
+  // PersonForm hides the linking block entirely (first-person path).
+  const peopleForPicker = useMemo(
+    () =>
+      Array.from(peopleById.values()).sort((a, b) =>
+        a.full_name.localeCompare(b.full_name),
+      ),
+    [peopleById],
+  )
+
   return (
     <>
       {variant === 'fab' ? (
@@ -110,11 +122,11 @@ export function AddRelativeFab({
         open={open}
         onOpenChange={handleOpenChange}
         treeId={treeId}
+        peopleForPicker={peopleForPicker}
         linkSpec={
           linked
             ? {
                 focusPersonId: effectiveLinkPerson!.id,
-                focusPersonName: effectiveLinkPerson!.full_name,
                 defaultRelation: 'child',
               }
             : undefined
