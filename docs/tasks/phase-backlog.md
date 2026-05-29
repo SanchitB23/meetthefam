@@ -235,7 +235,7 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 - [ ] [#91](https://github.com/SanchitB23/meetthefam/issues/91) — auth flow typed errors (consumer of #90).
 - [ ] [#92](https://github.com/SanchitB23/meetthefam/issues/92) — dashboard server actions (consumer of #90).
 - [ ] [#93](https://github.com/SanchitB23/meetthefam/issues/93) — tree-page server actions (consumer of #90).
-- [ ] [#83](https://github.com/SanchitB23/meetthefam/issues/83) — status-page link in README + footer (needs Wave B (b3) decision).
+- [x] [#83](https://github.com/SanchitB23/meetthefam/issues/83) — status-page link in README + footer. Shipped **Option A** (zero-infra status surface): new `STATUS.md` at repo root, "Service status" link near the top of `README.md`, "Status" link in the landing footer (`src/components/landing/LandingFooter.tsx`), and `docs/dev/prod-readiness.md` §10's "Status-page URL linked from the repo README" box ticked with the Option A decision documented. *(2026-05-29)*
 - [ ] SMTP SDK wire-in (`src/lib/email/inviteEmail.ts`) — opens after Wave B (b1) decision. Drop the `throw new Error('Email delivery not yet implemented')` line.
 - [ ] [#61](https://github.com/SanchitB23/meetthefam/issues/61) — brand the magic-link email template.
 - [ ] Brand the invite email template.

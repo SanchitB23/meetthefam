@@ -41,7 +41,7 @@ All 12 implementation PRs are now drafted and tracked in Phase 10 → Wave A (ba
   - [PR #94](https://github.com/SanchitB23/meetthefam/pull/94) Phase 9 kick-off + 2026-05-22 restructure — DRAFT
 - **Moved to Phase 10 — held until dependencies clear:**
   - #91 / #92 / #93 (consumers of #90 — picked up in Phase 10 Wave C after PR #102 merges)
-  - [#83](https://github.com/SanchitB23/meetthefam/issues/83) status-page link (held until Phase 10 Wave B (b3) observability decision)
+  - ~~[#83](https://github.com/SanchitB23/meetthefam/issues/83) status-page link (held until Phase 10 Wave B (b3) observability decision)~~ — **done 2026-05-29** via Option A (zero-infra `STATUS.md` + README + landing-footer links); ticked in Phase 10 Wave C.
 - **Moved to Phase 10 — brainstorm tracks:**
   - (b1) SMTP provider pick ([#25](https://github.com/SanchitB23/meetthefam/issues/25))
   - (b2) Legal pages catalog ([#56](https://github.com/SanchitB23/meetthefam/issues/56))

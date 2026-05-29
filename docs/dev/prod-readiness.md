@@ -113,7 +113,7 @@
 - [ ] Final smoke pass on the production URL (walk every flow in [`docs/qa/smoke-flows.md`](../qa/smoke-flows.md)).
 - [ ] DNS verified (A / AAAA / CNAME records resolve correctly; CAA records permit Let's Encrypt if Vercel uses it).
 - [ ] DB backup taken pre-launch (manual snapshot via Supabase dashboard).
-- [ ] Status-page URL linked from the repo README.
+- [x] Status-page surface chosen + linked from the repo README. v1.0 ships **Option A** (zero-infra [`STATUS.md`](../../STATUS.md) at repo root) — linked from the [README](../../README.md#meetthefam) and the landing footer. A hosted status page with automated uptime probes is deferred to v1.1, gated on the observability decision ([#103](https://github.com/SanchitB23/meetthefam/issues/103)).
 - [ ] Postmortem template ready at [`docs/runbooks/postmortem-template.md`](../runbooks/postmortem-template.md).
 - [ ] On-call / contact info documented (even if it's just the maintainer's email + WhatsApp).
 

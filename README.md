@@ -4,6 +4,8 @@ A multi-tenant family tree web app. Sign up, build a family tree, invite editors
 
 **Status:** Phase −1 — project AI infrastructure. No feature code yet.
 
+**Service status:** [`STATUS.md`](STATUS.md) — check here during an incident.
+
 ## Quick links
 
 - **Spec**: [`docs/specs/2026-05-10-family-tree-design.md`](docs/specs/2026-05-10-family-tree-design.md)
