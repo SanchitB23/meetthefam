@@ -12,10 +12,13 @@ Phase-anchored SemVer (full rationale in [ADR 0009 §1](../adrs/0009-versioning-
 |---|---|---|
 | Pre-Phase-5 (historical) | patch | `0.0.x` |
 | End of Phase 5 | minor | `v0.1.0` (first named release — personal MVP) |
-| Phases 6–8 (each phase end) | minor | `0.MINOR.0` |
+| Phases 6–9 (each phase end) | minor | `0.MINOR.0` (Phase 9 shipped `v0.5.0`, 2026-05-29) |
+| Phase 10 launch-prep checkpoints (as needed) | minor | `0.6.0`+ |
 | Mid-phase hotfix on `0.MINOR` | patch | `0.MINOR.PATCH` |
-| End of Phase 9 | major | `v1.0.0` (multi-tenant launch) |
+| v1.0 launch (cut at Phase 10 Wave F, shipped in Phase 11) | major | `v1.0.0` (multi-tenant launch) |
 | Post-v1.0 | Conventional Commits decide | `feat:` → minor, `fix:` → patch, breaking → major |
+
+> **Note (post-2026-05-22 restructure).** This table originally anchored `v1.0.0` to "end of Phase 9". The Phase 9 / 10 / 11 / 12 split (see [`../tasks/phase-backlog.md`](../tasks/phase-backlog.md) intro) moved the launch to the **Phase 10 Wave F → Phase 11 cut-over** boundary: Phase 9 (pre-prod implementation) now closes with an intermediate minor (`v0.5.0`), Phase 10 owns the path to the launch cut, and `v1.0.0` is the actual multi-tenant launch. Rationale recorded in [ADR 0009 Amendments](../adrs/0009-versioning-and-releases.md#amendments).
 
 The tag is created on GitHub via `gh release create --target main`. Build-time `APP_VERSION` (in `src/lib/generated/version.ts`) is derived from that tag by [`scripts/derive-version.mjs`](../../scripts/derive-version.mjs) — never committed by hand.
 
