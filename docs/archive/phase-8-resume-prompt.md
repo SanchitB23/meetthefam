@@ -1,3 +1,7 @@
+> **⚠️ FROZEN / HISTORICAL.** This document is no longer maintained. Planning moved to GitHub milestones + issues on 2026-05-29 — see [ADR 0011](../adrs/0011-github-milestones-source-of-truth.md) and the design spec at [`../superpowers/specs/2026-05-29-github-milestones-workflow-design.md`](../superpowers/specs/2026-05-29-github-milestones-workflow-design.md). The current cycle is the nearest open [GitHub milestone](https://github.com/SanchitB23/meetthefam/milestones). Kept for historical rationale only.
+
+---
+
 # Phase 8 — next-session resume prompt
 
 > Paste the block below into a fresh Claude Code session in this repo to resume Phase 8 from 8b-1. The prompt is self-contained — it briefs the new session like a colleague walking in fresh.

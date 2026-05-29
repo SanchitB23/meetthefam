@@ -1,3 +1,7 @@
+> **⚠️ FROZEN / HISTORICAL.** This document is no longer maintained. Planning moved to GitHub milestones + issues on 2026-05-29 — see [ADR 0011](../adrs/0011-github-milestones-source-of-truth.md) and the design spec at [`../superpowers/specs/2026-05-29-github-milestones-workflow-design.md`](../superpowers/specs/2026-05-29-github-milestones-workflow-design.md). The current cycle is the nearest open [GitHub milestone](https://github.com/SanchitB23/meetthefam/milestones). The still-live "Standing rules" from this file were lifted into `CLAUDE.md` before archiving. Kept for historical rationale only.
+
+---
+
 # Phase backlog
 
 Per-phase TODOs that don't belong in the spec's "Done when…" gate but must be picked up at the right phase. Loaded by the active phase's session — keep it short, link out for detail.
