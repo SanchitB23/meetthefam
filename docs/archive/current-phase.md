@@ -1,3 +1,7 @@
+> **⚠️ FROZEN / HISTORICAL.** This document is no longer maintained. Planning moved to GitHub milestones + issues on 2026-05-29 — see [ADR 0011](../adrs/0011-github-milestones-source-of-truth.md) and the design spec at [`../superpowers/specs/2026-05-29-github-milestones-workflow-design.md`](../superpowers/specs/2026-05-29-github-milestones-workflow-design.md). The current cycle is the nearest open [GitHub milestone](https://github.com/SanchitB23/meetthefam/milestones). Kept for historical rationale only.
+
+---
+
 # Current phase: 10 — Review, merge, brainstorms, verification, release cut
 
 > **Phase 9 is COMPLETE as of 2026-05-29, shipped as [`v0.5.0`](https://github.com/SanchitB23/meetthefam/releases/tag/v0.5.0).** All 12 Phase 9 implementation PRs (Wave A) merged to `qa`; Wave C consumers #91/#92/#93 + #83 merged; #71 merged. Phase 10 owns the remaining path to `release/v1.0.0`: Wave B brainstorm decisions (SMTP #25, legal #56) and their Wave C implementation, Wave E verification matrix, and Wave F release cut. *(`v1.0.0` is the launch cut at the Phase 10 Wave F → Phase 11 boundary — the v1.0.0-anchor shift from the original "end of Phase 9" is recorded in [ADR 0009 Amendments](../adrs/0009-versioning-and-releases.md#amendments).)*

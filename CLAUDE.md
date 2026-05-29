@@ -23,9 +23,9 @@ Stack: Next.js 16 (App Router, Turbopack default) on Vercel, Supabase (Postgres 
 - [`docs/adrs/`](docs/adrs/) — Architecture Decision Records (the *why*)
 - [`docs/superpowers/plans/`](docs/superpowers/plans/) — phase + bundle execution plans authored via `superpowers:writing-plans`. Dated filenames (`YYYY-MM-DD-<slug>.md`); pick the latest matching the current phase. Canonical "everything for a phase" plans (e.g. `2026-05-16-phase-8-visual-polish-landing.md`) get focused **execution overlays** with per-bundle session recipes (e.g. `2026-05-17-phase-8b-execution.md`, `2026-05-18-phase-8c-execution.md`). When resuming mid-phase, load both the canonical plan AND the most recent execution overlay.
 - [`docs/superpowers/specs/`](docs/superpowers/specs/) — design + analysis specs authored via `superpowers:brainstorming` or before-coding scoping. Same dated-filename convention. Specs describe the *what* + *why* at a decision-locking level; plans describe the *how* + *when*.
-- [`docs/tasks/current-phase.md`](docs/tasks/current-phase.md) — what we're working on right now
+- **[GitHub milestones](https://github.com/SanchitB23/meetthefam/milestones)** — the single source of truth for current work. The **nearest open milestone is the current cycle**; its open issues are the live work list, and it closes when they're all done. See [ADR 0011](docs/adrs/0011-github-milestones-source-of-truth.md).
 
-When unsure, read `docs/tasks/current-phase.md` first to know what phase we're in, then check `docs/superpowers/plans/` for the canonical plan + execution overlay matching that phase. Load only the architecture / UX docs relevant to the current phase.
+When unsure, open the [GitHub milestones](https://github.com/SanchitB23/meetthefam/milestones) first — the nearest open milestone is the current cycle and its issues are the work. Then check `docs/superpowers/plans/` for any matching plan. Load only the architecture / UX docs relevant to the issue you're working. Historical "Phase N" plans/specs predate the milestone model (planning moved to GitHub on 2026-05-29, ADR 0011) — they're frozen rationale, not current-work pointers.
 
 ## Project subagents
 
@@ -35,7 +35,6 @@ For focused work, prefer these subagents over a generic agent:
 - **`supabase-validator`** — post-commit verification + live diagnosis of Supabase / DB errors (**validates**). Sibling to `supabase-engineer`; read-only by design (no `apply_migration` / `Edit` / `Write` grants). **Auto-nudged after DB-touching commits** by the `db-commit-detector` PostToolUse hook (see [`.claude/hooks/db-commit-detector.sh`](.claude/hooks/db-commit-detector.sh)); also invoke manually whenever the user reports a DB error in any environment.
 - **`frontend-engineer`** — React components, family-chart wrapper, mobile gestures
 - **`test-engineer`** — Vitest (RLS + server-action tests), Playwright (E2E happy paths)
-- **`task-doc-keeper`** — keeps `docs/tasks/current-phase.md` + `docs/tasks/phase-backlog.md` in sync with work about to land. **Invoke before every feature commit** so doc ticks land in the same commit as the code (per the standing memory rule). **Auto-nudged before sub-task commits** by the `task-doc-tick-detector` PreToolUse hook (see [`.claude/hooks/task-doc-tick-detector.sh`](.claude/hooks/task-doc-tick-detector.sh)) — fires when staging `src/` / migration changes on a `feat/phase-N/sub-task-M-*` branch without a `current-phase.md` tick. Also drives phase close-outs (mark current phase ✅ closed, open the next phase stub). It only edits the docs — the controller still stages + commits.
 
 Definitions live in [`.claude/agents/`](.claude/agents/).
 
@@ -52,7 +51,7 @@ Definitions live in [`.claude/agents/`](.claude/agents/).
 
 ### Git workflow
 
-Feature-branch forward-promotion: `local → feat/* (or fix/, chore/, docs/, refactor/, test/, style/) → qa → release/vX.Y.Z → main → production`. Never commit directly to `main`; per-sub-task branches are mandatory and direct `qa` commits are emergency-only. Branch prefix mirrors the Conventional Commit type used in the commit message.
+Feature-branch forward-promotion: `local → <type>/<issue#>-slug → qa → release/vX.Y.Z → main → production`. Branches are **issue-anchored**: one branch → one GitHub issue → one PR carrying `Closes #N` + the issue's milestone (e.g. `feat/56-legal-pages`). Branch prefix mirrors the Conventional Commit type (`feat/`, `fix/`, `chore/`, `docs/`, `refactor/`, `test/`, `style/`). Never commit directly to `main`; direct `qa` commits are emergency-only.
 
 - Full sub-task recipe + branch-type table + hotfix exception: [`docs/dev/git-workflow.md`](docs/dev/git-workflow.md).
 - Rationale + alternatives considered: [ADR 0010](docs/adrs/0010-feature-branch-workflow.md).
@@ -70,6 +69,8 @@ Phase-anchored SemVer (rules: [ADR 0009 §1](docs/adrs/0009-versioning-and-relea
 - Run `pnpm typecheck` and `pnpm lint` before proposing a commit; fix all errors first.
 - Run relevant tests (`pnpm test`) when the change touches a tested area.
 - Components: prefer Server Components; use `'use client'` only for components that need state, effects, or browser APIs.
+- **`await cookies()` / `await headers()`** in every server-side `@supabase/ssr` client. In Next.js 16 these are async — every new Supabase server client must `await` them when wiring the cookie adapter. Pull the current snippet via Context7 (`/supabase/supabase`) before writing one from memory. See [ADR 0007](docs/adrs/0007-nextjs-16-and-async-idioms.md). Current code is in compliance (audit `src/lib/supabase/server.ts`, `src/app/login/actions.ts`, `src/app/auth/callback/route.ts`, `src/proxy.ts`).
+- **No production DB or production-Vercel-config changes until the `v1.0 — Launch` milestone closes.** Per-cycle migrations apply to **local + QA only**; the `mcp__supabase__apply_migration` step against `family-tree-prod` is skipped pre-v1.0. All accumulated migrations batch-apply at the v1.0 launch cut-over. Launch-gate checklist: [`docs/dev/prod-readiness.md`](docs/dev/prod-readiness.md).
 
 ### UI primitives
 
@@ -108,11 +109,13 @@ Sessions in this repo are noticeably more productive when these MCP servers are 
 
 If an MCP isn't available in your session, fall back to shell + file edits.
 
-## Phasing at a glance
+## Milestones at a glance
 
-- **Phase −1** — Project AI infrastructure (CLAUDE.md, docs, agents, .mcp.json)
-- **Phase 0** — Foundation: Next.js + Supabase scaffolded
-- **Phases 1–5** — v0.1 (personal MVP): auth, tree CRUD, people CRUD, visualization, photos
-- **Phases 6–9** — v1.0 (multi-tenant launch): collaboration, share link, visual polish, QA + launch
+Work is organized as **GitHub milestones**, one per release cycle. The nearest open milestone is the current cycle.
 
-The active phase's checklist is in [`docs/tasks/current-phase.md`](docs/tasks/current-phase.md).
+- Shipped: **v0.1 → v0.5** (personal MVP through pre-launch hardening — history in [`docs/archive/`](docs/archive/)).
+- **v1.0 — Launch** — multi-tenant launch cycle (current). Ships v1.0.0.
+- **v1.1 — Post-launch polish** — post-launch UX + quality-of-life.
+- **v1.2 — Export & archival** — tree export (PDF / image), archival prints.
+
+Live list (always authoritative): [github.com/SanchitB23/meetthefam/milestones](https://github.com/SanchitB23/meetthefam/milestones).
