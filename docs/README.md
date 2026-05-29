@@ -20,7 +20,7 @@ docs/
 
 | If you're working on… | Read first |
 |---|---|
-| Anything | [`tasks/current-phase.md`](tasks/current-phase.md) — know what phase we're in. Cross-check [`tasks/phase-backlog.md`](tasks/phase-backlog.md) for phase-specific TODOs (Next.js 16 idioms, View Transitions, Devtools MCP). |
+| Anything | The nearest open [GitHub milestone](https://github.com/SanchitB23/meetthefam/milestones) — the current cycle and its open issues. Planning source of truth (see [`adrs/0011-github-milestones-source-of-truth.md`](adrs/0011-github-milestones-source-of-truth.md)); frozen phase docs live in [`archive/`](archive/). |
 | Cutting a feature branch / opening a PR | [`dev/git-workflow.md`](dev/git-workflow.md) (recipe) + [`adrs/0010-feature-branch-workflow.md`](adrs/0010-feature-branch-workflow.md) (rationale). |
 | Cutting a release | [`dev/releases.md`](dev/releases.md) (recipe) + [`adrs/0009-versioning-and-releases.md`](adrs/0009-versioning-and-releases.md) (rationale). |
 | Authoring or applying a migration | [`dev/migrations.md`](dev/migrations.md) (recipe) — local → QA → prod discipline, cross-check, rollback. |
@@ -40,4 +40,4 @@ docs/
 
 - Architecture / UX docs are lossy summaries of the spec. If they drift from the spec, the **spec is the source of truth** until both are reconciled.
 - New decisions worth recording → write a new ADR (`adrs/NNNN-<slug>.md`, increment NNNN).
-- Phase changes → update `tasks/current-phase.md` only; don't archive prior phases here (git history is enough).
+- Planning lives in [GitHub milestones + issues](https://github.com/SanchitB23/meetthefam/milestones), not in-repo docs (see [`adrs/0011-github-milestones-source-of-truth.md`](adrs/0011-github-milestones-source-of-truth.md)). The old phase docs are frozen in [`archive/`](archive/).

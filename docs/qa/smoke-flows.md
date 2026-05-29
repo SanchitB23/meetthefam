@@ -328,7 +328,7 @@ End-to-end visual walk against the QA Vercel preview after 8c-1 through 8c-7 lan
 **Pass:** all 12 steps complete; no console errors; the heirloom palette persists across light + dark mode (toggle `prefers-color-scheme: dark` in DevTools and re-walk steps 2 + 5 + 6 + 12).
 
 **Skip rules:**
-- ViewTransition cross-page morph is OUT OF SCOPE for this flow (8c-5 deferred; documented in `docs/tasks/current-phase.md`). Don't assert ViewTransition behavior.
+- ViewTransition cross-page morph is OUT OF SCOPE for this flow (deferred; tracked as issue [#74](https://github.com/SanchitB23/meetthefam/issues/74)). Don't assert ViewTransition behavior.
 - Playwright MCP at runtime still blocked → SKIP steps 2 through 11 with reason `playwright-runtime-blocked`; agent still curl-verifies `/`, `/login`, the favicon, the global CSS for the heirloom tokens, and the rendered `v…` micro-version on the public landing as a partial pass.
 
 ---

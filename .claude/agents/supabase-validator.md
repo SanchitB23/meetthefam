@@ -98,7 +98,7 @@ mcp__supabase__get_advisors(project_id = "ljjvwtpifmoshfknlbaj", type = "securit
 mcp__supabase__get_advisors(project_id = "ljjvwtpifmoshfknlbaj", type = "performance")
 ```
 
-Compare against the known baseline (the 13 security WARNs + 5 performance INFOs that pre-date Phase 5; see Phase 5 sub-task 1's `current-phase.md` entry for the full list). **Any new ERROR / WARN is a fail unless the caller acknowledges it as accepted.** Quote the new advisor entry verbatim in your report and include the remediation URL.
+Compare against the known baseline (the 13 security WARNs + 5 performance INFOs that pre-date the Phase-5-era schema; the full list is recorded in the archived phase docs at [`docs/archive/`](../../docs/archive/) / git history). **Any new ERROR / WARN is a fail unless the caller acknowledges it as accepted.** Quote the new advisor entry verbatim in your report and include the remediation URL.
 
 ### 5. App-level smoke
 
@@ -282,7 +282,7 @@ console.log('user', user)
 ```
 Add this to the action and read the dev-server output. If user is null but the page also loaded fine, the gap is in the action's client wiring.
 
-**Fix**: verify `src/lib/supabase/server.ts` uses `await cookies()` per the Next.js 16 contract. The "Standing rules" section of `docs/tasks/phase-backlog.md` calls this out.
+**Fix**: verify `src/lib/supabase/server.ts` uses `await cookies()` per the Next.js 16 contract. The "Code" conventions in [`CLAUDE.md`](../../CLAUDE.md) call this out.
 
 ### FAQ #8 — Cycle detection on `set_parents_atomic` rejects a valid edit
 
@@ -345,7 +345,7 @@ Read in this order:
 2. [`docs/dev/migrations.md`](../../docs/dev/migrations.md) — current runbook for apply / cross-check / advisor flow.
 3. [`docs/architecture/auth-and-rls.md`](../../docs/architecture/auth-and-rls.md) — RLS policy spec per table.
 4. [`docs/architecture/data-model.md`](../../docs/architecture/data-model.md) — schema + FK rationale.
-5. [`docs/tasks/current-phase.md`](../../docs/tasks/current-phase.md) — what phase we're in, what was just ticked.
+5. The nearest open [GitHub milestone](https://github.com/SanchitB23/meetthefam/milestones) — the current cycle and what was just shipped.
 
 If the change relates to Storage or photo upload, also: [`docs/architecture/photo-upload.md`](../../docs/architecture/photo-upload.md).
 
