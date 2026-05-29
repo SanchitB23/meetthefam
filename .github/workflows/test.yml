@@ -1,0 +1,48 @@
+name: Test
+
+on:
+  pull_request:
+    branches: [qa, main]
+
+jobs:
+  vitest:
+    runs-on: ubuntu-latest
+    # Safety ceiling so a hung `supabase start` can't burn the runner. A green
+    # run (install + migrate + 247 tests) is expected in ~2-5 min.
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        # reads version from "packageManager" field in package.json (currently 10.15.1)
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # pnpm 10 only runs the whitelisted postinstall scripts in
+      # package.json#pnpm.onlyBuiltDependencies — that whitelist includes
+      # `supabase`, so the CLI's Go binary is fetched here (needed below).
+      - run: pnpm install --frozen-lockfile
+
+      # Next.js 16 generates route/page TypeScript types into .next/types at
+      # dev / build time. Mirrors lint-typecheck.yml so the test run resolves
+      # the same generated types the app relies on.
+      - run: pnpm exec next typegen
+
+      # Boots the local Supabase stack (Postgres :54322, API gateway :54321,
+      # Auth, REST, Storage) exactly as `pnpm exec supabase start` does in local
+      # dev, applying every migration in supabase/migrations/ on first init.
+      # ubuntu-latest ships Docker, so no extra setup is needed. The Vitest RLS
+      # + Storage suites hit the default ports and the deterministic dev JWT
+      # keys hardcoded in src/__tests__/_helpers.ts — no env vars and no prod
+      # credentials touch CI. (If CI time / flakiness becomes an issue, trim
+      # unused services with `supabase start -x studio,edge-runtime,...`.)
+      - name: Start Supabase local stack
+        run: pnpm exec supabase start
+
+      # `pnpm test` is `vitest run` (non-watch). Covers the RLS, Storage, RPC,
+      # Server Action, and component suites against the fresh local schema.
+      - name: Run Vitest suite (incl. RLS + Storage)
+        run: pnpm test
