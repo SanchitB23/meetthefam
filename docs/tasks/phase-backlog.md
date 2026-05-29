@@ -111,7 +111,7 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 
 ## Phase 9 — Pre-prod: bugs, polish, verification, SMTP, legal
 
-> ✅ Phase 9 closed — implementation complete; review/merge/verify/release owned by Phase 10.
+> ✅ Phase 9 closed — implementation complete; review/merge/verify/release owned by Phase 10. **Shipped as [`v0.5.0`](https://github.com/SanchitB23/meetthefam/releases/tag/v0.5.0) (2026-05-29)** — the intermediate pre-prod minor; `v1.0.0` remains the launch cut (Phase 10 Wave F → Phase 11).
 
 > Implementation work — the agent-coded PRs that had to *land in the codebase / docs* before tagging `v1.0`. **Review-and-merge for these PRs, plus all post-brainstorm implementation and verification, moved to Phase 10 on 2026-05-22** (see the intro note above). All 12 Phase 9 implementation PRs merged to `qa` by 2026-05-29; Phase 10 owns the rest of the path to `release/v1.0.0`. The actual production cut-over (env vars, prod migrations, domain) is Phase 11.
 
