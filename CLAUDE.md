@@ -70,6 +70,8 @@ Phase-anchored SemVer (rules: [ADR 0009 §1](docs/adrs/0009-versioning-and-relea
 - Run `pnpm typecheck` and `pnpm lint` before proposing a commit; fix all errors first.
 - Run relevant tests (`pnpm test`) when the change touches a tested area.
 - Components: prefer Server Components; use `'use client'` only for components that need state, effects, or browser APIs.
+- **`await cookies()` / `await headers()`** in every server-side `@supabase/ssr` client. In Next.js 16 these are async — every new Supabase server client must `await` them when wiring the cookie adapter. Pull the current snippet via Context7 (`/supabase/supabase`) before writing one from memory. See [ADR 0007](docs/adrs/0007-nextjs-16-and-async-idioms.md). Current code is in compliance (audit `src/lib/supabase/server.ts`, `src/app/login/actions.ts`, `src/app/auth/callback/route.ts`, `src/proxy.ts`).
+- **No production DB or production-Vercel-config changes until the `v1.0 — Launch` milestone closes.** Per-cycle migrations apply to **local + QA only**; the `mcp__supabase__apply_migration` step against `family-tree-prod` is skipped pre-v1.0. All accumulated migrations batch-apply at the v1.0 launch cut-over. Launch-gate checklist: [`docs/dev/prod-readiness.md`](docs/dev/prod-readiness.md).
 
 ### UI primitives
 
