@@ -111,32 +111,34 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 
 ## Phase 9 — Pre-prod: bugs, polish, verification, SMTP, legal
 
-> Implementation work — the agent-coded PRs that have to *land in the codebase / docs* before tagging `v1.0`. Everything here is a feature-branch on `qa`. **Review-and-merge for these PRs, plus all post-brainstorm implementation and verification, moved to Phase 10 on 2026-05-22** (see the intro note above). When every PR listed here is merged into `qa`, Phase 9 closes and Phase 10 owns the rest of the path to `release/v1.0.0`. The actual production cut-over (env vars, prod migrations, domain) is Phase 11.
+> ✅ Phase 9 closed — implementation complete; review/merge/verify/release owned by Phase 10.
+
+> Implementation work — the agent-coded PRs that had to *land in the codebase / docs* before tagging `v1.0`. **Review-and-merge for these PRs, plus all post-brainstorm implementation and verification, moved to Phase 10 on 2026-05-22** (see the intro note above). All 12 Phase 9 implementation PRs merged to `qa` by 2026-05-29; Phase 10 owns the rest of the path to `release/v1.0.0`. The actual production cut-over (env vars, prod migrations, domain) is Phase 11.
 
 ### Bug fixes (open GitHub issues)
 
-- [ ] [#49](https://github.com/SanchitB23/meetthefam/issues/49) — Logged-in user visiting `/login` is not redirected to `/dashboard`.
-- [ ] [#58](https://github.com/SanchitB23/meetthefam/issues/58) — Dependabot: `postcss < 8.5.10` XSS (CVE-2026-41305, transitive via Next.js).
-- [ ] [#62](https://github.com/SanchitB23/meetthefam/issues/62) — Tree re-center has no undo; `replaceState` vs hash-assignment inconsistency.
-- [ ] [#68](https://github.com/SanchitB23/meetthefam/issues/68) — User-facing error handling: friendly alerts everywhere (not just login).
-- [ ] [#73](https://github.com/SanchitB23/meetthefam/issues/73) — Person cards "swim" into the canvas (same colour); needs contrast tweak.
-- [ ] [#75](https://github.com/SanchitB23/meetthefam/issues/75) — Verify favicon is the heirloom logomark, not legacy create-next-app `.ico`.
-- [ ] [#78](https://github.com/SanchitB23/meetthefam/issues/78) — `derive-version.mjs` emits bare version on tagged-commit prod build (Vercel shallow-clone limitation).
+- [x] [#49](https://github.com/SanchitB23/meetthefam/issues/49) — Logged-in user visiting `/login` is not redirected to `/dashboard`. *(merged — PR #89)*
+- [x] [#58](https://github.com/SanchitB23/meetthefam/issues/58) — Dependabot: `postcss < 8.5.10` XSS (CVE-2026-41305, transitive via Next.js). *(merged — PR #88)*
+- [x] [#62](https://github.com/SanchitB23/meetthefam/issues/62) — Tree re-center has no undo; `replaceState` vs hash-assignment inconsistency. *(merged — PR #95)*
+- [x] [#68](https://github.com/SanchitB23/meetthefam/issues/68) — User-facing error handling: friendly alerts everywhere (not just login). *(merged — PR #102 foundation + PR #113/#114/#115 consumers)*
+- [x] [#73](https://github.com/SanchitB23/meetthefam/issues/73) — Person cards "swim" into the canvas (same colour); needs contrast tweak. *(merged — PR #97)*
+- [x] [#75](https://github.com/SanchitB23/meetthefam/issues/75) — Verify favicon is the heirloom logomark, not legacy create-next-app `.ico`. *(merged — PR #98)*
+- [x] [#78](https://github.com/SanchitB23/meetthefam/issues/78) — `derive-version.mjs` emits bare version on tagged-commit prod build (Vercel shallow-clone limitation). *(merged — PR #99)*
 
 ### Phase 8 polish carry-overs
 
 > Still unchecked in the Phase 8 section above; pulled forward because Phase 8 closed without them. Tick in their original Phase 8 location when done — these are pointers, not duplicates.
 
-- [ ] Replace create-next-app `src/app/page.tsx` with the actual landing screen.
-- [ ] Empty / loading / error states per screen — heirloom palette + Cormorant for hero copy.
-- [ ] Slow-nav loading affordance — `<Suspense>` skeletons + `useLinkStatus()` on `<Link>`.
-- [ ] Tree settings unified sheet (Rename + Members + Danger zone).
-- [ ] Revoke-member confirm copy.
-- [ ] Decorative motifs — branch SVG dividers, leaf headings, sparkle "new" markers.
-- [ ] Italic Cormorant whitelist enforcement audit.
-- [ ] [#71](https://github.com/SanchitB23/meetthefam/issues/71) — Add-person FAB: link relationship from inside the form (brainstorm UX).
-- [ ] [#72](https://github.com/SanchitB23/meetthefam/issues/72) — Zoom control cluster (in / out / fit 100%) on canvas.
-- [ ] "If tree navigation animations weren't done in Phase 4, do them here."
+- [x] Replace create-next-app `src/app/page.tsx` with the actual landing screen. *(landed Phase 8 sub-task 8c-2)*
+- [x] Empty / loading / error states per screen — heirloom palette + Cormorant for hero copy. *(landed Phase 8 sub-task 8c-3 + post-v0.4.0 polish)*
+- [x] Slow-nav loading affordance — `<Suspense>` skeletons + `useLinkStatus()` on `<Link>`. *(landed Phase 8 sub-task 8c-4)*
+- [ ] Tree settings unified sheet (Rename + Members + Danger zone). *(deferred to Phase 10 Wave D — [#119](https://github.com/SanchitB23/meetthefam/issues/119))*
+- [x] Revoke-member confirm copy. *(landed Phase 8 sub-task 8c-6)*
+- [x] Decorative motifs — branch SVG dividers, leaf headings, sparkle "new" markers. *(landed Phase 8 + post-v0.4.0 polish)*
+- [x] Italic Cormorant whitelist enforcement audit. *(landed Phase 8 sub-task 8c-6)*
+- [x] [#71](https://github.com/SanchitB23/meetthefam/issues/71) — Add-person FAB: link relationship from inside the form (brainstorm UX). *(merged — PR #118)*
+- [x] [#72](https://github.com/SanchitB23/meetthefam/issues/72) — Zoom control cluster (in / out / fit 100%) on canvas. *(merged — PR #96)*
+- [ ] "If tree navigation animations weren't done in Phase 4, do them here." *(deferred to Phase 10 Wave D — [#120](https://github.com/SanchitB23/meetthefam/issues/120))*
 
 ### Custom SMTP + email branding ([#25](https://github.com/SanchitB23/meetthefam/issues/25), [#61](https://github.com/SanchitB23/meetthefam/issues/61))
 
@@ -186,16 +188,17 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 
 > Cross-ref [`../dev/prod-readiness.md`](../dev/prod-readiness.md) §6 + §9 + §10. Decision-making + doc-writing only; SDK wiring against the prod env is Phase 10.
 
-- [ ] Error tracking decision: Sentry (`@sentry/nextjs`) vs Vercel built-in only. If Sentry: wire the SDK now; the `SENTRY_DSN` prod env-var goes in at Phase 10; fire one synthetic error to confirm.
+- [x] Error tracking decision: **Sentry = NO for v1.0.** Vercel built-in runtime logs + BetterStack uptime monitoring are sufficient for a solo-dev v1.0 launch. Revisit post-launch if structured error tracking becomes a real need. *(decided 2026-05-29 — resolves [#103](https://github.com/SanchitB23/meetthefam/issues/103))*
 - [x] Uptime monitoring choice — **BetterStack** (free tier: 10 monitors, 3-min checks + hosted status page). Setup steps in [`prod-readiness.md`](../dev/prod-readiness.md) §10a.
-- [ ] Write the DB restore runbook (one-pager).
-- [ ] Create `docs/runbooks/postmortem-template.md`.
-- [x] Link a status-page URL from the repo README — BetterStack; README + footer wired ([#83](https://github.com/SanchitB23/meetthefam/issues/83)). Footer link gated on `NEXT_PUBLIC_STATUS_URL`; launch-day infra in §10a.
+- [x] Write the DB restore runbook (one-pager). *(merged — PR #100, closes [#81](https://github.com/SanchitB23/meetthefam/issues/81))*
+- [x] Create `docs/runbooks/postmortem-template.md`. *(merged — PR #101, closes [#82](https://github.com/SanchitB23/meetthefam/issues/82))*
+- [x] Link a status-page URL from the repo README — BetterStack; README + footer wired ([#83](https://github.com/SanchitB23/meetthefam/issues/83), PR #122). Footer link gated on `NEXT_PUBLIC_STATUS_URL`; launch-day infra in §10a.
 - [ ] Document on-call / contact info (email + WhatsApp is fine for solo).
 
 ### CI gate that "has a place at v1.0"
 
-- [ ] GitHub Action: `pnpm test` on PR with a Supabase service container (~2 min/PR, ~50 lines of yaml). Spins up Postgres, applies migrations, runs the Vitest RLS suite. Catches RLS regressions automatically. *(Originally listed under "CI / Repo settings" below; pulled here because the spec says "has a place at v1.0".)*
+- [x] GitHub Action: `pnpm lint` + `pnpm typecheck` on PR — landed via PR #104 ([#84](https://github.com/SanchitB23/meetthefam/issues/84)).
+- [ ] GitHub Action: `pnpm test` on PR with a Supabase service container (~2 min/PR, ~50 lines of yaml). *(Deferred to Phase 12 on 2026-05-26 — three existing quality gates cover the launch-blocking risk. Re-evaluate when a collaborator joins or new RLS policies churn.)*
 
 ---
 
@@ -205,37 +208,37 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 
 ### Wave A — Batch-review + merge the Phase 9 PRs
 
-> All 12 are draft as of 2026-05-22. User reviews and marks ready; only ready PRs merge.
+> All 12 merged as of 2026-05-29.
 
-- [ ] [PR #88](https://github.com/SanchitB23/meetthefam/pull/88) — [#58](https://github.com/SanchitB23/meetthefam/issues/58) postcss CVE override.
-- [ ] [PR #89](https://github.com/SanchitB23/meetthefam/pull/89) — [#49](https://github.com/SanchitB23/meetthefam/issues/49) /login redirect for authed users.
-- [ ] [PR #94](https://github.com/SanchitB23/meetthefam/pull/94) — Phase 9 kick-off docs + this 9 / 10 / 11 / 12 restructure.
-- [ ] [PR #95](https://github.com/SanchitB23/meetthefam/pull/95) — [#62](https://github.com/SanchitB23/meetthefam/issues/62) tree re-center undo.
-- [ ] [PR #96](https://github.com/SanchitB23/meetthefam/pull/96) — [#72](https://github.com/SanchitB23/meetthefam/issues/72) zoom control cluster.
-- [ ] [PR #97](https://github.com/SanchitB23/meetthefam/pull/97) — [#73](https://github.com/SanchitB23/meetthefam/issues/73) person-card contrast.
-- [ ] [PR #98](https://github.com/SanchitB23/meetthefam/pull/98) — [#75](https://github.com/SanchitB23/meetthefam/issues/75) heirloom favicon.
-- [ ] [PR #99](https://github.com/SanchitB23/meetthefam/pull/99) — [#78](https://github.com/SanchitB23/meetthefam/issues/78) derive-version on tagged builds.
-- [ ] [PR #100](https://github.com/SanchitB23/meetthefam/pull/100) — [#81](https://github.com/SanchitB23/meetthefam/issues/81) DB restore runbook.
-- [ ] [PR #101](https://github.com/SanchitB23/meetthefam/pull/101) — [#82](https://github.com/SanchitB23/meetthefam/issues/82) postmortem template.
-- [ ] [PR #102](https://github.com/SanchitB23/meetthefam/pull/102) — [#90](https://github.com/SanchitB23/meetthefam/issues/90) ErrorAlert foundation (blocks Wave C #91/#92/#93).
-- [ ] [PR #104](https://github.com/SanchitB23/meetthefam/pull/104) — [#84](https://github.com/SanchitB23/meetthefam/issues/84) lint+typecheck CI workflow.
+- [x] [PR #88](https://github.com/SanchitB23/meetthefam/pull/88) — [#58](https://github.com/SanchitB23/meetthefam/issues/58) postcss CVE override.
+- [x] [PR #89](https://github.com/SanchitB23/meetthefam/pull/89) — [#49](https://github.com/SanchitB23/meetthefam/issues/49) /login redirect for authed users.
+- [x] [PR #94](https://github.com/SanchitB23/meetthefam/pull/94) — Phase 9 kick-off docs + this 9 / 10 / 11 / 12 restructure.
+- [x] [PR #95](https://github.com/SanchitB23/meetthefam/pull/95) — [#62](https://github.com/SanchitB23/meetthefam/issues/62) tree re-center undo.
+- [x] [PR #96](https://github.com/SanchitB23/meetthefam/pull/96) — [#72](https://github.com/SanchitB23/meetthefam/issues/72) zoom control cluster.
+- [x] [PR #97](https://github.com/SanchitB23/meetthefam/pull/97) — [#73](https://github.com/SanchitB23/meetthefam/issues/73) person-card contrast.
+- [x] [PR #98](https://github.com/SanchitB23/meetthefam/pull/98) — [#75](https://github.com/SanchitB23/meetthefam/issues/75) heirloom favicon.
+- [x] [PR #99](https://github.com/SanchitB23/meetthefam/pull/99) — [#78](https://github.com/SanchitB23/meetthefam/issues/78) derive-version on tagged builds.
+- [x] [PR #100](https://github.com/SanchitB23/meetthefam/pull/100) — [#81](https://github.com/SanchitB23/meetthefam/issues/81) DB restore runbook.
+- [x] [PR #101](https://github.com/SanchitB23/meetthefam/pull/101) — [#82](https://github.com/SanchitB23/meetthefam/issues/82) postmortem template.
+- [x] [PR #102](https://github.com/SanchitB23/meetthefam/pull/102) — [#90](https://github.com/SanchitB23/meetthefam/issues/90) ErrorAlert foundation (consumers in Wave C).
+- [x] [PR #104](https://github.com/SanchitB23/meetthefam/pull/104) — [#84](https://github.com/SanchitB23/meetthefam/issues/84) lint+typecheck CI workflow.
 
 ### Wave B — Brainstorm tracks (parallel; user-driven)
 
 > Run any time alongside Wave A. Each decision unblocks Wave C work.
 
-- [ ] **(b1) SMTP provider pick** ([#25](https://github.com/SanchitB23/meetthefam/issues/25)) — Resend / Postmark / SES / SendGrid. Unblocks Wave C SMTP code.
+- [ ] **(b1) SMTP provider pick** ([#25](https://github.com/SanchitB23/meetthefam/issues/25)) — Resend / Postmark / SES / SendGrid. Unblocks Wave C SMTP code. **Critical path.**
 - [ ] **(b2) Legal pages catalog** ([#56](https://github.com/SanchitB23/meetthefam/issues/56)) — privacy / terms / cookies / about / contact. Also decide whether @claude generates prose or only scaffolds pages.
-- [ ] **(b3) Observability stack pick** ([#103](https://github.com/SanchitB23/meetthefam/issues/103)) — Sentry y/n + uptime monitor. **Uptime-monitor half DECIDED: BetterStack** (unblocked + shipped [#83](https://github.com/SanchitB23/meetthefam/issues/83)). Still open: Sentry y/n + optional Sentry SDK in Wave C.
+- [x] **(b3) Observability stack pick** ([#103](https://github.com/SanchitB23/meetthefam/issues/103)) — **RESOLVED 2026-05-29.** BetterStack for uptime monitoring (shipped via PR #122 / [#83](https://github.com/SanchitB23/meetthefam/issues/83)). **Sentry = NO for v1.0** — Vercel built-in + BetterStack suffice; revisit post-launch. Launch-day BetterStack infra in [`prod-readiness.md`](../dev/prod-readiness.md) §10a.
 
 ### Wave C — Post-brainstorm implementation
 
-> Held until Wave A's #90 PR merges (consumers) and the relevant Wave B decision lands.
+> #90 consumers merged. SMTP/legal items still blocked on Wave B decisions.
 
-- [ ] [#91](https://github.com/SanchitB23/meetthefam/issues/91) — auth flow typed errors (consumer of #90).
-- [ ] [#92](https://github.com/SanchitB23/meetthefam/issues/92) — dashboard server actions (consumer of #90).
-- [ ] [#93](https://github.com/SanchitB23/meetthefam/issues/93) — tree-page server actions (consumer of #90).
-- [x] [#83](https://github.com/SanchitB23/meetthefam/issues/83) — status-page link in README + footer. **BetterStack** (Option B) chosen over static `STATUS.md` / statuspage.io / Instatus; this resolves the uptime-monitor half of the (b3) decision. Wired: README "Service status" quick link, landing footer "Status" link gated on `NEXT_PUBLIC_STATUS_URL` (no dead link before launch), `.env.local.example`, and `docs/dev/prod-readiness.md` §10a setup steps. Remaining = launch-day infra (create BetterStack account + monitors, set the Vercel env var).
+- [x] [#91](https://github.com/SanchitB23/meetthefam/issues/91) — auth flow typed errors (consumer of #90). *(merged — PR #113)*
+- [x] [#92](https://github.com/SanchitB23/meetthefam/issues/92) — dashboard server actions (consumer of #90). *(merged — PR #114)*
+- [x] [#93](https://github.com/SanchitB23/meetthefam/issues/93) — tree-page server actions (consumer of #90). *(merged — PR #115)*
+- [x] [#83](https://github.com/SanchitB23/meetthefam/issues/83) — status-page link in README + footer. **BetterStack** chosen; README "Service status" quick link + landing footer "Status" link gated on `NEXT_PUBLIC_STATUS_URL`. Launch-day infra in [`prod-readiness.md`](../dev/prod-readiness.md) §10a. *(merged — PR #122)*
 - [ ] SMTP SDK wire-in (`src/lib/email/inviteEmail.ts`) — opens after Wave B (b1) decision. Drop the `throw new Error('Email delivery not yet implemented')` line.
 - [ ] [#61](https://github.com/SanchitB23/meetthefam/issues/61) — brand the magic-link email template.
 - [ ] Brand the invite email template.
@@ -243,14 +246,14 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 - [ ] Build `/privacy` page (opens after Wave B (b2) decision).
 - [ ] Build `/terms` page (opens after Wave B (b2) decision).
 - [ ] Footer with policy + contact links wired into the landing page.
-- [ ] *(if Sentry chosen)* Sentry SDK wire-in — `SENTRY_DSN` env-var deferred to Phase 11.
+- n/a Sentry SDK wire-in — **Sentry = NO for v1.0** (decided 2026-05-29). No `SENTRY_DSN` needed.
 
 ### Wave D — Phase 8 polish carry-overs
 
 > *(`pnpm test` CI gate was originally listed here; deferred to Phase 12 on 2026-05-26 — the three existing quality gates (local test discipline + #104 lint+typecheck CI + Vercel preview build) plus Wave E's [#86](https://github.com/SanchitB23/meetthefam/issues/86) RLS-negative verification cover the launch-blocking risk without the per-PR CI cost.)*
 
 - [ ] [#119](https://github.com/SanchitB23/meetthefam/issues/119) — Tree settings unified sheet (Rename + Members + Danger zone). Brainstorm required (seam between dashboard + tree page).
-- [x] [#71](https://github.com/SanchitB23/meetthefam/issues/71) — Add-person FAB: always-on Link-to picker + standalone-confirm dialog. Brainstorm + wireframes locked A+D combined; implementation in `feat/71-link-to-picker` (PR [#118](https://github.com/SanchitB23/meetthefam/pull/118)).
+- [x] [#71](https://github.com/SanchitB23/meetthefam/issues/71) — Add-person FAB: always-on Link-to picker + standalone-confirm dialog. Brainstorm + wireframes locked A+D combined; implementation in `feat/71-link-to-picker` (PR [#118](https://github.com/SanchitB23/meetthefam/pull/118)). *(merged — PR #118)*
 - [ ] [#120](https://github.com/SanchitB23/meetthefam/issues/120) — Tree-nav within-canvas animations. Deferred per Phase 8 locked decision #5; revisit only if a jarring boundary surfaces post-merge.
 
 ### Wave E — Verification matrix + security hardening
