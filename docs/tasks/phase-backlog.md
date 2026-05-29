@@ -187,10 +187,10 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 > Cross-ref [`../dev/prod-readiness.md`](../dev/prod-readiness.md) §6 + §9 + §10. Decision-making + doc-writing only; SDK wiring against the prod env is Phase 10.
 
 - [ ] Error tracking decision: Sentry (`@sentry/nextjs`) vs Vercel built-in only. If Sentry: wire the SDK now; the `SENTRY_DSN` prod env-var goes in at Phase 10; fire one synthetic error to confirm.
-- [ ] Uptime monitoring choice — BetterStack / UptimeRobot / Vercel built-in.
+- [x] Uptime monitoring choice — **BetterStack** (free tier: 10 monitors, 3-min checks + hosted status page). Setup steps in [`prod-readiness.md`](../dev/prod-readiness.md) §10a.
 - [ ] Write the DB restore runbook (one-pager).
 - [ ] Create `docs/runbooks/postmortem-template.md`.
-- [ ] Link a status-page URL from the repo README.
+- [x] Link a status-page URL from the repo README — BetterStack; README + footer wired ([#83](https://github.com/SanchitB23/meetthefam/issues/83)). Footer link gated on `NEXT_PUBLIC_STATUS_URL`; launch-day infra in §10a.
 - [ ] Document on-call / contact info (email + WhatsApp is fine for solo).
 
 ### CI gate that "has a place at v1.0"
@@ -226,7 +226,7 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 
 - [ ] **(b1) SMTP provider pick** ([#25](https://github.com/SanchitB23/meetthefam/issues/25)) — Resend / Postmark / SES / SendGrid. Unblocks Wave C SMTP code.
 - [ ] **(b2) Legal pages catalog** ([#56](https://github.com/SanchitB23/meetthefam/issues/56)) — privacy / terms / cookies / about / contact. Also decide whether @claude generates prose or only scaffolds pages.
-- [ ] **(b3) Observability stack pick** ([#103](https://github.com/SanchitB23/meetthefam/issues/103)) — Sentry y/n + uptime monitor (BetterStack / UptimeRobot / Vercel built-in). Unblocks [#83](https://github.com/SanchitB23/meetthefam/issues/83) and optional Sentry SDK in Wave C.
+- [ ] **(b3) Observability stack pick** ([#103](https://github.com/SanchitB23/meetthefam/issues/103)) — Sentry y/n + uptime monitor. **Uptime-monitor half DECIDED: BetterStack** (unblocked + shipped [#83](https://github.com/SanchitB23/meetthefam/issues/83)). Still open: Sentry y/n + optional Sentry SDK in Wave C.
 
 ### Wave C — Post-brainstorm implementation
 
@@ -235,7 +235,7 @@ Not phase-specific TODOs — discipline reminders for every session. These never
 - [ ] [#91](https://github.com/SanchitB23/meetthefam/issues/91) — auth flow typed errors (consumer of #90).
 - [ ] [#92](https://github.com/SanchitB23/meetthefam/issues/92) — dashboard server actions (consumer of #90).
 - [ ] [#93](https://github.com/SanchitB23/meetthefam/issues/93) — tree-page server actions (consumer of #90).
-- [ ] [#83](https://github.com/SanchitB23/meetthefam/issues/83) — status-page link in README + footer (needs Wave B (b3) decision).
+- [x] [#83](https://github.com/SanchitB23/meetthefam/issues/83) — status-page link in README + footer. **BetterStack** (Option B) chosen over static `STATUS.md` / statuspage.io / Instatus; this resolves the uptime-monitor half of the (b3) decision. Wired: README "Service status" quick link, landing footer "Status" link gated on `NEXT_PUBLIC_STATUS_URL` (no dead link before launch), `.env.local.example`, and `docs/dev/prod-readiness.md` §10a setup steps. Remaining = launch-day infra (create BetterStack account + monitors, set the Vercel env var).
 - [ ] SMTP SDK wire-in (`src/lib/email/inviteEmail.ts`) — opens after Wave B (b1) decision. Drop the `throw new Error('Email delivery not yet implemented')` line.
 - [ ] [#61](https://github.com/SanchitB23/meetthefam/issues/61) — brand the magic-link email template.
 - [ ] Brand the invite email template.

@@ -113,9 +113,27 @@
 - [ ] Final smoke pass on the production URL (walk every flow in [`docs/qa/smoke-flows.md`](../qa/smoke-flows.md)).
 - [ ] DNS verified (A / AAAA / CNAME records resolve correctly; CAA records permit Let's Encrypt if Vercel uses it).
 - [ ] DB backup taken pre-launch (manual snapshot via Supabase dashboard).
-- [ ] Status-page URL linked from the repo README.
+- [x] Status-page URL linked from the repo README — **BetterStack** (Option B) chosen as the status surface; README + landing footer wired ([#83](https://github.com/SanchitB23/meetthefam/issues/83)). The footer link is gated on `NEXT_PUBLIC_STATUS_URL`, so the remaining launch-day work is the **infra + env-var setup** below.
+- [ ] **BetterStack status page live** (infra, owner action — see [§10a](#10a-betterstack-status-page-setup)). Create the account + 3 monitors and set `NEXT_PUBLIC_STATUS_URL` in Vercel so the footer "Status" link renders.
 - [ ] Postmortem template ready at [`docs/runbooks/postmortem-template.md`](../runbooks/postmortem-template.md).
 - [ ] On-call / contact info documented (even if it's just the maintainer's email + WhatsApp).
+
+### 10a. BetterStack status page setup
+
+We picked **BetterStack** over a static `STATUS.md` (Option A) and over statuspage.io / Instatus — the free tier covers our whole stack with automated uptime history and a hosted page, with zero code to maintain. This choice also resolves the uptime-monitor half of the Wave B observability decision ([#103](https://github.com/SanchitB23/meetthefam/issues/103)) that was holding [#83](https://github.com/SanchitB23/meetthefam/issues/83).
+
+**One-time setup (owner, before v1.0 launch):**
+
+1. Create a free [BetterStack](https://betterstack.com/uptime) account (free tier: up to 10 monitors, 3-min checks — enough for v1.0).
+2. Add monitors for the user-facing surfaces:
+   - **Web app** — the production Vercel URL (expect `200`).
+   - **Auth / REST** — the Supabase project's REST health endpoint (`https://<project-ref>.supabase.co/rest/v1/` with the anon key, or `/auth/v1/health`).
+   - **Storage** — a known-public object URL in the `photos` bucket (optional; HTTP-level reachability only).
+3. Create a **status page**, attach the monitors as components (Web / Auth / Database / Storage), and claim the `meetthefam` subdomain → `https://meetthefam.betteruptime.com`. *(Optional: point a `status.meetthefam.com` CNAME at BetterStack for a branded URL — free on their tier — and update the README link if you do.)*
+4. Set `NEXT_PUBLIC_STATUS_URL` to the status-page URL in **Vercel → Project Settings → Environment Variables** (Production + Preview). The landing footer renders the "Status" link only when this is set, so nothing dead ships before the page is live.
+5. Configure incident alerts (email + Slack) and any scheduled-maintenance windows.
+
+**Trade-offs accepted for v1.0:** 3-min polling gap (paid plans go to 30s) and a "Powered by Better Stack" badge on the free tier; status/incident history lives in BetterStack's UI rather than in git. Revisit a paid plan only if paying users justify shorter polling or removing the badge.
 
 ---
 
