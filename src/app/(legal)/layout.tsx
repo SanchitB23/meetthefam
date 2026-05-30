@@ -10,6 +10,15 @@ import { SiteFooter } from '@/components/layout/SiteFooter'
  * the root layout (src/app/layout.tsx) still provides <html>/<body> and the
  * tiny VersionFooter beneath everything.
  */
+
+// These pages are pure static content (no per-request data). The app is
+// otherwise dynamic app-wide because the Supabase auth proxy (src/proxy.ts)
+// touches the default render path; opting this route group into static
+// prerendering makes /privacy, /terms, /contact ship as cached HTML. Cascades
+// to all three child pages. (Valid in Next 16 with Cache Components off — see
+// docs route-segment-config.)
+export const dynamic = 'force-static'
+
 export default function LegalLayout({
   children,
 }: {
