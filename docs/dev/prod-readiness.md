@@ -45,7 +45,7 @@
 - [ ] Google OAuth Client ID + Secret configured for production:
   - [ ] Authorized redirect URIs include `https://<prod-domain>/auth/callback`
   - [ ] OAuth Consent Screen moved from "Testing" → "In production" in Google Cloud Console
-- [ ] Magic-link email template branded (Supabase Auth → Email Templates → Magic Link).
+- [ ] Upload branded auth email templates (issue #61) to prod Supabase → Auth → Email Templates: `supabase/templates/magic_link.html` (Magic Link) + `supabase/templates/confirm_signup.html` (Confirm signup). Authored in `emails/`; regenerate with `pnpm emails:build`; recipe in [`email-templates.md`](./email-templates.md).
 - [ ] Invite email template branded (only once custom SMTP lands — §4).
 - [ ] Smoke-test the auth flow against the production URL: anon hitting `/dashboard` → bounced through `/login?next=/dashboard` → magic-link arrives → click → land on dashboard. Plus the same for `/tree/<id>` and `/invite/<token>`.
 - [ ] **`?next=` preservation** through the magic-link round-trip — verified working post-Phase-6 (commit `8758755`). Smoke-test it on prod for regression coverage.

@@ -238,10 +238,14 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+# Branded auth email templates (authored in emails/, exported via `pnpm emails:build`).
+[auth.email.template.magic_link]
+subject = "Your meetthefam sign-in link"
+content_path = "./supabase/templates/magic_link.html"
+
+[auth.email.template.confirmation]
+subject = "Welcome to meetthefam — confirm your email"
+content_path = "./supabase/templates/confirm_signup.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
