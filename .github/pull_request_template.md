@@ -9,11 +9,16 @@
 -
 -
 
-## Phase doc reference
+## Closes
 
-<!-- Tick the sub-task in docs/tasks/current-phase.md in the SAME PR as the feature work (per CLAUDE.md). -->
+<!--
+One bare `Closes #N` line per issue this PR resolves — bare syntax only.
+Markdown-link (`closes [#45](...)`) and bold comma-list (`**#44, #45**`) forms do NOT trigger auto-close.
+Also set each issue's milestone (the current open cycle, e.g. v1.0 — Launch) so it tracks against the release.
+Use "N/A" only for one-off chores with no backing issue.
+-->
 
-Closes phase doc sub-task: <!-- e.g. Phase 5 sub-task #4 — or "N/A" for chore/docs PRs -->
+Closes #
 
 ## Test plan
 
@@ -62,7 +67,6 @@ Delete a subsection if it doesn't apply.
 - [ ] `pnpm typecheck` is clean
 - [ ] `pnpm lint` is clean
 - [ ] Relevant tests pass (`pnpm test`) — or N/A with reason
-- [ ] `docs/tasks/current-phase.md` updated in this PR (per standing rule)
 - [ ] No secrets staged (`.env`, `credentials.json`, `*.pem`, `*.key`)
 - [ ] PR opened as **draft** — will be marked ready by the author once CI + self-review pass
 
