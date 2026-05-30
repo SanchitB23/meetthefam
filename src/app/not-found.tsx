@@ -10,6 +10,7 @@
 
 import Link from 'next/link'
 
+import { StatusPageShell } from '@/components/layout/StatusPageShell'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function NotFound() {
@@ -31,7 +32,7 @@ export default async function NotFound() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-6 py-16">
+    <StatusPageShell>
       <div className="max-w-md w-full text-center">
         <p className="font-serif italic text-base text-muted-foreground mb-3">
           Lost in the family tree?
@@ -61,6 +62,6 @@ export default async function NotFound() {
           )}
         </div>
       </div>
-    </main>
+    </StatusPageShell>
   )
 }
