@@ -15,6 +15,11 @@ const eslintConfig = defineConfig([
     // Vendored design references — see docs/ux/inspiration/README.md.
     // Not maintained by us; not subject to repo lint rules.
     "docs/ux/inspiration/**",
+    // Agent scratch space. `.claude/worktrees/` holds full src/ copies from
+    // leftover git worktrees; linting them produces phantom errors (the dir is
+    // gitignored, so CI never sees them). Ignore all .claude/ content, nested too.
+    ".claude/**",
+    "**/.claude/**",
   ]),
 ]);
 
