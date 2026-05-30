@@ -1,5 +1,6 @@
 import { SignOutButton } from './_components/SignOutButton'
 import { Logo } from '@/components/icons/Logo'
+import { SiteFooter } from '@/components/layout/SiteFooter'
 
 /**
  * Shared chrome for authenticated routes — dashboard, tree page, invite
@@ -24,6 +25,7 @@ export default function AppLayout({
         <SignOutButton />
       </nav>
       {children}
+      <SiteFooter />
     </div>
   )
 }
