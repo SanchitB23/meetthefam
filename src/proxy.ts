@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { isPublicPath } from '@/lib/public-routes'
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -33,14 +34,11 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
-  // Phase 8c-2 made `/` the public heirloom landing page (was the create-next-app
-  // scaffold). The landing's Server Component itself handles the "if authed,
-  // redirect to /dashboard" branch, so unauthed hits must reach the page —
-  // they should NOT be bounced to /login by this proxy.
-  const isPublic =
-    pathname === '/' ||
-    pathname.startsWith('/login') ||
-    pathname.startsWith('/auth')
+  // Public routes (landing, login, auth callbacks, and the legal / marketing
+  // pages) must reach the page even when signed out — see src/lib/public-routes.
+  // The landing's Server Component itself handles the "if authed, redirect to
+  // /dashboard" branch, so unauthed hits must NOT be bounced to /login here.
+  const isPublic = isPublicPath(pathname)
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone()
