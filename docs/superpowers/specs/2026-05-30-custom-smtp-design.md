@@ -53,19 +53,28 @@ Supabase Dashboard SMTP settings take the API key directly — not wired as app 
 ```ts
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 export async function sendInviteEmail(invite: InvitePayload): Promise<void> {
   if (process.env.MEETTHEFAM_EMAIL_INVITES_ENABLED !== 'true') {
     console.log('[invite-email] disabled by flag; would have sent to', invite.email, invite.inviteUrl)
     return
   }
-  await resend.emails.send({
-    from: process.env.RESEND_FROM_EMAIL!,
-    to: invite.email,
-    subject: `${invite.invitedByName} invited you to their family tree on meetthefam`,
-    html: buildInviteHtml(invite),
-  })
+  try {
+    // Lazy construction — after the flag gate, so local dev needs no API key.
+    const resend = new Resend(process.env.RESEND_API_KEY)
+    const { error } = await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL!,
+      to: invite.email,
+      subject: `${invite.invitedByName} invited you to their family tree on meetthefam`,
+      html: buildInviteHtml(invite),
+    })
+    // Resend reports API-level failures (bad key, rate limit, unverified
+    // domain) as a returned error, not a thrown one.
+    if (error) console.error('[invite-email] send rejected for', invite.email, error)
+  } catch (err) {
+    // Unexpected throw (e.g. network layer). The invite row already exists
+    // upstream; a delivery failure must not roll back invite creation.
+    console.error('[invite-email] send threw for', invite.email, err)
+  }
 }
 ```
 
