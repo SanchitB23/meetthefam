@@ -15,7 +15,7 @@ export default function PrivacyPage() {
         <strong>Last updated: 30 May 2026</strong>
       </p>
       <p>
-        This Privacy Policy explains how meetthefam ("we", "us") collects, uses,
+        This Privacy Policy explains how meetthefam (&ldquo;we&rdquo;, &ldquo;us&rdquo;) collects, uses,
         and protects your information. meetthefam is operated by Sanchit
         Bhatnagar as an individual. If you have any questions, email us at{' '}
         <a href="mailto:hello.mtf@sanchitb23.in">hello.mtf@sanchitb23.in</a>.
@@ -25,7 +25,7 @@ export default function PrivacyPage() {
       <p>
         meetthefam is a private, invite-based family-tree service operated by
         Sanchit Bhatnagar (an individual) from India. For the purposes of
-        applicable data-protection law, including India's Digital Personal Data
+        applicable data-protection law, including India&apos;s Digital Personal Data
         Protection Act, 2023 (DPDP Act), we act as the data fiduciary for the
         personal data described below.
       </p>
@@ -64,7 +64,7 @@ export default function PrivacyPage() {
       <h2>4. Who we share it with</h2>
       <p>
         We do not sell your personal data. We share it only with the service
-        providers ("processors") that make meetthefam work:
+        providers (&ldquo;processors&rdquo;) that make meetthefam work:
       </p>
       <ul>
         <li>
@@ -100,12 +100,12 @@ export default function PrivacyPage() {
         <a href="mailto:hello.mtf@sanchitb23.in">hello.mtf@sanchitb23.in</a>.
       </p>
 
-      <h2>7. Children's data</h2>
+      <h2>7. Children&apos;s data</h2>
       <p>
         Family trees often include children, including those under 13. Where you
         add information about a child, you confirm that you are a parent or
         relative entitled to do so and are responsible for any consent required
-        under applicable law. If you believe a child's data has been added
+        under applicable law. If you believe a child&apos;s data has been added
         without authority, email{' '}
         <a href="mailto:hello.mtf@sanchitb23.in">hello.mtf@sanchitb23.in</a> and
         we will remove it.
@@ -114,7 +114,7 @@ export default function PrivacyPage() {
       <h2>8. How we protect your data</h2>
       <p>
         Each family tree is isolated to its owner and invited editors using
-        database Row-Level Security, so one account cannot see another's data.
+        database Row-Level Security, so one account cannot see another&apos;s data.
         Data is encrypted at rest by our storage provider, and read-only share
         links use hashed, unguessable tokens that you can revoke at any time.
       </p>
@@ -122,7 +122,7 @@ export default function PrivacyPage() {
       <h2>9. Changes to this policy</h2>
       <p>
         We may update this policy from time to time. When we do, we will revise
-        the "Last updated" date above. We will communicate material changes
+        the &ldquo;Last updated&rdquo; date above. We will communicate material changes
         where appropriate.
       </p>
 
