@@ -52,10 +52,10 @@
 
 ## 4. Email deliverability (custom SMTP — tracks GitHub issue #25)
 
-- [ ] Provider chosen (Resend recommended for Next.js / Supabase compat); account created.
+- [ ] Provider chosen: **Resend** (locked in #25). Account created; sender `noreply-mtf@sanchitb23.in` on domain `sanchitb23.in`.
 - [ ] Sending domain verified (DKIM + SPF + DMARC records set in DNS).
 - [ ] Test email rendering in Gmail, Outlook, Apple Mail (light + dark mode); inline images + buttons resolve.
-- [ ] `src/lib/email/inviteEmail.ts`'s flag-gated path actually sends via the provider's SDK. Drop the `throw new Error('Email delivery not yet implemented')` line.
+- [x] `src/lib/email/inviteEmail.ts` sends via the Resend SDK (minimal inline HTML body; rich branded invite template deferred to follow-up #154). Stub `throw` removed in #25. Flip `MEETTHEFAM_EMAIL_INVITES_ENABLED=true` per environment once SMTP is verified.
 - [ ] Provider API key added to prod env vars (Vercel + Supabase Edge Functions, if used).
 - [ ] Supabase Auth → Email Templates: magic-link template updated to ship via the custom SMTP path (Supabase routes via the same SMTP when configured).
 - [ ] Flip `MEETTHEFAM_EMAIL_INVITES_ENABLED=true` in prod env (§2).
