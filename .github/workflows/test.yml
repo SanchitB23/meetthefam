@@ -4,6 +4,13 @@ on:
   pull_request:
     branches: [qa, main]
 
+# Cancel a superseded run when a new commit lands on the same PR branch — the
+# Supabase-backed suite is the slowest gate, so in-flight runs of stale commits
+# just waste a runner.
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   vitest:
     runs-on: ubuntu-latest
@@ -25,11 +32,6 @@ jobs:
       # package.json#pnpm.onlyBuiltDependencies — that whitelist includes
       # `supabase`, so the CLI's Go binary is fetched here (needed below).
       - run: pnpm install --frozen-lockfile
-
-      # Next.js 16 generates route/page TypeScript types into .next/types at
-      # dev / build time. Mirrors lint-typecheck.yml so the test run resolves
-      # the same generated types the app relies on.
-      - run: pnpm exec next typegen
 
       # Boots the local Supabase stack (Postgres :54322, API gateway :54321,
       # Auth, REST, Storage) exactly as `pnpm exec supabase start` does in local
