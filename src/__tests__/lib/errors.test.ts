@@ -41,12 +41,20 @@ describe('mapErrorCode', () => {
   })
 
   it('covers all typed error codes — every seeded tag has a mapped entry', () => {
+    // Sentinel fallback that no real entry could ever equal. A *mapped* code
+    // resolves from the error map and ignores the fallback; an *unmapped* code
+    // returns the fallback. So "fallback never returned" proves the code has a
+    // real entry — this holds even for `unknown`, whose mapped copy happens to
+    // equal the default `'Something went wrong.'` (the previous assertion
+    // compared against that default and so could never pass for `unknown`).
+    const SENTINEL = '__unmapped_sentinel__'
     for (const code of TYPED_CODES) {
       const result = mapErrorCode(code)
       expect(result, `mapErrorCode('${code}') should return a non-empty string`).toBeTruthy()
-      expect(result, `mapErrorCode('${code}') should not fall back to default`).not.toBe(
-        mapErrorCode('__unmapped__'),
-      )
+      expect(
+        mapErrorCode(code, SENTINEL),
+        `mapErrorCode('${code}') should have a mapped entry (not fall through to the fallback)`,
+      ).not.toBe(SENTINEL)
     }
   })
 
