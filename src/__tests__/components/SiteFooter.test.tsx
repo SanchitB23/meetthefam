@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import { render } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { SiteFooter } from '@/components/layout/SiteFooter'
 
 describe('<SiteFooter>', () => {
@@ -20,5 +20,19 @@ describe('<SiteFooter>', () => {
       a.getAttribute('href'),
     )
     expect(hrefs).toContain('/login')
+  })
+
+  it('renders a Status link only when NEXT_PUBLIC_STATUS_URL is set', async () => {
+    vi.stubEnv('NEXT_PUBLIC_STATUS_URL', 'https://status.example.com')
+    vi.resetModules()
+    const { SiteFooter: WithStatus } = await import(
+      '@/components/layout/SiteFooter'
+    )
+    const { container } = render(<WithStatus />)
+    const hrefs = Array.from(container.querySelectorAll('a')).map((a) =>
+      a.getAttribute('href'),
+    )
+    expect(hrefs).toContain('https://status.example.com')
+    vi.unstubAllEnvs()
   })
 })

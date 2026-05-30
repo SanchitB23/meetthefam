@@ -19,25 +19,25 @@ export function SiteFooter() {
       <p className="font-serif italic text-base mb-4">
         Made for the people who already know each other.
       </p>
-      <nav className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+      <nav aria-label="Footer" className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
         <Link href="/privacy" className="underline hover:text-foreground">
           Privacy
         </Link>
-        <span aria-hidden>·</span>
+        <span aria-hidden="true">·</span>
         <Link href="/terms" className="underline hover:text-foreground">
           Terms
         </Link>
-        <span aria-hidden>·</span>
+        <span aria-hidden="true">·</span>
         <Link href="/contact" className="underline hover:text-foreground">
           Contact
         </Link>
-        <span aria-hidden>·</span>
+        <span aria-hidden="true">·</span>
         <Link href="/login" className="underline hover:text-foreground">
           Sign in
         </Link>
         {STATUS_URL ? (
           <>
-            <span aria-hidden>·</span>
+            <span aria-hidden="true">·</span>
             <a
               href={STATUS_URL}
               target="_blank"
