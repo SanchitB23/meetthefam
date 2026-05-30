@@ -32,6 +32,10 @@ export function SiteFooter() {
           Contact
         </Link>
         <span aria-hidden="true">·</span>
+        <Link href="/about" className="underline hover:text-foreground">
+          About
+        </Link>
+        <span aria-hidden="true">·</span>
         <Link href="/login" className="underline hover:text-foreground">
           Sign in
         </Link>
