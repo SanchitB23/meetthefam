@@ -28,7 +28,7 @@ You will typically be invoked with `run_in_background: true`. Behave the same ei
 ## Always read first
 
 - [`docs/qa/smoke-flows.md`](../../docs/qa/smoke-flows.md) — the catalog of named flows. **Source of truth.** Each entry has env support, auth requirements, numbered steps, and pass criteria. If you don't recognize a flow ID the caller passed, **return BLOCKED** before running anything.
-- [`docs/tasks/current-phase.md`](../../docs/tasks/current-phase.md) — for context on what just shipped (helps when the caller passes `flow_ids: []` and you need to pick the right subset by phase).
+- **[GitHub milestones](https://github.com/SanchitB23/meetthefam/milestones)** — for context on what just shipped (the nearest open milestone's recently-closed issues; helps when the caller passes `flow_ids: []` and you need to pick the right subset).
 - [`CLAUDE.md`](../../CLAUDE.md) → "Local dev" — for the local stack ports + Mailpit location.
 
 ## Pre-flight checks

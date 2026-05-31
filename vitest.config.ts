@@ -12,5 +12,9 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['src/__tests__/**/*.test.{ts,tsx}'],
+    // Registers `afterEach(cleanup)` for @testing-library/react so jsdom
+    // renders don't leak across tests in the same file (see vitest.setup.ts
+    // / #133). Without it, screen.getByRole matches stale elements.
+    setupFiles: ['./vitest.setup.ts'],
   },
 })

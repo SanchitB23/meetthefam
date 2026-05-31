@@ -9,7 +9,7 @@ A multi-tenant family tree web app. Sign up, build a family tree, invite editors
 - **Service status**: [status.meetthefam.com](https://meetthefam.betteruptime.com) — hosted BetterStack status page (web app / auth / DB / storage). Goes live at v1.0; setup + custom-domain steps in [`docs/dev/prod-readiness.md`](docs/dev/prod-readiness.md) §10.
 - **Spec**: [`docs/specs/2026-05-10-family-tree-design.md`](docs/specs/2026-05-10-family-tree-design.md)
 - **Architecture**: [`docs/architecture/overview.md`](docs/architecture/overview.md)
-- **Current phase tasks**: [`docs/tasks/current-phase.md`](docs/tasks/current-phase.md)
+- **Current work**: the nearest open [GitHub milestone](https://github.com/SanchitB23/meetthefam/milestones) (planning source of truth — see [ADR 0011](docs/adrs/0011-github-milestones-source-of-truth.md))
 - **Claude Code conventions**: [`CLAUDE.md`](CLAUDE.md)
 - **Architecture Decision Records**: [`docs/adrs/`](docs/adrs/)
 

@@ -9,11 +9,16 @@
 -
 -
 
-## Phase doc reference
+## Closes
 
-<!-- Tick the sub-task in docs/tasks/current-phase.md in the SAME PR as the feature work (per CLAUDE.md). -->
+<!--
+One bare `Closes #N` line per issue this PR resolves — bare syntax only.
+Markdown-link (`closes [#45](...)`) and bold comma-list (`**#44, #45**`) forms do NOT trigger auto-close.
+Also set each issue's milestone (the current open cycle, e.g. v1.0 — Launch) so it tracks against the release.
+Use "N/A" only for one-off chores with no backing issue.
+-->
 
-Closes phase doc sub-task: <!-- e.g. Phase 5 sub-task #4 — or "N/A" for chore/docs PRs -->
+Closes #
 
 ## Test plan
 
@@ -32,6 +37,7 @@ Delete a subsection if it doesn't apply.
 
 ### App walkthrough (local dev — `pnpm dev` against `pnpm exec supabase start`)
 
+- [ ] If this PR adds a new public `(legal)` / standard page, the `SiteFooter` link, the new path in `PUBLIC_PATHS` (`src/lib/public-routes.ts`), **and** the `SiteFooter.test.tsx` href assertion all landed in this same PR (per `docs/superpowers/specs/2026-05-30-legal-pages-design.md` → Sibling-page checklist). Tick "N/A" if not applicable.
 - [ ] Pulled the branch, ran `pnpm install`, started Supabase + Next.js dev server
 - [ ] Walked the golden path of the changed feature end-to-end (steps below)
   - [ ] Step 1: <!-- e.g. open / , click "New person", fill form, save -->
@@ -62,7 +68,6 @@ Delete a subsection if it doesn't apply.
 - [ ] `pnpm typecheck` is clean
 - [ ] `pnpm lint` is clean
 - [ ] Relevant tests pass (`pnpm test`) — or N/A with reason
-- [ ] `docs/tasks/current-phase.md` updated in this PR (per standing rule)
 - [ ] No secrets staged (`.env`, `credentials.json`, `*.pem`, `*.key`)
 - [ ] PR opened as **draft** — will be marked ready by the author once CI + self-review pass
 

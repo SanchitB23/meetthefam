@@ -2,6 +2,14 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
+// LoginPage now renders <SiteFooter>, which transitively renders
+// <AuthFooterLink> — a client island that calls the browser Supabase client
+// on mount and embeds the signOut server action. Mock both via the shared
+// helper so jsdom doesn't try to instantiate a real Supabase client (which
+// would fail without NEXT_PUBLIC_SUPABASE_URL / ANON_KEY).
+import { mockSupabaseClient } from '@/__tests__/helpers/supabaseClientMock'
+mockSupabaseClient()
+
 vi.mock('next/navigation', () => ({ redirect: vi.fn() }))
 
 vi.mock('@/lib/supabase/server', () => ({

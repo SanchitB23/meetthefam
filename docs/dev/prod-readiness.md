@@ -45,17 +45,17 @@
 - [ ] Google OAuth Client ID + Secret configured for production:
   - [ ] Authorized redirect URIs include `https://<prod-domain>/auth/callback`
   - [ ] OAuth Consent Screen moved from "Testing" → "In production" in Google Cloud Console
-- [ ] Magic-link email template branded (Supabase Auth → Email Templates → Magic Link).
+- [ ] Upload branded auth email templates (issue #61) to prod Supabase → Auth → Email Templates: `supabase/templates/magic_link.html` (Magic Link) + `supabase/templates/confirm_signup.html` (Confirm signup). Authored in `emails/`; regenerate with `pnpm emails:build`; recipe in [`email-templates.md`](./email-templates.md).
 - [ ] Invite email template branded (only once custom SMTP lands — §4).
 - [ ] Smoke-test the auth flow against the production URL: anon hitting `/dashboard` → bounced through `/login?next=/dashboard` → magic-link arrives → click → land on dashboard. Plus the same for `/tree/<id>` and `/invite/<token>`.
 - [ ] **`?next=` preservation** through the magic-link round-trip — verified working post-Phase-6 (commit `8758755`). Smoke-test it on prod for regression coverage.
 
 ## 4. Email deliverability (custom SMTP — tracks GitHub issue #25)
 
-- [ ] Provider chosen (Resend recommended for Next.js / Supabase compat); account created.
+- [ ] Provider chosen: **Resend** (locked in #25). Account created; sender `noreply-mtf@sanchitb23.in` on domain `sanchitb23.in`.
 - [ ] Sending domain verified (DKIM + SPF + DMARC records set in DNS).
 - [ ] Test email rendering in Gmail, Outlook, Apple Mail (light + dark mode); inline images + buttons resolve.
-- [ ] `src/lib/email/inviteEmail.ts`'s flag-gated path actually sends via the provider's SDK. Drop the `throw new Error('Email delivery not yet implemented')` line.
+- [x] `src/lib/email/inviteEmail.ts` sends via the Resend SDK (minimal inline HTML body; rich branded invite template deferred to follow-up #154). Stub `throw` removed in #25. Flip `MEETTHEFAM_EMAIL_INVITES_ENABLED=true` per environment once SMTP is verified.
 - [ ] Provider API key added to prod env vars (Vercel + Supabase Edge Functions, if used).
 - [ ] Supabase Auth → Email Templates: magic-link template updated to ship via the custom SMTP path (Supabase routes via the same SMTP when configured).
 - [ ] Flip `MEETTHEFAM_EMAIL_INVITES_ENABLED=true` in prod env (§2).
@@ -114,7 +114,7 @@
 - [ ] DNS verified (A / AAAA / CNAME records resolve correctly; CAA records permit Let's Encrypt if Vercel uses it).
 - [ ] DB backup taken pre-launch (manual snapshot via Supabase dashboard).
 - [x] Status-page URL linked from the repo README — **BetterStack** (Option B) chosen as the status surface; README + landing footer wired ([#83](https://github.com/SanchitB23/meetthefam/issues/83)). The footer link is gated on `NEXT_PUBLIC_STATUS_URL`, so the remaining launch-day work is the **infra + env-var setup** below.
-- [ ] **BetterStack status page live** (infra, owner action — see [§10a](#10a-betterstack-status-page-setup)). Create the account + 3 monitors and set `NEXT_PUBLIC_STATUS_URL` in Vercel so the footer "Status" link renders.
+- [x] **BetterStack status page live** (infra, owner action — see [§10a](#10a-betterstack-status-page-setup)). Account + 3 monitors + status page provisioned via the BetterStack API (issue [#172](https://github.com/SanchitB23/meetthefam/issues/172)). Owner still needs to add the CNAME at Cloudflare + set `NEXT_PUBLIC_STATUS_URL` in Vercel — both tracked in §10a.
 - [ ] Postmortem template ready at [`docs/runbooks/postmortem-template.md`](../runbooks/postmortem-template.md).
 - [ ] On-call / contact info documented (even if it's just the maintainer's email + WhatsApp).
 
@@ -122,18 +122,51 @@
 
 We picked **BetterStack** over a static `STATUS.md` (Option A) and over statuspage.io / Instatus — the free tier covers our whole stack with automated uptime history and a hosted page, with zero code to maintain. This choice also resolves the uptime-monitor half of the Wave B observability decision ([#103](https://github.com/SanchitB23/meetthefam/issues/103)) that was holding [#83](https://github.com/SanchitB23/meetthefam/issues/83).
 
-**One-time setup (owner, before v1.0 launch):**
+**Status (post-#172, 2026-05-31):** account live, 3 monitors green, status page provisioned with all 3 components attached. **Remaining owner actions** are the two boxes below — CNAME at Cloudflare, and the Vercel env-var paste.
 
-1. Create a free [BetterStack](https://betterstack.com/uptime) account (free tier: up to 10 monitors, 3-min checks — enough for v1.0).
-2. Add monitors for the user-facing surfaces:
-   - **Web app** — the production Vercel URL (expect `200`).
-   - **Auth / REST** — the Supabase project's REST health endpoint (`https://<project-ref>.supabase.co/rest/v1/` with the anon key, or `/auth/v1/health`).
-   - **Storage** — a known-public object URL in the `photos` bucket (optional; HTTP-level reachability only).
-3. Create a **status page**, attach the monitors as components (Web / Auth / Database / Storage), and claim the `meetthefam` subdomain → `https://meetthefam.betteruptime.com`. *(Optional: point a `status.meetthefam.com` CNAME at BetterStack for a branded URL — free on their tier — and update the README link if you do.)*
-4. Set `NEXT_PUBLIC_STATUS_URL` to the status-page URL in **Vercel → Project Settings → Environment Variables** (Production + Preview). The landing footer renders the "Status" link only when this is set, so nothing dead ships before the page is live.
-5. Configure incident alerts (email + Slack) and any scheduled-maintenance windows.
+#### Locked-in configuration
 
-**Trade-offs accepted for v1.0:** 3-min polling gap (paid plans go to 30s) and a "Powered by Better Stack" badge on the free tier; status/incident history lives in BetterStack's UI rather than in git. Revisit a paid plan only if paying users justify shorter polling or removing the badge.
+| Setting | Value | Notes |
+|---|---|---|
+| Status page subdomain (fallback) | `https://meetthefam.betteruptime.com` | Active immediately. Use this while DNS propagates. |
+| Status page custom domain | `https://status.mtf.sanchitb23.in` | **This is the value to set as `NEXT_PUBLIC_STATUS_URL`.** Lights up once the CNAME below propagates. |
+| Status page ID | `249518` | Used for any future `PATCH /api/v2/status-pages/249518` adjustments. |
+| Free tier | Yes | 3-min polling cap (180 s), "Powered by Better Stack" footer. Acceptable for v1.0. |
+| Status page design | `v2`, light theme, vertical layout | |
+| Auto incident reports | `automatic_reports: true` | New monitor incidents auto-publish to the page. |
+
+#### Monitors
+
+All 3 polling at 180 s (3 min) from US / EU / AS / AU regions. Email alerts only (no SMS / call / push). All green as of provisioning.
+
+| # | BetterStack ID | Component label | URL | Probe |
+|---|---|---|---|---|
+| 1 | 4469154 | Web app | `https://mtf.sanchitb23.in` | GET → 200 (plus SSL + domain expiration alerts at 14 days). |
+| 2 | 4469155 | Auth (Supabase) | `https://ycnsgkotrbjifsjkqmvn.supabase.co/auth/v1/health` | GET with `apikey: <prod anon>` → 200. *(Endpoint requires the apikey header on hosted Supabase projects — Kong gates it even though the GoTrue docs imply it's public.)* |
+| 3 | 4469156 | Database (Supabase REST) | `https://ycnsgkotrbjifsjkqmvn.supabase.co/rest/v1/trees?select=id&limit=0` | GET with `apikey: <prod anon>` → 200 `[]`. Confirms Kong + PostgREST + anon-key validity end-to-end. **Note:** uses `trees` because it's the only table migrated to prod pre-v1.0 — once the full schema lands at v1.0, this can be re-pointed at any allowed table. |
+
+**Storage monitor deliberately skipped** — would require maintaining a `health-check.jpg` artifact in the `photos` bucket forever; auth + REST monitors already prove storage's transitive dependency chain (same Kong gateway). Revisit post-v1.0 if real users hit storage-specific outages.
+
+#### Remaining owner actions
+
+- [ ] **Add CNAME at Cloudflare** for `sanchitb23.in` zone:
+  - Type: `CNAME`
+  - Host: `status.mtf`
+  - Target: `statuspage.betteruptime.com`
+  - TTL: Auto (300 s)
+  - Proxy status: **DNS only** (grey cloud — Cloudflare's proxy breaks BetterStack's SSL termination per [their docs](https://betterstack.com/docs/uptime/custom-subdomain/)).
+- [ ] **Re-attach `custom_domain` on the status page** after CNAME propagates. The custom domain was temporarily cleared during provisioning to keep the BetterStack-hosted fallback (`meetthefam.betteruptime.com`) usable. One-liner: `curl -X PATCH https://uptime.betterstack.com/api/v2/status-pages/249518 -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" --data '{"custom_domain":"status.mtf.sanchitb23.in"}'`.
+- [ ] **Set `NEXT_PUBLIC_STATUS_URL=https://status.mtf.sanchitb23.in`** in Vercel → meetthefam project → Settings → Environment Variables → Production + Preview scopes. The landing footer renders the "Status" link only when this is set, so nothing dead ships before the page resolves. *(Tracked alongside the §2 Vercel env-var list.)*
+
+#### Alert routing (locked at provisioning)
+
+Email only, delivered to the BetterStack account owner's address. No Slack / SMS / phone integration for v1.0. Layer in via BetterStack → Integrations → Slack post-launch if signal density warrants it.
+
+#### Scheduled maintenance windows
+
+None pre-configured. Create ad-hoc via the BetterStack UI or `POST /api/v2/status-pages/249518/reports` (use `report_type: maintenance`) when a real window is planned.
+
+**Trade-offs accepted for v1.0:** 3-min polling gap (paid plans go to 30 s) and a "Powered by Better Stack" badge on the free tier; status/incident history lives in BetterStack's UI rather than in git. Revisit a paid plan only if paying users justify shorter polling or removing the badge.
 
 ---
 

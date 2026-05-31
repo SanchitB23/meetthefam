@@ -2,7 +2,14 @@
 
 import { useEffect } from 'react'
 
-export default function GlobalError({
+import { StatusPageShell } from '@/components/layout/StatusPageShell'
+
+// App-level error boundary — catches errors thrown within the root layout's
+// children and replaces the failed segment with this branded, heirloom-styled
+// fallback. NOT the root-layout crash boundary: when the root layout ITSELF
+// throws, `src/app/global-error.tsx` takes over instead. Named `AppError` to
+// disambiguate from that sibling.
+export default function AppError({
   error,
   reset,
 }: {
@@ -14,7 +21,7 @@ export default function GlobalError({
   }, [error])
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-6 py-16">
+    <StatusPageShell>
       <div className="max-w-md w-full text-center">
         <p className="font-serif italic text-base text-muted-foreground mb-3">
           Something went wrong
@@ -35,6 +42,6 @@ export default function GlobalError({
           </button>
         </div>
       </div>
-    </main>
+    </StatusPageShell>
   )
 }

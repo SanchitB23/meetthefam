@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { LandingHero } from '@/components/landing/LandingHero'
 import { LandingFeatures } from '@/components/landing/LandingFeatures'
-import { LandingFooter } from '@/components/landing/LandingFooter'
+import { SiteFooter } from '@/components/layout/SiteFooter'
 
 /**
  * Phase 8c-2 — heirloom landing page. Replaces the create-next-app
@@ -17,10 +17,12 @@ export default async function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <LandingHero />
-      <LandingFeatures />
-      <LandingFooter />
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
+      <div className="flex-1">
+        <LandingHero />
+        <LandingFeatures />
+      </div>
+      <SiteFooter />
     </div>
   )
 }
