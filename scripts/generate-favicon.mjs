@@ -1,8 +1,19 @@
 /**
- * Regenerate src/app/favicon.ico from public/logo.svg.
+ * Regenerate all icon assets from public/logo.svg.
  *
- * Produces a multi-resolution ICO (16×16, 32×32, 48×48) with embedded PNGs
- * using only Node.js built-in modules — no external dependencies required.
+ * Outputs:
+ *   src/app/favicon.ico       — multi-resolution ICO (16×16, 32×32, 48×48)
+ *                               App Router serves this as the favicon
+ *   src/app/apple-icon.png    — 180×180 PNG; App Router auto-generates
+ *                               <link rel="apple-touch-icon"> from this
+ *   public/apple-icon.png     — same 180×180, served at /apple-icon.png
+ *                               for the explicit metadata.icons.apple entry
+ *   public/icon-192.png       — 192×192 PNG served at /icon-192.png
+ *                               (stable path used by manifest.ts + metadata)
+ *   public/icon-512.png       — 512×512 PNG served at /icon-512.png
+ *                               (stable path used by manifest.ts + metadata)
+ *
+ * Uses only Node.js built-in modules — no external dependencies required.
  *
  * SVG design (viewBox 0 0 96 96):
  *   - 3 stroked circles  stroke #2D4A3E  stroke-width 3  no fill
@@ -11,6 +22,7 @@
  *
  * Usage:
  *   node scripts/generate-favicon.mjs
+ *   pnpm generate-favicon
  */
 
 import { writeFileSync } from "node:fs";
@@ -19,8 +31,18 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUT = path.resolve(__dirname, "../src/app/favicon.ico");
-const SIZES = [16, 32, 48];
+const APP_DIR    = path.resolve(__dirname, "../src/app");
+const PUBLIC_DIR = path.resolve(__dirname, "../public");
+// src/app/ — file-based metadata (Next.js App Router auto-generates <link> tags)
+const OUT_ICO         = path.join(APP_DIR,    "favicon.ico");
+const OUT_APPLE_APP   = path.join(APP_DIR,    "apple-icon.png");
+// public/ — stable paths used by manifest.ts and explicit metadata entries
+const OUT_APPLE_PUBLIC = path.join(PUBLIC_DIR, "apple-icon.png");
+const OUT_ICON_192     = path.join(PUBLIC_DIR, "icon-192.png");
+const OUT_ICON_512     = path.join(PUBLIC_DIR, "icon-512.png");
+const ICO_SIZES = [16, 32, 48];
+// Keep SIZES alias for the ICO section below
+const SIZES = ICO_SIZES;
 
 // ─── Colour helpers ───────────────────────────────────────────────────────────
 
@@ -201,14 +223,40 @@ function buildIco(images) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
+// ─── favicon.ico (multi-res 16/32/48) ────────────────────────────────────────
+
 const images = SIZES.map((size) => {
   const rgba = rasterize(size);
   const png = encodePng(rgba, size, size);
-  console.log(`  [${size}×${size}] PNG: ${png.length} bytes`);
+  console.log(`  [${size}×${size}] PNG for ICO: ${png.length} bytes`);
   return { size, png };
 });
 
 const ico = buildIco(images);
-writeFileSync(OUT, ico);
-console.log(`\n✓ Wrote ${ico.length} bytes → ${OUT}`);
+writeFileSync(OUT_ICO, ico);
+console.log(`\n✓ Wrote ${ico.length} bytes → ${OUT_ICO}`);
 console.log(`  Sizes: ${SIZES.join(", ")} px  |  Format: ICO with embedded PNG`);
+
+// ─── apple-icon.png (180×180) ─────────────────────────────────────────────
+
+const appleRgba = rasterize(180);
+const applePng = encodePng(appleRgba, 180, 180);
+// Write to both src/app/ (App Router file-based metadata) and public/ (stable URL)
+writeFileSync(OUT_APPLE_APP, applePng);
+writeFileSync(OUT_APPLE_PUBLIC, applePng);
+console.log(`\n✓ Wrote ${applePng.length} bytes → ${OUT_APPLE_APP}`);
+console.log(`✓ Wrote ${applePng.length} bytes → ${OUT_APPLE_PUBLIC}`);
+
+// ─── icon-192.png (192×192) ───────────────────────────────────────────────
+
+const icon192Rgba = rasterize(192);
+const icon192Png = encodePng(icon192Rgba, 192, 192);
+writeFileSync(OUT_ICON_192, icon192Png);
+console.log(`✓ Wrote ${icon192Png.length} bytes → ${OUT_ICON_192}`);
+
+// ─── icon-512.png (512×512) ───────────────────────────────────────────────
+
+const icon512Rgba = rasterize(512);
+const icon512Png = encodePng(icon512Rgba, 512, 512);
+writeFileSync(OUT_ICON_512, icon512Png);
+console.log(`✓ Wrote ${icon512Png.length} bytes → ${OUT_ICON_512}`);
