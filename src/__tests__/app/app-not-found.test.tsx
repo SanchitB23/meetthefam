@@ -8,20 +8,11 @@ vi.mock('@/lib/supabase/server', () => ({
   }),
 }))
 
-// SiteFooter embeds <AuthFooterLink />, which calls the browser client.
-// Mock it so jsdom doesn't attempt a real Supabase connection.
-vi.mock('@/lib/supabase/client', () => ({
-  createClient: () => ({
-    auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
-      signOut: vi.fn(),
-    },
-  }),
-}))
-
-// The `signOut` server action imported by SignOutButton (rendered by the
-// (app) layout in the composition test) — stub so the form renders inert.
-vi.mock('@/lib/actions/signOut', () => ({ signOut: vi.fn() }))
+// SiteFooter embeds <AuthFooterLink />, which calls the browser client +
+// the `signOut` server action (also reached via SignOutButton in the (app)
+// layout for the composition test). Centralised mock keeps jsdom inert.
+import { mockSupabaseClient } from '@/__tests__/helpers/supabaseClientMock'
+mockSupabaseClient()
 
 import AppNotFound from '@/app/(app)/not-found'
 import AppLayout from '@/app/(app)/layout'
