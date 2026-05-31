@@ -29,8 +29,15 @@ export default function AboutPage() {
 
       <h2>Who built it</h2>
       <p>
-        I&apos;m Sanchit Bhatnagar, and I built meetthefam on my own as a
-        personal project. I wanted something my own family could open on a phone
+        I&apos;m{' '}
+        <a
+          href="https://sanchitb23.in"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Sanchit Bhatnagar
+        </a>
+        , and I built meetthefam on my own as a personal project. I wanted something my own family could open on a phone
         and understand at a glance &mdash; somewhere a cousin&apos;s new baby or a
         grandparent&apos;s old photo could live without getting lost in a group
         chat. The look is deliberate: cream paper, forest green, a quiet serif.
