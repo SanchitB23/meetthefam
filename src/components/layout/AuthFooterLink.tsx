@@ -51,7 +51,7 @@ export function AuthFooterLink() {
   return (
     <>
       <span aria-hidden="true">·</span>
-      <form action={signOut} className="inline">
+      <form action={signOut} className="contents">
         <button
           type="submit"
           className="cursor-pointer underline hover:text-foreground"
