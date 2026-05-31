@@ -21,7 +21,7 @@ vi.mock('@/lib/supabase/client', () => ({
 
 // The `signOut` server action imported by SignOutButton (rendered by the
 // (app) layout in the composition test) — stub so the form renders inert.
-vi.mock('@/app/(app)/_actions/signOut', () => ({ signOut: vi.fn() }))
+vi.mock('@/lib/actions/signOut', () => ({ signOut: vi.fn() }))
 
 import AppNotFound from '@/app/(app)/not-found'
 import AppLayout from '@/app/(app)/layout'
