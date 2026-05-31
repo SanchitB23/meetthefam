@@ -1,5 +1,7 @@
-import { afterEach } from 'vitest'
+import { afterEach, expect } from 'vitest'
 import { cleanup } from '@testing-library/react'
+import * as matchers from '@testing-library/jest-dom/matchers'
+expect.extend(matchers)
 
 // `@testing-library/react` only auto-registers its `afterEach(cleanup)` hook
 // when Vitest runs with `globals: true`. Our tests import `describe`/`it`/

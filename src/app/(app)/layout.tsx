@@ -24,7 +24,7 @@ export default function AppLayout({
         </a>
         <SignOutButton />
       </nav>
-      {children}
+      <main className="flex-1">{children}</main>
       <SiteFooter />
     </div>
   )
