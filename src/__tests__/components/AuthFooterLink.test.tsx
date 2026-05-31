@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
 const signOutActionMock = vi.fn()
-vi.mock('@/app/(app)/_actions/signOut', () => ({
+vi.mock('@/lib/actions/signOut', () => ({
   signOut: signOutActionMock,
 }))
 
