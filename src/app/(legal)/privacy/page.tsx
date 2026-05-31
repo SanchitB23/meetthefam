@@ -102,13 +102,12 @@ export default function PrivacyPage() {
 
       <h2>7. Children&apos;s data</h2>
       <p>
-        Family trees often include children, including those under 13. Where you
-        add information about a child, you confirm that you are a parent or
-        relative entitled to do so and are responsible for any consent required
-        under applicable law. If you believe a child&apos;s data has been added
-        without authority, email{' '}
-        <a href="mailto:hello.mtf@sanchitb23.in">hello.mtf@sanchitb23.in</a> and
-        we will remove it.
+        Family trees often include children, including those under 13. The
+        relative who adds a child&apos;s information is responsible for any consent
+        required under applicable law. See our{' '}
+        <a href="/childrens-privacy">Children&apos;s Privacy notice</a>{' '}
+        for the full detail, including how to request removal of a
+        child&apos;s data.
       </p>
 
       <h2>8. How we protect your data</h2>

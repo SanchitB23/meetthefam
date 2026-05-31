@@ -7,6 +7,7 @@ describe('isPublicPath', () => {
     expect(isPublicPath('/terms')).toBe(true)
     expect(isPublicPath('/contact')).toBe(true)
     expect(isPublicPath('/about')).toBe(true)
+    expect(isPublicPath('/childrens-privacy')).toBe(true)
   })
 
   it('keeps landing, login, and auth callbacks public', () => {
