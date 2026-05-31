@@ -8,6 +8,18 @@ vi.mock('@/lib/supabase/server', () => ({
   }),
 }))
 
+// SiteFooter embeds <AuthFooterLink />, which calls the browser client.
+// Mock it so jsdom doesn't attempt a real Supabase connection.
+vi.mock('@/lib/supabase/client', () => ({
+  createClient: () => ({
+    auth: {
+      getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
+      signOut: vi.fn(),
+    },
+  }),
+}))
+vi.mock('@/app/(app)/_actions/signOut', () => ({ signOut: vi.fn() }))
+
 import NotFound from '@/app/not-found'
 
 describe('not-found page', () => {

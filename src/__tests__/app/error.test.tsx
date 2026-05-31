@@ -2,6 +2,18 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+// SiteFooter embeds <AuthFooterLink />, which calls the browser client.
+// Mock it so jsdom doesn't attempt a real Supabase connection.
+vi.mock('@/lib/supabase/client', () => ({
+  createClient: () => ({
+    auth: {
+      getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
+      signOut: vi.fn(),
+    },
+  }),
+}))
+vi.mock('@/app/(app)/_actions/signOut', () => ({ signOut: vi.fn() }))
+
 import AppError from '@/app/error'
 
 describe('app error boundary', () => {

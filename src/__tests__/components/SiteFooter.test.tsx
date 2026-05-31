@@ -1,26 +1,50 @@
 /** @vitest-environment jsdom */
-import { render } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
-import { SiteFooter } from '@/components/layout/SiteFooter'
+import { render, screen } from '@testing-library/react'
+import { describe, expect, it, vi, beforeEach } from 'vitest'
+
+// SiteFooter now embeds <AuthFooterLink />, which reads auth on mount.
+// Mock the browser client so jsdom doesn't try a real Supabase call.
+const getUserMock = vi.fn()
+vi.mock('@/lib/supabase/client', () => ({
+  createClient: () => ({
+    auth: {
+      getUser: getUserMock,
+      signOut: vi.fn(),
+    },
+  }),
+}))
+vi.mock('@/app/(app)/_actions/signOut', () => ({
+  signOut: vi.fn(),
+}))
 
 describe('<SiteFooter>', () => {
-  it('links to the privacy, terms, contact, and about pages', () => {
+  beforeEach(() => {
+    getUserMock.mockReset()
+    // Default: signed-out, so the Sign-in link renders.
+    getUserMock.mockResolvedValue({ data: { user: null }, error: null })
+  })
+
+  it('links to every shipped public page', async () => {
+    const { SiteFooter } = await import('@/components/layout/SiteFooter')
     const { container } = render(<SiteFooter />)
+    // Wait for AuthFooterLink to hydrate so the /login href is present.
+    await screen.findByRole('link', { name: /sign in/i })
     const hrefs = Array.from(container.querySelectorAll('a')).map((a) =>
       a.getAttribute('href'),
     )
     expect(hrefs).toContain('/privacy')
     expect(hrefs).toContain('/terms')
+    expect(hrefs).toContain('/childrens-privacy')
+    expect(hrefs).toContain('/dmca')
     expect(hrefs).toContain('/contact')
     expect(hrefs).toContain('/about')
   })
 
-  it('keeps a sign-in link', () => {
-    const { container } = render(<SiteFooter />)
-    const hrefs = Array.from(container.querySelectorAll('a')).map((a) =>
-      a.getAttribute('href'),
-    )
-    expect(hrefs).toContain('/login')
+  it('renders a Sign in link when the viewer is signed out', async () => {
+    const { SiteFooter } = await import('@/components/layout/SiteFooter')
+    render(<SiteFooter />)
+    const link = await screen.findByRole('link', { name: /sign in/i })
+    expect(link).toHaveAttribute('href', '/login')
   })
 
   it('renders a Status link only when NEXT_PUBLIC_STATUS_URL is set', async () => {
@@ -30,6 +54,7 @@ describe('<SiteFooter>', () => {
       '@/components/layout/SiteFooter'
     )
     const { container } = render(<WithStatus />)
+    await screen.findByRole('link', { name: /sign in/i })
     const hrefs = Array.from(container.querySelectorAll('a')).map((a) =>
       a.getAttribute('href'),
     )
