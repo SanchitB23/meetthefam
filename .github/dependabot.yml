@@ -10,8 +10,6 @@ updates:
       timezone: Asia/Kolkata
     target-branch: qa
     open-pull-requests-limit: 5
-    labels:
-      - dependencies
     commit-message:
       prefix: chore
       include: scope
@@ -67,9 +65,6 @@ updates:
       timezone: Asia/Kolkata
     target-branch: qa
     open-pull-requests-limit: 5
-    labels:
-      - dependencies
-      - ci
     commit-message:
       prefix: chore
       include: scope
