@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { SiteFooter } from '@/components/layout/SiteFooter'
 
 describe('<SiteFooter>', () => {
-  it('links to the privacy, terms, and contact pages', () => {
+  it('links to the privacy, terms, contact, and about pages', () => {
     const { container } = render(<SiteFooter />)
     const hrefs = Array.from(container.querySelectorAll('a')).map((a) =>
       a.getAttribute('href'),
@@ -12,6 +12,7 @@ describe('<SiteFooter>', () => {
     expect(hrefs).toContain('/privacy')
     expect(hrefs).toContain('/terms')
     expect(hrefs).toContain('/contact')
+    expect(hrefs).toContain('/about')
   })
 
   it('keeps a sign-in link', () => {
