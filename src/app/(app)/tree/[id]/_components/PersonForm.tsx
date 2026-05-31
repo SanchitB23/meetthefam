@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition, useCallback } from 'react'
 import { Controller, useForm, type SubmitHandler } from 'react-hook-form'
 import {
   Trash2,
@@ -10,6 +10,7 @@ import {
   AlertCircle,
   ChevronDown,
   X,
+  CheckCircle2,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -243,6 +244,10 @@ export function PersonForm({
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [deleteOpen, setDeleteOpen] = useState(false)
+  // #185 — in-modal photo upload success notification. Shown for 2.5 s after
+  // a successful edit-mode upload, then auto-dismissed. Cleared on open/close.
+  const [photoUploadSuccess, setPhotoUploadSuccess] = useState(false)
+  const photoSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const deceased = watch('deceased')
   const birthYear = watch('birth_year')
   const fullNameWatch = watch('full_name')
@@ -291,6 +296,11 @@ export function PersonForm({
   //                             null after remove, undefined to fall back
   //                             to person.photo_url.
   //   photoError              — inline error rendered next to the avatar.
+  // #185 — track the previous `open` value so the reset-on-open effect only
+  // fires when `open` transitions false → true (not when formDefaults changes
+  // mid-session due to refresh() propagating a new PersonRow reference).
+  const prevOpenRef = useRef(false)
+
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const pendingPhotoRef = useRef<Blob | null>(null)
   const pendingPhotoBlobUrlRef = useRef<string | null>(null)
@@ -319,6 +329,17 @@ export function PersonForm({
   }
   const clearPendingBlob = () => setPendingBlob(null)
 
+  // #185 — show the in-modal success banner and auto-dismiss after 2.5 s.
+  // Using useCallback so the reference is stable for the upload handler.
+  const showPhotoSuccess = useCallback(() => {
+    setPhotoUploadSuccess(true)
+    if (photoSuccessTimerRef.current) clearTimeout(photoSuccessTimerRef.current)
+    photoSuccessTimerRef.current = setTimeout(() => {
+      setPhotoUploadSuccess(false)
+      photoSuccessTimerRef.current = null
+    }, 2500)
+  }, [])
+
   // ---- Resolve the avatar's photoUrl + tone ----
   //
   // Priority: local object URL (just-picked blob) → edit-mode local override
@@ -345,12 +366,28 @@ export function PersonForm({
   const currentYear = new Date().getFullYear()
   const todayISO = new Date().toISOString().slice(0, 10)
 
-  // Reset the form whenever the surface (re)opens, or the target row
-  // changes — keeps stale field values from leaking between sessions.
+  // Reset the form when the surface (re)opens (false → true transition).
+  //
+  // #185 fix: previously the dep list included `formDefaults`, which caused
+  // the effect to re-run mid-session whenever `refresh()` delivered a new
+  // `PersonRow` reference (even with the same values) via the PersonActionMenu
+  // path. That reset all form fields + cleared photo state while the user was
+  // still editing, making the modal appear to close or lose work.
+  //
+  // Fix: guard on `prevOpenRef` so we only reset on the actual open transition,
+  // not on identity changes to `formDefaults`. `formDefaults` is captured at
+  // open time; any field changes the user makes after that are intentional.
   useEffect(() => {
-    if (open) {
+    const justOpened = open && !prevOpenRef.current
+    prevOpenRef.current = open
+    if (justOpened) {
       reset(formDefaults)
       setSubmitError(null)
+      setPhotoUploadSuccess(false)
+      if (photoSuccessTimerRef.current) {
+        clearTimeout(photoSuccessTimerRef.current)
+        photoSuccessTimerRef.current = null
+      }
       // Photo state lives outside RHF so reset() doesn't touch it. Reset
       // by hand on (re)open so a closed-without-save create session
       // doesn't leak a pending Blob into the next session.
@@ -359,21 +396,27 @@ export function PersonForm({
       // setPendingBlob(null) handles the URL.revokeObjectURL bookkeeping.
       setPendingBlob(null)
     }
-    // setPendingBlob / setLocalPhotoUrl / setPhotoError are stable
-    // per-render but identity-unstable across renders. We deliberately
-    // only re-run this effect when `open` flips — including them in the
-    // dep list would re-run on every keystroke and reset the form.
-  }, [open, reset, formDefaults])
+  // `reset` is stable (react-hook-form guarantee). `formDefaults` intentionally
+  // omitted — see #185 note above. `setPendingBlob` / `setLocalPhotoUrl` /
+  // `setPhotoError` are inline-defined and identity-unstable; reading them via
+  // closure is safe here since `justOpened` gates the entire body.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
-  // Revoke any lingering object URL on unmount. Belt-and-braces — the
-  // reset-on-open path above already revokes when the form is reused for
-  // a different person, but the component might unmount while a Blob is
-  // still held (e.g. the parent removes the dialog from the tree).
+  // Revoke any lingering object URL and clear timers on unmount.
+  // Belt-and-braces — the reset-on-open path above already revokes when the
+  // form is reused for a different person, but the component might unmount
+  // while a Blob is still held (e.g. the parent removes the dialog from the tree).
   useEffect(() => {
     return () => {
       if (pendingPhotoBlobUrlRef.current) {
         URL.revokeObjectURL(pendingPhotoBlobUrlRef.current)
         pendingPhotoBlobUrlRef.current = null
+      }
+      // #185 — clear the success-notification auto-dismiss timer.
+      if (photoSuccessTimerRef.current) {
+        clearTimeout(photoSuccessTimerRef.current)
+        photoSuccessTimerRef.current = null
       }
     }
   }, [])
@@ -439,6 +482,8 @@ export function PersonForm({
           // (server `refresh()` will eventually update the prop too).
           clearPendingBlob()
           setLocalPhotoUrl(result.photoUrl)
+          // #185 — show in-modal success notification; auto-dismisses in 2.5 s.
+          showPhotoSuccess()
         } else {
           // Revert the optimistic preview.
           clearPendingBlob()
@@ -803,6 +848,21 @@ export function PersonForm({
         </div>
         {photoError && (
           <ErrorAlert size="sm" message={mapErrorCode(photoError, photoError)} />
+        )}
+        {/*
+         * #185 — in-modal photo upload success notification.
+         * Shown for ~2.5 s after a successful edit-mode upload.
+         * Auto-dismissed by showPhotoSuccess() timer.
+         */}
+        {photoUploadSuccess && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-700 dark:text-green-400"
+          >
+            <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>Photo uploaded</span>
+          </div>
         )}
       </div>
 
