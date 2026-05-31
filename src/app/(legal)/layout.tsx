@@ -1,5 +1,4 @@
-import Link from 'next/link'
-import { Logo } from '@/components/icons/Logo'
+import { PublicHeader } from '@/components/layout/PublicHeader'
 import { SiteFooter } from '@/components/layout/SiteFooter'
 
 /**
@@ -26,12 +25,7 @@ export default function LegalLayout({
 }) {
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <header className="border-b border-border px-4 py-3">
-        <Link href="/" className="flex w-fit items-center gap-2 text-primary">
-          <Logo size={28} />
-          <span className="font-serif text-xl text-foreground">meetthefam</span>
-        </Link>
-      </header>
+      <PublicHeader />
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-12">
         {children}
       </main>

@@ -4,6 +4,8 @@ import { SubmitButton } from '@/components/ui/submit-button'
 import { createClient } from '@/lib/supabase/server'
 import { ErrorAlert } from '@/components/ui/error-alert'
 import { mapErrorCode } from '@/lib/errors'
+import { PublicHeader } from '@/components/layout/PublicHeader'
+import { SiteFooter } from '@/components/layout/SiteFooter'
 
 type SearchParams = Promise<{
   sent?: string
@@ -35,72 +37,76 @@ export default async function LoginPage({
   if (user) redirect(next ?? '/dashboard')
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div className="space-y-1 text-center">
-          <h1 className="font-serif text-3xl text-foreground">meetthefam</h1>
-          <p className="text-sm text-foreground/60">Sign in to continue</p>
-        </div>
+    <div className="min-h-screen flex flex-col bg-background">
+      <PublicHeader />
+      <main className="flex flex-1 items-center justify-center px-4 py-12">
+        <div className="w-full max-w-sm space-y-6">
+          <div className="space-y-1 text-center">
+            <h1 className="font-serif text-3xl text-foreground">meetthefam</h1>
+            <p className="text-sm text-foreground/60">Sign in to continue</p>
+          </div>
 
-        {sent ? (
-          <div className="space-y-2 rounded-lg border border-border bg-card p-6 text-center">
-            <p className="text-sm text-foreground/80">
-              ✉️ Check your email for a magic link.
-            </p>
-            {email && (
-              <p className="text-xs text-foreground/60">
-                Sent to{' '}
-                <span className="font-medium text-foreground">{email}</span>
+          {sent ? (
+            <div className="space-y-2 rounded-lg border border-border bg-card p-6 text-center">
+              <p className="text-sm text-foreground/80">
+                ✉️ Check your email for a magic link.
               </p>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {error && <ErrorAlert size="sm" message={mapErrorCode(error)} />}
-
-            <form action={signInWithGoogle}>
-              {next && <input type="hidden" name="next" value={next} />}
-              <SubmitButton variant="outline" pendingText="Redirecting…">
-                <GoogleLogo />
-                Continue with Google
-              </SubmitButton>
-            </form>
-
-            <div className="flex items-center gap-3">
-              <div className="h-px flex-1 bg-border" />
-              <span className="text-xs uppercase tracking-wider text-foreground/40">
-                or
-              </span>
-              <div className="h-px flex-1 bg-border" />
+              {email && (
+                <p className="text-xs text-foreground/60">
+                  Sent to{' '}
+                  <span className="font-medium text-foreground">{email}</span>
+                </p>
+              )}
             </div>
+          ) : (
+            <div className="space-y-4">
+              {error && <ErrorAlert size="sm" message={mapErrorCode(error)} />}
 
-            <form action={signInWithMagicLink} className="space-y-4">
-              {next && <input type="hidden" name="next" value={next} />}
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="email"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Email address
-                </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  autoComplete="email"
-                  placeholder="you@example.com"
-                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary"
-                />
+              <form action={signInWithGoogle}>
+                {next && <input type="hidden" name="next" value={next} />}
+                <SubmitButton variant="outline" pendingText="Redirecting…">
+                  <GoogleLogo />
+                  Continue with Google
+                </SubmitButton>
+              </form>
+
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-border" />
+                <span className="text-xs uppercase tracking-wider text-foreground/40">
+                  or
+                </span>
+                <div className="h-px flex-1 bg-border" />
               </div>
-              <SubmitButton pendingText="Sending magic link…">
-                Send magic link
-              </SubmitButton>
-            </form>
-          </div>
-        )}
-      </div>
-    </main>
+
+              <form action={signInWithMagicLink} className="space-y-4">
+                {next && <input type="hidden" name="next" value={next} />}
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="email"
+                    className="text-sm font-medium text-foreground"
+                  >
+                    Email address
+                  </label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <SubmitButton pendingText="Sending magic link…">
+                  Send magic link
+                </SubmitButton>
+              </form>
+            </div>
+          )}
+        </div>
+      </main>
+      <SiteFooter />
+    </div>
   )
 }
 
