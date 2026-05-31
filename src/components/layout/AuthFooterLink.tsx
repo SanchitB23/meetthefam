@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { signOut } from '@/app/(app)/_actions/signOut'
+import { signOut } from '@/lib/actions/signOut'
 
 type AuthState = 'loading' | 'signed-in' | 'signed-out'
 

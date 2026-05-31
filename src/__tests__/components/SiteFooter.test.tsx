@@ -13,7 +13,7 @@ vi.mock('@/lib/supabase/client', () => ({
     },
   }),
 }))
-vi.mock('@/app/(app)/_actions/signOut', () => ({
+vi.mock('@/lib/actions/signOut', () => ({
   signOut: vi.fn(),
 }))
 

@@ -12,7 +12,7 @@ vi.mock('@/lib/supabase/client', () => ({
     },
   }),
 }))
-vi.mock('@/app/(app)/_actions/signOut', () => ({ signOut: vi.fn() }))
+vi.mock('@/lib/actions/signOut', () => ({ signOut: vi.fn() }))
 
 import AppError from '@/app/error'
 

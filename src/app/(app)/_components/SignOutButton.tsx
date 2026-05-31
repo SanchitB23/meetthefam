@@ -1,7 +1,7 @@
 'use client'
 
 import { useFormStatus } from 'react-dom'
-import { signOut } from '../_actions/signOut'
+import { signOut } from '@/lib/actions/signOut'
 
 function SubmitButton() {
   const { pending } = useFormStatus()
