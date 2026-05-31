@@ -1,22 +1,25 @@
-// App-level not-found boundary — the heirloom-styled replacement for
-// Next.js's stock dark-themed 404. Catches both genuinely unknown URLs
-// and explicit `notFound()` calls (e.g. `/tree/[id]` when RLS hides the
-// tree from the current user). Server Component — checks the session
-// so the CTA matches the visitor's auth state: signed-in users get
-// "Back to dashboard", anonymous visitors get "Sign in". See ADR 0008
-// for the design-token rationale (cream `--background`, forest-green
-// `--primary`, Cormorant headings via `font-serif`, Manrope body via
-// `font-sans`).
+// Root not-found boundary — the heirloom-styled replacement for Next.js's
+// stock dark-themed 404. Handles genuinely-unknown URLs (the implicit
+// `/_not-found` route), which render in the BARE root layout, so this boundary
+// supplies its own chrome via `<StatusPageShell>` (logo header + SiteFooter).
+//
+// `notFound()` thrown from inside the authenticated `(app)` group resolves at
+// the closer `src/app/(app)/not-found.tsx` instead — that one renders bare,
+// because the `(app)` layout already provides the header + footer. The shared
+// body lives in `<NotFoundContent>` so the two boundaries can't drift.
+//
+// Server Component — checks the session so the CTA matches the visitor's auth
+// state: signed-in users get "Back to dashboard", anonymous visitors "Sign in".
+// See ADR 0008 for the design-token rationale.
 
-import Link from 'next/link'
-
+import { NotFoundContent } from '@/components/layout/NotFoundContent'
 import { StatusPageShell } from '@/components/layout/StatusPageShell'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function NotFound() {
-  // Auth boundary mirror: same `supabase.auth.getUser()` shape the
-  // tree page + dashboard use. Failures (no session, expired token,
-  // RLS-gated) all collapse to "no user" → show the Sign-in CTA.
+  // Auth boundary mirror: same `supabase.auth.getUser()` shape the tree page +
+  // dashboard use. Failures (no session, expired token, RLS-gated) all collapse
+  // to "no user" → show the Sign-in CTA.
   let isSignedIn = false
   try {
     const supabase = await createClient()
@@ -25,43 +28,14 @@ export default async function NotFound() {
     } = await supabase.auth.getUser()
     isSignedIn = Boolean(user)
   } catch {
-    // Defensive — `createClient()` shouldn't throw, but if it does we
-    // fall back to the anonymous CTA rather than leak a server error
-    // out of the not-found boundary.
+    // Defensive — `createClient()` shouldn't throw, but if it does we fall back
+    // to the anonymous CTA rather than leak a server error out of the boundary.
     isSignedIn = false
   }
 
   return (
     <StatusPageShell>
-      <div className="max-w-md w-full text-center">
-        <p className="font-serif italic text-base text-muted-foreground mb-3">
-          Lost in the family tree?
-        </p>
-        <h1 className="font-serif text-3xl sm:text-4xl text-foreground mb-4">
-          We couldn&rsquo;t find that page
-        </h1>
-        <p className="font-sans text-base text-muted-foreground mb-8 leading-relaxed">
-          The page you were looking for isn&rsquo;t here, or you don&rsquo;t
-          have access to it.
-        </p>
-        <div className="flex justify-center">
-          {isSignedIn ? (
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              Back to dashboard
-            </Link>
-          ) : (
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              Sign in
-            </Link>
-          )}
-        </div>
-      </div>
+      <NotFoundContent isSignedIn={isSignedIn} />
     </StatusPageShell>
   )
 }
