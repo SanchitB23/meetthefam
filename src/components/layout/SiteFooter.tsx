@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { AuthFooterLink } from '@/components/layout/AuthFooterLink'
+import { Logo } from '@/components/icons/Logo'
 
 // Hosted status page (BetterStack). Set NEXT_PUBLIC_STATUS_URL in Vercel once
 // the BetterStack page is live — the "Status" link only renders when it's set,
@@ -19,10 +20,21 @@ const STATUS_URL = process.env.NEXT_PUBLIC_STATUS_URL
  * page must add its <Link> here AND assert the href in SiteFooter.test.tsx.
  * See docs/superpowers/specs/2026-05-30-legal-pages-design.md → Sibling-page
  * checklist.
+ *
+ * The leading logo links to `/`. Signed-in visitors hit the landing page's
+ * Server Component, which immediately `redirect()`s them to `/dashboard` —
+ * so the same Link works for both audiences without a client island.
  */
 export function SiteFooter() {
   return (
     <footer className="px-6 py-12 text-center text-muted-foreground text-sm">
+      <Link
+        href="/"
+        aria-label="Home"
+        className="mb-3 inline-block text-primary"
+      >
+        <Logo size={28} />
+      </Link>
       <p className="font-serif italic text-base mb-4">
         Made for the people who already know each other.
       </p>

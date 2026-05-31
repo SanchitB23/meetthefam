@@ -153,11 +153,15 @@ ships (e.g. `/cookies`, `/accessibility`, `/imprint`, `/security`, `/subprocesso
 
 1. Add a `<Link>` row for the new page in `src/components/layout/SiteFooter.tsx`,
    in the agreed slot — legal pages cluster before Contact / About / auth link.
-2. Extend `src/__tests__/components/SiteFooter.test.tsx` with
+2. Add the new path to the `PUBLIC_PATHS` allowlist in
+   `src/lib/public-routes.ts` so the auth proxy lets signed-out visitors
+   through. Without this, the proxy bounces them to `/login?next=<path>`
+   (the bug caught on PR #167 when `/dmca` was discovered to be auth-gated).
+3. Extend `src/__tests__/components/SiteFooter.test.tsx` with
    `expect(hrefs).toContain('/new-path')` in the
    `'links to every shipped public page'` test.
 
-Reviewers should reject sibling-page PRs missing either step. The convention is
+Reviewers should reject sibling-page PRs missing any of these steps. The convention is
 enforced by the test (CI fails when the assertion is missing AND the link
 was added but not asserted, or vice-versa) and re-stated in the PR template's
 manual checklist.

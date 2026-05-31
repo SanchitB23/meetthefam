@@ -37,7 +37,7 @@ Delete a subsection if it doesn't apply.
 
 ### App walkthrough (local dev — `pnpm dev` against `pnpm exec supabase start`)
 
-- [ ] If this PR adds a new public `(legal)` / standard page, the `SiteFooter` link **and** the corresponding `SiteFooter.test.tsx` href assertion landed in this same PR (per `docs/superpowers/specs/2026-05-30-legal-pages-design.md` → Sibling-page checklist). Tick "N/A" if not applicable.
+- [ ] If this PR adds a new public `(legal)` / standard page, the `SiteFooter` link, the new path in `PUBLIC_PATHS` (`src/lib/public-routes.ts`), **and** the `SiteFooter.test.tsx` href assertion all landed in this same PR (per `docs/superpowers/specs/2026-05-30-legal-pages-design.md` → Sibling-page checklist). Tick "N/A" if not applicable.
 - [ ] Pulled the branch, ran `pnpm install`, started Supabase + Next.js dev server
 - [ ] Walked the golden path of the changed feature end-to-end (steps below)
   - [ ] Step 1: <!-- e.g. open / , click "New person", fill form, save -->

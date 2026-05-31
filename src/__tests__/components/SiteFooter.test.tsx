@@ -32,6 +32,7 @@ describe('<SiteFooter>', () => {
     const hrefs = Array.from(container.querySelectorAll('a')).map((a) =>
       a.getAttribute('href'),
     )
+    expect(hrefs).toContain('/')
     expect(hrefs).toContain('/privacy')
     expect(hrefs).toContain('/terms')
     expect(hrefs).toContain('/childrens-privacy')
