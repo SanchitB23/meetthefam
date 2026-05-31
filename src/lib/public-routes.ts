@@ -19,6 +19,7 @@ export const PUBLIC_PATHS = [
   '/privacy',
   '/terms',
   '/contact',
+  '/about',
 ] as const
 
 /**
