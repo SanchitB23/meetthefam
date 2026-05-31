@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { signOut } from '@/app/(app)/_actions/signOut'
 
 type AuthState = 'loading' | 'signed-in' | 'signed-out'
 
@@ -43,6 +44,21 @@ export function AuthFooterLink() {
     )
   }
 
-  // signed-in branch arrives in Task 2.
-  return null
+  // signed-in branch — reuse the existing server action used by SignOutButton
+  // (src/app/(app)/_components/SignOutButton.tsx) so we get identical cookie
+  // cleanup + redirect-to-/login behavior. The button is styled to match
+  // surrounding underlined footer links rather than the nav's button chrome.
+  return (
+    <>
+      <span aria-hidden="true">·</span>
+      <form action={signOut} className="inline">
+        <button
+          type="submit"
+          className="cursor-pointer underline hover:text-foreground"
+        >
+          Sign out
+        </button>
+      </form>
+    </>
+  )
 }
