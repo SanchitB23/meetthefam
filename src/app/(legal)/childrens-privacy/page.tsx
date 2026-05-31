@@ -59,8 +59,8 @@ export default function ChildrensPrivacyPage() {
         Any editor can delete a person or an entire tree from within the app at any
         time; doing so removes the associated records and any uploaded photos from
         storage. A parent or guardian who is not an editor can email us at{' '}
-        <a href="mailto:hello.mtf@sanchitb23.in">hello.mtf@sanchitb23.in</a> to
-        request removal of a child&apos;s data, and we will action it.
+        <a href="mailto:hello.mtf@sanchitb23.in">hello.mtf@sanchitb23.in</a>{' '}
+        to request removal of a child&apos;s data, and we will action it.
       </p>
 
       <h2>6. How we protect it</h2>

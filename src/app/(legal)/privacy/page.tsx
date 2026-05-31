@@ -105,8 +105,9 @@ export default function PrivacyPage() {
         Family trees often include children, including those under 13. The
         relative who adds a child&apos;s information is responsible for any consent
         required under applicable law. See our{' '}
-        <a href="/childrens-privacy">Children&apos;s Privacy notice</a> for the
-        full detail, including how to request removal of a child&apos;s data.
+        <a href="/childrens-privacy">Children&apos;s Privacy notice</a>{' '}
+        for the full detail, including how to request removal of a
+        child&apos;s data.
       </p>
 
       <h2>8. How we protect your data</h2>
