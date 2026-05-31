@@ -1,31 +1,22 @@
 /** @vitest-environment jsdom */
 import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, beforeEach } from 'vitest'
 
-const signOutActionMock = vi.fn()
-vi.mock('@/lib/actions/signOut', () => ({
-  signOut: signOutActionMock,
-}))
-
-// Mock the browser Supabase client at module-load time.
-const getUserMock = vi.fn()
-vi.mock('@/lib/supabase/client', () => ({
-  createClient: () => ({
-    auth: {
-      getUser: getUserMock,
-      signOut: vi.fn(),
-    },
-  }),
-}))
+// Centralised mock for `@/lib/supabase/client` + `@/lib/actions/signOut`.
+// `signOutMock` is the controllable handle for asserting the server action
+// was invoked when the form is submitted.
+import {
+  mockSupabaseClient,
+  signOutMock,
+} from '@/__tests__/helpers/supabaseClientMock'
 
 describe('<AuthFooterLink />', () => {
   beforeEach(() => {
-    getUserMock.mockReset()
-    signOutActionMock.mockReset()
+    // Defaults to signed-out; per-case overrides re-call the helper below.
+    mockSupabaseClient()
   })
 
   it('renders a Sign in link when the viewer is signed out', async () => {
-    getUserMock.mockResolvedValue({ data: { user: null }, error: null })
     const { AuthFooterLink } = await import('@/components/layout/AuthFooterLink')
     render(<AuthFooterLink />)
 
@@ -34,10 +25,7 @@ describe('<AuthFooterLink />', () => {
   })
 
   it('renders a Sign out form that invokes the signOut action when submitted', async () => {
-    getUserMock.mockResolvedValue({
-      data: { user: { id: 'u_1', email: 'a@b.c' } },
-      error: null,
-    })
+    mockSupabaseClient({ user: { id: 'u_1', email: 'a@b.c' } })
     const { AuthFooterLink } = await import('@/components/layout/AuthFooterLink')
     render(<AuthFooterLink />)
 
@@ -51,6 +39,6 @@ describe('<AuthFooterLink />', () => {
     // <form action={signOut}> binding together result in signOut being called
     // with the form's FormData.
     fireEvent.submit(form!)
-    expect(signOutActionMock).toHaveBeenCalledTimes(1)
+    expect(signOutMock).toHaveBeenCalledTimes(1)
   })
 })

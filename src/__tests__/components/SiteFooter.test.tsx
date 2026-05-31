@@ -3,25 +3,14 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
 // SiteFooter now embeds <AuthFooterLink />, which reads auth on mount.
-// Mock the browser client so jsdom doesn't try a real Supabase call.
-const getUserMock = vi.fn()
-vi.mock('@/lib/supabase/client', () => ({
-  createClient: () => ({
-    auth: {
-      getUser: getUserMock,
-      signOut: vi.fn(),
-    },
-  }),
-}))
-vi.mock('@/lib/actions/signOut', () => ({
-  signOut: vi.fn(),
-}))
+// Centralised mock keeps jsdom inert; per-test overrides go through the
+// `mockSupabaseClient({ user })` helper.
+import { mockSupabaseClient } from '@/__tests__/helpers/supabaseClientMock'
 
 describe('<SiteFooter>', () => {
   beforeEach(() => {
-    getUserMock.mockReset()
     // Default: signed-out, so the Sign-in link renders.
-    getUserMock.mockResolvedValue({ data: { user: null }, error: null })
+    mockSupabaseClient()
   })
 
   it('links to every shipped public page', async () => {
@@ -49,11 +38,7 @@ describe('<SiteFooter>', () => {
   })
 
   it('renders a Sign out button when the viewer is signed in', async () => {
-    getUserMock.mockReset()
-    getUserMock.mockResolvedValue({
-      data: { user: { id: 'u_1', email: 'a@b.c' } },
-      error: null,
-    })
+    mockSupabaseClient({ user: { id: 'u_1', email: 'a@b.c' } })
     const { SiteFooter } = await import('@/components/layout/SiteFooter')
     render(<SiteFooter />)
     const button = await screen.findByRole('button', { name: /sign out/i })

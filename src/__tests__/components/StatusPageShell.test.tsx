@@ -1,18 +1,11 @@
 /** @vitest-environment jsdom */
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
-// SiteFooter embeds <AuthFooterLink />, which calls the browser client.
-// Mock it so jsdom doesn't attempt a real Supabase connection.
-vi.mock('@/lib/supabase/client', () => ({
-  createClient: () => ({
-    auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
-      signOut: vi.fn(),
-    },
-  }),
-}))
-vi.mock('@/lib/actions/signOut', () => ({ signOut: vi.fn() }))
+// SiteFooter embeds <AuthFooterLink />, which calls the browser client +
+// the `signOut` server action. Centralised mock keeps jsdom inert.
+import { mockSupabaseClient } from '@/__tests__/helpers/supabaseClientMock'
+mockSupabaseClient()
 
 import { StatusPageShell } from '@/components/layout/StatusPageShell'
 
