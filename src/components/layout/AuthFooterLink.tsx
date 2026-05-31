@@ -20,10 +20,20 @@ export function AuthFooterLink() {
   useEffect(() => {
     let cancelled = false
     const supabase = createClient()
-    supabase.auth.getUser().then(({ data }) => {
-      if (cancelled) return
-      setState(data.user ? 'signed-in' : 'signed-out')
-    })
+    supabase.auth
+      .getUser()
+      .then(({ data }) => {
+        if (cancelled) return
+        setState(data.user ? 'signed-in' : 'signed-out')
+      })
+      .catch(() => {
+        // Fail-open: a network / CORS / Supabase error means we couldn't read auth,
+        // so render the signed-out state and keep the Sign-in link reachable rather
+        // than getting stuck in the loading null state (which would also surface as
+        // an unhandled rejection in the console).
+        if (cancelled) return
+        setState('signed-out')
+      })
     return () => {
       cancelled = true
     }

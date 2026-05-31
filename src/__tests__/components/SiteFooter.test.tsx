@@ -47,6 +47,18 @@ describe('<SiteFooter>', () => {
     expect(link).toHaveAttribute('href', '/login')
   })
 
+  it('renders a Sign out button when the viewer is signed in', async () => {
+    getUserMock.mockReset()
+    getUserMock.mockResolvedValue({
+      data: { user: { id: 'u_1', email: 'a@b.c' } },
+      error: null,
+    })
+    const { SiteFooter } = await import('@/components/layout/SiteFooter')
+    render(<SiteFooter />)
+    const button = await screen.findByRole('button', { name: /sign out/i })
+    expect(button.closest('form')).not.toBeNull()
+  })
+
   it('renders a Status link only when NEXT_PUBLIC_STATUS_URL is set', async () => {
     vi.stubEnv('NEXT_PUBLIC_STATUS_URL', 'https://status.example.com')
     vi.resetModules()

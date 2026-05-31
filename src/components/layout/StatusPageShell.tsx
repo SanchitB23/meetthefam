@@ -12,7 +12,7 @@ import { SiteFooter } from '@/components/layout/SiteFooter'
  * Server Component `not-found` and the Client Component `error`. Mirrors the
  * `(legal)` route-group layout — a logo header linking home plus the shared
  * `<SiteFooter>` — so a lost or errored visitor lands on the same heirloom
- * chrome (and Privacy · Terms · Contact · Sign in navigation) as `/privacy`
+ * chrome (the shared SiteFooter with policy + contact + auth links) as `/privacy`
  * et al., instead of a bare centered card.
  *
  * Note: the absolute-last-resort `global-error.tsx` boundary does NOT use this

@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 
 const signOutActionMock = vi.fn()
@@ -33,7 +33,7 @@ describe('<AuthFooterLink />', () => {
     expect(link).toHaveAttribute('href', '/login')
   })
 
-  it('renders a Sign out form when the viewer is signed in', async () => {
+  it('renders a Sign out form that invokes the signOut action when submitted', async () => {
     getUserMock.mockResolvedValue({
       data: { user: { id: 'u_1', email: 'a@b.c' } },
       error: null,
@@ -42,11 +42,15 @@ describe('<AuthFooterLink />', () => {
     render(<AuthFooterLink />)
 
     const button = await screen.findByRole('button', { name: /sign out/i })
-    // The button lives inside a <form action={signOut}> — its enclosing form
-    // exists and has action wired. We only assert the button is rendered and
-    // submittable here; the actual signOut() call is exercised by the
-    // existing signOut action's own tests.
-    expect(button).toBeInTheDocument()
-    expect(button.closest('form')).not.toBeNull()
+    const form = button.closest('form')
+    expect(form).not.toBeNull()
+
+    // Submit the form. We use submit() rather than click() so React's form-action
+    // dispatch (which would otherwise call the real server action) gives the
+    // mocked function instead. jsdom's HTMLFormElement.requestSubmit + the
+    // <form action={signOut}> binding together result in signOut being called
+    // with the form's FormData.
+    fireEvent.submit(form!)
+    expect(signOutActionMock).toHaveBeenCalledTimes(1)
   })
 })
