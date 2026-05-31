@@ -3,8 +3,9 @@
  *
  * The auth proxy (src/proxy.ts) redirects signed-out visitors to /login for
  * any path NOT matched here. Public legal / marketing pages — the `(legal)`
- * route group (/privacy, /terms, /contact today; /about, /faq, /dmca, … as
- * the #56 children ship) — must stay reachable without logging in. Route
+ * route group (/privacy, /terms, /contact, /childrens-privacy today; /about,
+ * /faq, /dmca, … as the #56 children ship) — must stay reachable without
+ * logging in. Route
  * groups don't appear in the URL, so the proxy can't infer "this is a public
  * page" from the pathname; the allowlist is explicit. Add new public pages
  * here as they land.
@@ -20,6 +21,7 @@ export const PUBLIC_PATHS = [
   '/terms',
   '/contact',
   '/about',
+  '/childrens-privacy',
 ] as const
 
 /**

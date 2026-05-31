@@ -34,9 +34,17 @@ dedicated `/childrens-privacy` page — a fuller, COPPA-style children's notice 
 src/app/(legal)/
   childrens-privacy/page.tsx   # NEW — /childrens-privacy: exports metadata + page
   privacy/page.tsx             # EDIT — §7 body shrunk to a pointer
+src/lib/public-routes.ts       # EDIT — add '/childrens-privacy' to PUBLIC_PATHS
 src/__tests__/components/
   childrens-privacy-page.test.tsx  # NEW — lightweight render guard
+src/__tests__/lib/
+  public-routes.test.ts        # EDIT — assert /childrens-privacy is public
 ```
+
+**Public-route allowlist:** route groups don't appear in the URL, so the auth proxy
+(`src/proxy.ts`) can't infer that a `(legal)` page is public from its pathname — the
+allowlist in `src/lib/public-routes.ts` is explicit. `/childrens-privacy` must be added
+there, or signed-out visitors are bounced to `/login`.
 
 The new page is a Server Component (no client interactivity). It renders inside the existing
 `(legal)/layout.tsx` (logo header + shared `<SiteFooter>`) and inherits that layout's
