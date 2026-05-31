@@ -145,6 +145,26 @@ These are static Server Components with no business logic. Gate:
   `/privacy`, `/terms`, and `/contact` hrefs — a cheap regression guard on the §8 wiring.
 - No new Playwright flow (static content; existing E2E happy paths are unaffected).
 
+## Sibling-page checklist (when shipping a new public page)
+
+When a sibling public page under [#56](https://github.com/SanchitB23/meetthefam/issues/56)
+ships (e.g. `/cookies`, `/accessibility`, `/imprint`, `/security`, `/subprocessors`,
+`/faq`, `/pricing`), the **same PR** must:
+
+1. Add a `<Link>` row for the new page in `src/components/layout/SiteFooter.tsx`,
+   in the agreed slot — legal pages cluster before Contact / About / auth link.
+2. Extend `src/__tests__/components/SiteFooter.test.tsx` with
+   `expect(hrefs).toContain('/new-path')` in the
+   `'links to every shipped public page'` test.
+
+Reviewers should reject sibling-page PRs missing either step. The convention is
+enforced by the test (CI fails when the assertion is missing AND the link
+was added but not asserted, or vice-versa) and re-stated in the PR template's
+manual checklist.
+
+Convention authored under [#161](https://github.com/SanchitB23/meetthefam/issues/161);
+see [`docs/superpowers/specs/2026-05-31-sitefooter-audit-design.md`](2026-05-31-sitefooter-audit-design.md).
+
 ## Out of scope → child issues off #56
 
 Filed as sibling child issues so #56 remains the umbrella tracker:
