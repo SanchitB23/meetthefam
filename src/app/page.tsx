@@ -17,9 +17,11 @@ export default async function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <LandingHero />
-      <LandingFeatures />
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
+      <div className="flex-1">
+        <LandingHero />
+        <LandingFeatures />
+      </div>
       <SiteFooter />
     </div>
   )
