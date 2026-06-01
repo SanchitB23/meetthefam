@@ -46,11 +46,13 @@ import f3 from 'family-chart'
 import 'family-chart/styles/family-chart.css'
 import type { TreeDatum } from 'family-chart'
 
+import { type FamilyChartDatum } from '../_lib/family-chart-data'
 import {
-  transformToFamilyChartShape,
-  type FamilyChartDatum,
-} from '../_lib/family-chart-data'
+  SUPER_ROOT_ID,
+  transformToFamilyChartShapeShowAll,
+} from '../_lib/family-chart-data-show-all'
 import { attachNonSpouseParentLinkRewriter } from '../_lib/non-spouse-parent-links'
+import { attachSuperRootLinkSuppressor } from '../_lib/super-root-link-suppressor'
 import { personNodeHtml } from '../_lib/person-node-html'
 import { usePressActions } from '../_lib/usePressActions'
 import type { PersonRow } from '../_lib/types'
@@ -154,7 +156,11 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
     const cont = containerRef.current
     if (!cont) return
 
-    const data: FamilyChartDatum[] = transformToFamilyChartShape(people)
+    // #69 — `transformToFamilyChartShapeShowAll` wraps the base transform
+    // and grafts a synthetic __super_root__ parent onto every otherwise-
+    // rootless person, so family-chart's single-root walk reaches every
+    // subtree regardless of main_id. No-op when the tree has 0 or 1 roots.
+    const data: FamilyChartDatum[] = transformToFamilyChartShapeShowAll(people)
 
     const chart = f3.createChart(cont, data)
       .setTransitionTime(800)
@@ -174,14 +180,29 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
     // the override applied across d3's transition window. See
     // `../_lib/non-spouse-parent-links.ts` for full rationale.
     const linkRewriter = attachNonSpouseParentLinkRewriter(cont, peopleByIdRef)
+    // #69 — zero ancestry links that target the invisible super-root
+    // every time d3 tweens `d=` during re-center transitions. Without
+    // this, the connector lines flash visibly for ~800ms before
+    // setAfterUpdate's one-shot suppression catches up.
+    const superRootLinkSuppressor = attachSuperRootLinkSuppressor(cont)
     chart.setAfterUpdate(() => {
       linkRewriter.kick()
+      superRootLinkSuppressor.kick()
     })
 
     chart
       .setCardHtml()
       .setCardDim({ w: 158, h: 110 })
-      .setCardInnerHtmlCreator((d) => personNodeHtml(d, { readOnly }))
+      .setCardInnerHtmlCreator((d) => {
+        // #69 — the synthetic super-root has no real person row; render
+        // a zero-size sentinel <div> so CSS can target the foreignObject
+        // via :has() without disturbing the layout's reserved card slot.
+        const datumId = (d.data as unknown as FamilyChartDatum).id
+        if (datumId === SUPER_ROOT_ID) {
+          return '<div data-person-id="__super_root__" aria-hidden="true" style="width:0;height:0;overflow:hidden;"></div>'
+        }
+        return personNodeHtml(d, { readOnly })
+      })
       .setOnCardClick((e: Event, d: TreeDatum) => {
         if (shouldSuppressNextClickRef.current) {
           shouldSuppressNextClickRef.current = false
@@ -235,7 +256,14 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
     // Seed initial focus before the first render so the chart paints
     // already-centered on the SSR / hash-derived person. Hash wins over
     // the SSR seed (matches the rendering contract above).
-    const seedFocus = readHashFocus() ?? initialFocusId ?? null
+    //
+    // #69 — the `?? people[0]?.id` fallback is the new hardening. Without
+    // it, when neither the hash nor `initialFocusId` is set, family-chart
+    // falls back to `data[0]` as the default main_id — which after option
+    // (d) is the invisible `__super_root__`. Coercing to a real `people[0]?.id`
+    // here keeps `chart.getMainId()` always returning a real person id from
+    // first paint. See the spec §"Initial `main_id` fallback hardening".
+    const seedFocus = readHashFocus() ?? initialFocusId ?? people[0]?.id ?? null
     if (seedFocus && peopleByIdRef.current.has(seedFocus)) {
       chart.updateMainId(seedFocus)
     }
@@ -258,6 +286,7 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
 
     return () => {
       linkRewriter.dispose()
+      superRootLinkSuppressor.dispose()
       chartRef.current = null
       cont.innerHTML = ''
     }
