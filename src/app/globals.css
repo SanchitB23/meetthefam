@@ -256,6 +256,48 @@
 }
 
 /*
+ * #69 — hide the synthetic `__super_root__` layout-anchor card.
+ *
+ * `transformToFamilyChartShapeShowAll` injects an invisible node as the
+ * universal parent of every otherwise-rootless person, so family-chart's
+ * single-root walk reaches every subtree regardless of main_id. The card
+ * itself is a zero-size sentinel `<div data-person-id="__super_root__">`
+ * returned by `setCardInnerHtmlCreator` (see FamilyTree.tsx). This rule
+ * targets the family-chart `<foreignObject>` wrapper via `:has()` and
+ * makes it fully invisible + non-interactive. Connector lines targeting
+ * the super-root are zeroed by super-root-link-suppressor.ts.
+ *
+ * Browser support: `:has()` requires Safari ≥ 15.4 and Chrome ≥ 105 —
+ * aligned with our target matrix.
+ */
+.f3 foreignObject:has([data-person-id="__super_root__"]) {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/*
+ * #69 — absorb the reserved layout slot the super-root card occupies.
+ *
+ * Even though the foreignObject is `visibility: hidden`, family-chart
+ * still allocates one card-row (158×110 px) of vertical space for it at
+ * the top of the SVG. Without compensation the canvas sits ~130 px lower
+ * than expected and the topmost real generation looks orphaned.
+ *
+ * The try-first fix: scope a negative `margin-top` to canvases that
+ * actually contain a super-root, so single-root trees (where the
+ * super-root is not injected) are unaffected. Value = card height (110)
+ * + half the configured vertical spacing (130 / 2 = 65) ≈ 175 px, which
+ * matches family-chart's vertical-orientation layout math.
+ *
+ * Fallback strategy: if this throws off `chart.fit()` or `zoomToFit`
+ * math in QA, remove the rule and file a follow-up for the blank-row UX.
+ * See spec §"Decisions locked" D3 + §"Risks 2".
+ */
+.f3:has(foreignObject [data-person-id="__super_root__"]) svg.main_svg {
+  margin-top: -175px;
+}
+
+/*
  * 8c-4 — LinkProgress top-edge accent bar keyframe.
  * Animates from 0 → 1 scaleX while a next/link navigation is pending
  * (useLinkStatus). The bar is position:fixed so it always appears at the
