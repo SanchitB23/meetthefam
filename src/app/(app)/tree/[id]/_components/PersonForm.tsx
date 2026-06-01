@@ -277,6 +277,10 @@ export function PersonForm({
   const [pickerOpen, setPickerOpen] = useState(false)
   const [confirmStandaloneOpen, setConfirmStandaloneOpen] = useState(false)
   const peopleForPickerRef = useRef(peopleForPicker)
+  // #182 — ref for the Link-to picker trigger button so we can auto-focus it
+  // on form open (instead of Full Name) and restore focus to it after the
+  // standalone-confirm Cancel (#183).
+  const linkToTriggerRef = useRef<HTMLButtonElement | null>(null)
   useEffect(() => {
     peopleForPickerRef.current = peopleForPicker
   }, [peopleForPicker])
@@ -433,6 +437,11 @@ export function PersonForm({
   // identity changes of the array don't trip this effect on every render).
   // Keyed on linkSpec.focusPersonId so re-opening with a different focus
   // person (e.g. in-card "+") repaints correctly.
+  //
+  // #182 — auto-focus the Link-to picker trigger when the linking block is
+  // visible (create mode with candidate people). This runs after the DOM has
+  // updated so the button ref is populated. On mobile the `scrollIntoView`
+  // call ensures the picker is visible even when the sheet has scrolled.
   useEffect(() => {
     if (!open) return
     const list = peopleForPickerRef.current
@@ -443,7 +452,24 @@ export function PersonForm({
     setSelectedLinkPerson(initial)
     setPickerOpen(false)
     setConfirmStandaloneOpen(false)
-  }, [open, linkSpec])
+
+    // showLinkingBlock depends on `isEdit` and `peopleForPicker`, both stable
+    // for the lifetime of an open session. We read the condition inline here
+    // (not via the outer variable) to avoid adding it to the dep list.
+    const hasCandidates = !isEdit && (peopleForPickerRef.current?.length ?? 0) > 0
+    if (hasCandidates) {
+      // requestAnimationFrame defers until after the Dialog/Sheet animation
+      // frame so the button is guaranteed to be in the composed layer.
+      requestAnimationFrame(() => {
+        const btn = linkToTriggerRef.current
+        if (btn) {
+          btn.focus()
+          // scrollIntoView is absent in jsdom; guard for test environments.
+          btn.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+        }
+      })
+    }
+  }, [open, linkSpec, isEdit])
 
   // ---- Photo picker handlers ----
   //
@@ -681,6 +707,7 @@ export function PersonForm({
             </div>
             <div className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 focus-within:ring-2 focus-within:ring-primary">
               <button
+                ref={linkToTriggerRef}
                 type="button"
                 onClick={() => setPickerOpen(true)}
                 aria-label={
@@ -881,7 +908,6 @@ export function PersonForm({
         <input
           id="pf-full-name"
           type="text"
-          autoFocus
           maxLength={80}
           placeholder="Jane Smith"
           aria-invalid={errors.full_name ? true : undefined}
@@ -1268,24 +1294,47 @@ export function PersonForm({
               card.
             </DialogDescription>
           </DialogHeader>
+          {/*
+           * #183 — button emphasis swapped: Cancel is now the primary
+           * (filled) action since it's the safe recovery path; Add as
+           * Standalone is secondary (outline) because it creates an orphan
+           * node. "Add anyway" renamed to "Add as Standalone" so the
+           * consequence is explicit. On Cancel, focus is returned to the
+           * Link-to picker trigger so the user is guided to complete the
+           * link rather than re-opening the modal.
+           */}
           <div className="flex justify-end gap-2 mt-4">
             <Button
               type="button"
               variant="outline"
-              onClick={() => setConfirmStandaloneOpen(false)}
-              disabled={isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
               onClick={() => {
                 setConfirmStandaloneOpen(false)
                 runSubmit(getValues())
               }}
               disabled={isPending}
             >
-              {isPending ? 'Adding…' : 'Add anyway'}
+              {isPending ? 'Adding…' : 'Add as Standalone'}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setConfirmStandaloneOpen(false)
+                // #183 — return focus to the Link-to picker trigger so the
+                // user is guided toward completing the link. rAF defers
+                // until after the dialog's close animation settles so the
+                // trigger is back in the composed layer.
+                requestAnimationFrame(() => {
+                  const btn = linkToTriggerRef.current
+                  if (btn) {
+                    btn.focus()
+                    // scrollIntoView is absent in jsdom; guard for test environments.
+                    btn.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+                  }
+                })
+              }}
+              disabled={isPending}
+            >
+              Cancel
             </Button>
           </div>
         </DialogContent>
