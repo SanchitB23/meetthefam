@@ -340,3 +340,86 @@
     background-image: none;
   }
 }
+
+/* ============================================================
+ * #187 — View Transitions API: cross-fade for route changes,
+ * sign-out, and the add-person new-node entry.
+ *
+ * The default browser view transition is an instant swap. We
+ * override it with a soft cross-fade (~175 ms). The transitions
+ * are gated at the call-site too (document.startViewTransition)
+ * but the CSS here is the canonical "what it looks like" layer.
+ *
+ * Reduced-motion: set duration to 0 so the browser still runs
+ * the transition machinery (no flash) but completes instantly.
+ * ============================================================ */
+::view-transition-old(*) {
+  animation-duration: 175ms;
+  animation-timing-function: ease-out;
+}
+
+::view-transition-new(*) {
+  animation-duration: 175ms;
+  animation-timing-function: ease-in;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0ms;
+  }
+}
+
+/*
+ * #187 — New-node D3 entry fade.
+ * family-chart's D3 enter-selection adds .mtf-node--entering to new
+ * cards (injected in FamilyTree.tsx's setAfterUpdate hook). The card
+ * fades from opacity 0 → 1 over 300 ms, coordinated to start AFTER
+ * the pending spinner clears (i.e. after revalidatePath lands and the
+ * server component re-streams the updated people list).
+ *
+ * The animation-delay (40 ms) gives the D3 layout transform a tick to
+ * settle so the card doesn't slide AND fade simultaneously.
+ */
+@keyframes mtf-node-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.f3 .mtf-node--entering {
+  animation: mtf-node-enter 300ms ease-out 40ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .f3 .mtf-node--entering {
+    animation: none;
+  }
+}
+
+/*
+ * #181 — Tree canvas mutation overlay.
+ * Shown while the add-person Server Action is in-flight. A translucent
+ * layer over the family-chart container signals "something is happening"
+ * without hiding the tree. Fades in quickly (50 ms) to hit the ~50 ms
+ * perceived-responsiveness target.
+ */
+@keyframes mtf-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.mtf-tree-pending-overlay {
+  animation: mtf-overlay-in 50ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mtf-tree-pending-overlay {
+    animation: none;
+  }
+}
