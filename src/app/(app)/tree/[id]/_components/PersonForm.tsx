@@ -11,6 +11,7 @@ import {
   ChevronDown,
   X,
   CheckCircle2,
+  Loader2,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -243,6 +244,18 @@ export function PersonForm({
 
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  // #181 — notify FamilyTree of the in-flight state so it can show the
+  // translucent pending overlay over the canvas. We use a CustomEvent so
+  // the signal travels without prop-drilling through the component tree.
+  // The event fires on every isPending toggle (false→true at submit start,
+  // true→false once revalidatePath streams the updated tree back).
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.dispatchEvent(
+      new CustomEvent('mtf-add-pending', { detail: { pending: isPending } }),
+    )
+  }, [isPending])
   const [deleteOpen, setDeleteOpen] = useState(false)
   // #185 — in-modal photo upload success notification. Shown for 2.5 s after
   // a successful edit-mode upload, then auto-dismissed. Cleared on open/close.
@@ -1161,7 +1174,13 @@ export function PersonForm({
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={isPending}>
+          <Button type="submit" disabled={isPending} className="min-w-[7rem]">
+            {isPending && (
+              <Loader2
+                className="h-4 w-4 mr-1.5 animate-spin shrink-0"
+                aria-hidden="true"
+              />
+            )}
             {submitLabel}
           </Button>
         </div>

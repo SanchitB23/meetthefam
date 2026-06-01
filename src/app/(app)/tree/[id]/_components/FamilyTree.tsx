@@ -114,6 +114,19 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
   const [detailPersonId, setDetailPersonId] = useState<string | null>(null)
   const [actionAnchor, setActionAnchor] = useState<ActionAnchor | null>(null)
 
+  // #181 — pending overlay state. Toggled by 'mtf-add-pending' CustomEvent
+  // dispatched from PersonForm's useTransition hook (isPending → true when the
+  // Server Action starts, → false once revalidatePath streams the new tree).
+  const [addPending, setAddPending] = useState(false)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const pending = (e as CustomEvent<{ pending: boolean }>).detail?.pending ?? false
+      setAddPending(pending)
+    }
+    window.addEventListener('mtf-add-pending', handler)
+    return () => window.removeEventListener('mtf-add-pending', handler)
+  }, [])
+
   const peopleById = useMemo(
     () => new Map(people.map((p) => [p.id, p])),
     [people],
@@ -197,9 +210,37 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
     // this, the connector lines flash visibly for ~800ms before
     // setAfterUpdate's one-shot suppression catches up.
     const superRootLinkSuppressor = attachSuperRootLinkSuppressor(cont)
+
+    // #187 — track which person IDs are currently rendered so we can
+    // identify newly-added nodes after each update and apply the entry
+    // animation class to them.
+    const renderedPersonIds = new Set<string>()
+
     chart.setAfterUpdate(() => {
       linkRewriter.kick()
       superRootLinkSuppressor.kick()
+
+      // #187 — new-node entry animation. After each update (which family-chart
+      // fires once D3 finishes laying out / transitioning), scan the DOM for
+      // .mtf-node cards. Any card whose data-person-id wasn't in the previous
+      // render set is a newly-added node; apply .mtf-node--entering so the CSS
+      // keyframe fades it in. Remove the class after 350 ms (300 ms animation
+      // + 40 ms delay + 10 ms buffer) so repeated re-renders don't re-animate
+      // the same card.
+      const nodeEls = cont.querySelectorAll<HTMLElement>('.mtf-node[data-person-id]')
+      const currentIds = new Set<string>()
+      nodeEls.forEach((el) => {
+        const pid = el.dataset.personId
+        if (!pid || pid === '__super_root__') return
+        currentIds.add(pid)
+        if (!renderedPersonIds.has(pid)) {
+          el.classList.add('mtf-node--entering')
+          setTimeout(() => el.classList.remove('mtf-node--entering'), 350)
+        }
+      })
+      // Replace the tracked set in-place (can't reassign a const).
+      renderedPersonIds.clear()
+      currentIds.forEach((id) => renderedPersonIds.add(id))
     })
 
     chart
@@ -442,6 +483,34 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
             backgroundSize: '24px 24px',
           }}
         />
+        {/*
+         * #181 — pending overlay. Shown while the add-person Server Action is
+         * in-flight. A translucent layer over the canvas signals "something is
+         * happening" without hiding the tree. The mtf-tree-pending-overlay CSS
+         * class fades it in over 50 ms. Dismissed automatically when isPending
+         * flips back to false (revalidatePath has streamed the new node).
+         */}
+        {addPending && !readOnly && (
+          <div
+            aria-busy="true"
+            aria-label="Saving person…"
+            className="mtf-tree-pending-overlay pointer-events-none absolute inset-0 rounded-lg bg-background/40 flex items-center justify-center"
+          >
+            <div className="flex items-center gap-2 rounded-full bg-background/90 border border-border px-4 py-2 text-sm text-foreground shadow-md">
+              <svg
+                className="animate-spin h-4 w-4 text-primary shrink-0"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+              <span>Saving…</span>
+            </div>
+          </div>
+        )}
         <ZoomControls onZoomIn={zoomIn} onZoomOut={zoomOut} onFit={zoomToFit} />
       </div>
       <PersonDetailSheet
