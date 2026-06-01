@@ -91,10 +91,10 @@ function makeJpegFile(name = 'avatar.jpg'): File {
 // ---- Tests -----------------------------------------------------------------
 
 describe('PersonForm — photo upload in edit mode (#185)', () => {
-  let onOpenChange: ReturnType<typeof vi.fn>
+  let onOpenChange: ReturnType<typeof vi.fn<(open: boolean) => void>>
 
   beforeEach(() => {
-    onOpenChange = vi.fn()
+    onOpenChange = vi.fn<(open: boolean) => void>()
     mockUploadPersonPhoto.mockReset()
   })
 
