@@ -83,7 +83,7 @@ gh release create vX.Y.Z \
 #    the PREVIOUS one, and APP_VERSION shipped as "<prev>-dev.<sha>".
 #    Redeploy re-runs the build with the new tag visible. Skipping this
 #    leaves prod rendering the stale version until the next commit to
-#    main. (Caught on v0.4.0 ship — see Amendment 5 below.)
+#    main. (Caught on v0.4.0 ship — see 2026-05-18 Amendment below.)
 PROD_URL=$(npx vercel ls --prod meetthefam | awk '/Ready/{print $3; exit}')
 npx vercel redeploy "$PROD_URL"
 # (Or click "Redeploy" on the latest Production deployment in the
@@ -136,6 +136,8 @@ The GitHub MCP currently has only read-tools for releases (no `create_release`),
 - [`docs/dev/releases.md`](../dev/releases.md) — operational recipe (the §4 code block above lives there too; this ADR holds the rationale and Amendment history).
 
 ## Amendments
+
+- **2026-06-01 (post-v1.0.0 launch)** — Added a migration-parity verification step to the release recipe (now Step 7, shifting the prior fast-forward step to Step 8 and the sync step to Step 9). Background: the Supabase ↔ GitHub integration was discovered (post-v1.0.0 cut) to have been auto-applying prod migrations on every `release/vX.Y.Z → main` merge since some point during Phases 2–9 — a behavior that was never explicitly documented. At the v1.0.0 cut, `tree_invites` was the one migration the integration skipped, requiring a manual `mcp__supabase__apply_migration` fallback. The new Step 7 standardizes a post-merge check: call `mcp__supabase__list_migrations` against both prod (`ycnsgkotrbjifsjkqmvn`) and QA (`ljjvwtpifmoshfknlbaj`), cross-check by name, and apply any missing migrations manually before fast-forwarding `qa`. No change to the versioning scheme or tag-creation mechanic; the only change is one additional verification step per release. Full fallback recipe in [`docs/dev/prod-readiness.md`](../dev/prod-readiness.md) §1.
 
 - **2026-05-29 (during v0.5.0 ship)** — Re-anchored the `v1.0.0` milestone from "end of Phase 9" to the launch cut-over, following the 2026-05-22 Phase 9 / 10 / 11 / 12 restructure (see [`../tasks/phase-backlog.md`](../tasks/phase-backlog.md) intro). The original §1 table (and the operational table in [`../dev/releases.md`](../dev/releases.md)) tied `v1.0.0` to Phase 9 because Phase 9 was *the* launch phase. The restructure split agent-coded implementation (Phase 9) from human-driven launch follow-through (Phase 10) and the production cut-over (Phase 11), so the `v1.0.0` anchor moved to the **Phase 10 Wave F → Phase 11** boundary. Concrete effect: **Phase 9 completion shipped `v0.5.0`** (this release) — the minor-per-phase rule (`0.MINOR.0`) simply extends through Phases 9–10, with `0.6.0`+ available as Phase 10 launch-prep checkpoints; `v1.0.0` stays reserved for the multi-tenant launch. No mechanic in the §4 recipe changes — only which phase boundary the major bump lands on. The §1 decision table keeps its original rows (historical record) with a superseded-note pointer; `releases.md`'s operational table was rewritten to the corrected mapping.
 
