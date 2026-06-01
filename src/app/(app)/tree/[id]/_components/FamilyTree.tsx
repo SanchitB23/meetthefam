@@ -52,6 +52,7 @@ import {
   transformToFamilyChartShapeShowAll,
 } from '../_lib/family-chart-data-show-all'
 import { attachNonSpouseParentLinkRewriter } from '../_lib/non-spouse-parent-links'
+import { panCameraTo } from '../_lib/pan-camera-to'
 import { attachSuperRootLinkSuppressor } from '../_lib/super-root-link-suppressor'
 import { personNodeHtml } from '../_lib/person-node-html'
 import { usePressActions } from '../_lib/usePressActions'
@@ -118,10 +119,11 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
     peopleByIdRef.current = peopleById
   }, [peopleById])
 
-  // Captured in the chart-init effect — see "un-recenter fallback" comment
-  // there. Holds the main_id we restore when `currentFocusId` flips to null
-  // (hash cleared / browser back from a `#p=` URL / zoom-to-fit button).
-  const fallbackMainIdRef = useRef<string | null>(null)
+  // #69 — `main_id` is permanently pinned to `__super_root__` so the
+  // progeny walk from there covers every person in the tree (option d'
+  // pivot — see `_lib/pan-camera-to.ts` for rationale). The old
+  // `fallbackMainIdRef` is no longer needed: the layout never re-roots,
+  // so there is no "previous main_id" to restore on un-recenter.
 
   // Hash is the runtime source of truth for the focus id. Server + first
   // client paint see no hash (matches the SSR snapshot); subsequent paints
@@ -253,36 +255,26 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
         setDetailPersonId(id)
       })
 
-    // Seed initial focus before the first render so the chart paints
-    // already-centered on the SSR / hash-derived person. Hash wins over
-    // the SSR seed (matches the rendering contract above).
-    //
-    // #69 — the `?? people[0]?.id` fallback is the new hardening. Without
-    // it, when neither the hash nor `initialFocusId` is set, family-chart
-    // falls back to `data[0]` as the default main_id — which after option
-    // (d) is the invisible `__super_root__`. Coercing to a real `people[0]?.id`
-    // here keeps `chart.getMainId()` always returning a real person id from
-    // first paint. See the spec §"Initial `main_id` fallback hardening".
-    const seedFocus = readHashFocus() ?? initialFocusId ?? people[0]?.id ?? null
-    if (seedFocus && peopleByIdRef.current.has(seedFocus)) {
-      chart.updateMainId(seedFocus)
-    }
-
-    // Capture the "un-recenter" fallback target — the main_id we restore
-    // when the hash is cleared (zoom-to-fit button, manual address-bar
-    // clear, browser back from a `#p=` URL). Priority:
-    //   1. `initialFocusId` (the `?p=` deep-link the user opened with)
-    //   2. `people[0].id` (family-chart's natural default when no main_id
-    //      is set explicitly — matches the first-paint behaviour when
-    //      `seedFocus` is null)
-    // Without this fallback, the un-recenter path stays anchored on the
-    // most recent `#p=` person because family-chart's `main_id` is sticky
-    // and there's no implicit "no focus" state to revert to.
-    fallbackMainIdRef.current =
-      initialFocusId ?? people[0]?.id ?? null
-
+    // #69 — pin `main_id` to the synthetic super-root so family-chart's
+    // progeny walk reaches every real root → every subtree → every
+    // person on the canvas. The hash-derived focus is honoured by
+    // panning the camera (not by re-rooting the layout); see
+    // `panCameraTo` and the `currentFocusId` sync effect below.
+    chart.updateMainId(SUPER_ROOT_ID)
     chart.updateTree({ initial: true })
     chartRef.current = chart
+
+    // After the initial paint, if there's a hash / SSR-seeded focus,
+    // pan the camera to that card. `updateTree({ initial: true })`
+    // schedules a transition; we defer the pan to the next tick so it
+    // composes cleanly with the auto-fit transition rather than
+    // racing it.
+    const seedFocus = readHashFocus() ?? initialFocusId ?? null
+    if (seedFocus && peopleByIdRef.current.has(seedFocus)) {
+      setTimeout(() => {
+        if (chartRef.current) panCameraTo(chartRef.current, cont, seedFocus)
+      }, 0)
+    }
 
     return () => {
       linkRewriter.dispose()
@@ -296,16 +288,16 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [people, shouldSuppressNextClickRef, readOnly])
 
-  // React → chart sync. The hash-derived `currentFocusId` is the source;
-  // whenever it changes we push the new id into family-chart's store.
-  // Initial mount is handled inline in the chart-init effect above to
-  // avoid the first-paint flicker that a separate effect would cause.
+  // #69 — React → camera sync. The hash-derived `currentFocusId` no
+  // longer drives `main_id` (that's pinned to super-root for life of
+  // the chart). Instead we pan the d3-zoom camera to the focused
+  // person's card without changing the layout root, so every person
+  // stays on canvas across re-centres.
   //
-  // Un-recenter path (#62): when `currentFocusId` becomes null (hash
-  // cleared by the zoom-to-fit button, the address-bar, or browser back),
-  // we restore `fallbackMainIdRef` and force a zoom-fit. Without this
-  // family-chart's `main_id` is sticky and the previous focus stays the
-  // layout root even though the URL no longer says so.
+  // Un-recenter path (#62 retained): when `currentFocusId` becomes
+  // null (hash cleared by zoom-to-fit, address-bar, or browser back),
+  // we just re-fit the whole tree via `updateTree({ initial: true })`
+  // — same as the dedicated zoom-to-fit button below.
   const initialMountRef = useRef(true)
   useEffect(() => {
     if (initialMountRef.current) {
@@ -313,22 +305,18 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
       return
     }
     const chart = chartRef.current
-    if (!chart) return
+    const cont = containerRef.current
+    if (!chart || !cont) return
 
     if (currentFocusId == null) {
-      // Un-recenter — restore the fallback main_id (initialFocusId or
-      // people[0]) and zoom-fit so the canvas matches the initial view.
-      const fallback = fallbackMainIdRef.current
-      if (fallback && peopleByIdRef.current.has(fallback)) {
-        chart.updateMainId(fallback)
-      }
+      // Un-recenter — re-fit the whole tree.
       chart.updateTree({ initial: true })
       return
     }
 
     if (!peopleByIdRef.current.has(currentFocusId)) return
-    chart.updateMainId(currentFocusId)
-    chart.updateTree()
+    // Pan the camera; main_id stays pinned to super-root.
+    panCameraTo(chart, cont, currentFocusId)
   }, [currentFocusId])
 
   // 8b-2 — zoom-to-fit the whole tree. Clears the URL hash (so the canvas
@@ -389,15 +377,19 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
   const handleRecenter = useCallback((personId: string) => {
     // Hash is the single source of truth — write it via window.location.hash
     // so the native hashchange fires and browser back can undo the re-center
-    // (Phase 9 fix — was history.replaceState which silenced the back stack).
-    // If the hash is already current, force the chart update directly since
-    // no hashchange fires for a no-op assignment.
+    // (#62). If the hash is already current, force the camera pan directly
+    // since no hashchange fires for a no-op assignment.
+    //
+    // #69 — "re-center" no longer re-roots the layout (main_id stays at
+    // super-root). It pans the d3-zoom camera so the clicked person's
+    // card sits at the viewport centre. Every other person stays on
+    // canvas at their existing position.
     const target = `#p=${encodeURIComponent(personId)}`
     if (window.location.hash === target) {
       const chart = chartRef.current
-      if (chart && peopleByIdRef.current.has(personId)) {
-        chart.updateMainId(personId)
-        chart.updateTree()
+      const cont = containerRef.current
+      if (chart && cont && peopleByIdRef.current.has(personId)) {
+        panCameraTo(chart, cont, personId)
       }
     } else {
       window.location.hash = target
