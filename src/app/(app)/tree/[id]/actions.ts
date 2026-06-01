@@ -365,6 +365,18 @@ export async function updatePerson(
   }
 
   if (data.gender !== undefined) patch.gender = data.gender ?? 'unknown'
+  // ---- Birth date / year priority (Fix #184) ----
+  //
+  // Rule: birth_date is the single source of truth.  If birth_date is set
+  // in the submitted payload, we clear birth_year to prevent drift between
+  // the two columns.  If only birth_year is provided (the user knows the
+  // year but not the full date), we persist it as-is.
+  //
+  // Both fields pass through their respective validators before landing in
+  // the patch.  The priority enforcement runs after both are resolved so
+  // the final patch is internally consistent (birth_date set → birth_year
+  // forced to null even if the caller sent both).
+
   if (data.birth_year !== undefined) {
     const by = Number.isFinite(data.birth_year)
       ? (data.birth_year as number)
@@ -382,6 +394,13 @@ export async function updatePerson(
       if (err) return { ok: false, error: err }
     }
     patch.birth_date = bd
+    // birth_date wins: clear birth_year so there is exactly one source of
+    // truth.  We only force-null when birth_date is non-null — clearing
+    // birth_date (bd === null) does NOT clobber birth_year, preserving
+    // the year-only case.
+    if (bd !== null) {
+      patch.birth_year = null
+    }
   }
   if (data.location !== undefined) patch.location = clean(data.location)
   if (data.occupation !== undefined) patch.occupation = clean(data.occupation)

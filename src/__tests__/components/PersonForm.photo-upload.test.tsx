@@ -69,6 +69,7 @@ const PERSON_ROW: PersonRow = {
   bio: null,
   gender: 'f',
   birth_year: 1815,
+  birth_date: null,
   photo_url: null,
   location: null,
   occupation: null,
