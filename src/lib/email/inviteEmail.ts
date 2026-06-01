@@ -1,4 +1,7 @@
+import { render } from '@react-email/render'
+import * as React from 'react'
 import { Resend } from 'resend'
+import { InviteEmail } from '../../../emails/invite'
 
 type InvitePayload = {
   email: string
@@ -7,57 +10,25 @@ type InvitePayload = {
   invitedByName: string
 }
 
-/** Escape the five HTML-significant characters for safe interpolation into the body. */
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
-
 /**
- * Minimal, table-based invite body. Deliberately plain — a brand-aligned
- * template (heirloom palette, like the auth emails) is deferred to follow-up
- * issue #154. All user-supplied fields are HTML-escaped.
+ * Render the branded invite email HTML via React Email.
+ *
+ * HTML escaping: React Email (via React's reconciler) escapes all JSX text
+ * content and attribute values at render time — `<`, `>`, `&`, `"` and `'` in
+ * prop strings are automatically entity-encoded. The previous inline
+ * `buildInviteHtml` manually called `escapeHtml()` for each field; React Email
+ * provides the same guarantee without the boilerplate. The rendered HTML is
+ * therefore safe for injection into the Resend `html` field.
  */
-function buildInviteHtml(invite: InvitePayload): string {
-  const treeName = escapeHtml(invite.treeName)
-  const invitedByName = escapeHtml(invite.invitedByName)
-  const inviteUrl = escapeHtml(invite.inviteUrl)
-  return `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  </head>
-  <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; color: #2E2A24; background-color: #F5EFE3; margin: 0; padding: 32px 12px;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-      <tr>
-        <td align="center">
-          <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width: 560px;">
-            <tr>
-              <td style="background-color: #FFFCF5; border: 1px solid #E3DBCB; border-radius: 16px; padding: 40px;">
-                <h1 style="color: #2D4A3E; font-size: 24px; margin: 0 0 16px;">You're invited to a family tree</h1>
-                <p style="font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
-                  ${invitedByName} invited you to help build <strong>${treeName}</strong> on meetthefam.
-                </p>
-                <a href="${inviteUrl}" style="display: inline-block; background-color: #2D4A3E; color: #FFFCF5; text-decoration: none; font-weight: 600; font-size: 16px; padding: 14px 24px; border-radius: 12px;">
-                  Accept invitation
-                </a>
-                <p style="font-size: 13px; line-height: 1.55; color: #6B6358; margin: 24px 0 0;">
-                  Or paste this link into your browser:<br />
-                  <a href="${inviteUrl}" style="color: #2D4A3E; word-break: break-all;">${inviteUrl}</a>
-                </p>
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-  </body>
-</html>`
+async function buildInviteHtml(invite: InvitePayload): Promise<string> {
+  return render(
+    React.createElement(InviteEmail, {
+      inviterName: invite.invitedByName,
+      treeName: invite.treeName,
+      inviteUrl: invite.inviteUrl,
+      recipientEmail: invite.email,
+    }),
+  )
 }
 
 export async function sendInviteEmail(invite: InvitePayload): Promise<void> {
@@ -76,7 +47,7 @@ export async function sendInviteEmail(invite: InvitePayload): Promise<void> {
       from: process.env.RESEND_FROM_EMAIL!,
       to: invite.email,
       subject: `${invite.invitedByName} invited you to their family tree on meetthefam`,
-      html: buildInviteHtml(invite),
+      html: await buildInviteHtml(invite),
     })
     if (error) {
       // Resend reports API-level failures (bad key, rate limit, unverified
