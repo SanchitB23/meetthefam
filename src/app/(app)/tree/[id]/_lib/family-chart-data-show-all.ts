@@ -108,6 +108,33 @@ export function transformToFamilyChartShapeShowAll(rows: PersonRow[]): FamilyCha
     }
   }
 
+  // Pass 1.5 — dedupe `rels.children` across spouse couples.
+  //
+  // The base transform lists every child under BOTH their father and
+  // their mother. That's fine when family-chart's main_id is at a leaf
+  // (each ancestor appears once in the ancestry walk), but with our
+  // pinned main_id = super-root the *progeny* walk runs in two parallel
+  // branches: super_root → George → his kids, AND super_root → Margaret
+  // → her kids. Same kids, both walks, two layout positions, a duplicate
+  // card cascade across every Gen-2+ person.
+  //
+  // Fix: for every datum with TWO in-tree parents, keep it as a child
+  // of only the FIRST parent listed (the father by base-transform
+  // convention — see `family-chart-data.ts:107-109`). The second parent
+  // is still rendered as the first parent's spouse via family-chart's
+  // setupSpouses, and the marriage bar positions the kid centered under
+  // both. No visible-layout regression vs. the dual-listing approach.
+  //
+  // Single-parent kids (e.g. Luca, whose father isn't in the tree) are
+  // already in only one parent's list — this pass leaves them alone.
+  for (const d of base) {
+    if (d.rels.parents.length < 2) continue
+    const dropFromId = d.rels.parents[1] // second parent
+    const dropFrom = byId.get(dropFromId)
+    if (!dropFrom) continue
+    dropFrom.rels.children = dropFrom.rels.children.filter((cid) => cid !== d.id)
+  }
+
   // Pass 2 — identify "true root patriarchs/matriarchs": rootless and
   // (no spouse OR every spouse also rootless). Cross-level in-laws (a
   // rootless person whose spouse has parents) are deliberately EXCLUDED

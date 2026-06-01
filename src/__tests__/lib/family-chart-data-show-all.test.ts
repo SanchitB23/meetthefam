@@ -175,6 +175,37 @@ describe('transformToFamilyChartShapeShowAll', () => {
     expect(parent.rels.parents.sort()).toEqual(['gp1', 'gp2'])
   })
 
+  test('two-parent child appears in only ONE parent rels.children (dedupe)', () => {
+    // The base transform lists every child under BOTH parents. That
+    // double-listing causes family-chart's d3.hierarchy progeny walk
+    // (from main_id=super_root) to visit each kid twice and emit a
+    // duplicate card. The dedupe pass keeps the kid under the FIRST
+    // parent listed (father by base-transform convention) only.
+    const rows: PersonRow[] = [
+      row({ id: 'a1', gender: 'm', spouse_id: 'a2' }),
+      row({ id: 'a2', gender: 'f', spouse_id: 'a1' }),
+      row({ id: 'b1', gender: 'm', spouse_id: 'b2' }), // forces a 2nd true root
+      row({ id: 'b2', gender: 'f', spouse_id: 'b1' }),
+      row({ id: 'kid', father_id: 'a1', mother_id: 'a2' }),
+    ]
+    const out = transformToFamilyChartShapeShowAll(rows)
+    expect(out.find((d) => d.id === 'a1')!.rels.children).toEqual(['kid'])
+    expect(out.find((d) => d.id === 'a2')!.rels.children).toEqual([])
+  })
+
+  test('single-parent child remains under their only parent (no dedupe)', () => {
+    const rows: PersonRow[] = [
+      row({ id: 'a1', gender: 'm', spouse_id: 'a2' }),
+      row({ id: 'a2', gender: 'f', spouse_id: 'a1' }),
+      row({ id: 'b1', gender: 'm', spouse_id: 'b2' }), // forces a 2nd true root
+      row({ id: 'b2', gender: 'f', spouse_id: 'b1' }),
+      // Single-parent child (e.g. donor-assisted same-sex parent case).
+      row({ id: 'kid', mother_id: 'a2' }),
+    ]
+    const out = transformToFamilyChartShapeShowAll(rows)
+    expect(out.find((d) => d.id === 'a2')!.rels.children).toEqual(['kid'])
+  })
+
   test('SUPER_ROOT_ID is the documented sentinel string', () => {
     expect(SUPER_ROOT_ID).toBe('__super_root__')
   })
