@@ -22,8 +22,22 @@ export const metadata: Metadata = {
   title: "meetthefam",
   description:
     "An heirloom-quality family-tree builder for the people who already know each other",
+  // favicon.ico + apple-icon.png in src/app/ are picked up automatically by
+  // Next.js App Router file-based metadata conventions. We only add explicit
+  // entries for the SVG and larger PNGs that don't have a reserved filename.
   icons: {
-    icon: [{ url: "/logo.svg", type: "image/svg+xml" }],
+    icon: [
+      // ICO fallback — browsers that don't support SVG will use this
+      { url: "/favicon.ico", sizes: "48x48", type: "image/x-icon" },
+      // SVG — crisp at any resolution for modern browsers
+      { url: "/logo.svg", type: "image/svg+xml" },
+      // PNG sizes used by Android Chrome and social crawlers
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    // apple-icon.png in src/app/ generates the auto <link rel="apple-touch-icon">
+    // but we add it explicitly here so the URL is predictable (served from public/)
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
     title: "meetthefam",
