@@ -168,16 +168,36 @@ export function transformToFamilyChartShapeShowAll(rows: PersonRow[]): FamilyCha
 
   const trueRoots = base.filter(isTrueRoot)
 
-  // 0 or 1 true root: single-trunk tree (or empty). No super-root
+  // Pass 2.5 — for true-root couples, only the FIRST partner becomes
+  // super-root's child; the SECOND is reached via the first's spouse-
+  // link only. Without this, both partners of every Gen-1 couple show
+  // up twice — once in the progeny walk (as super-root's child) and
+  // once via `setupSpouses` (as the partner's spouse) — emitting two
+  // duplicate cards per partner that contribute nothing to readability.
+  //
+  // Iteration order = base declaration order = seed insertion order, so
+  // husbands typically precede wives. Either ordering is correct; we
+  // just need a consistent tiebreak.
+  const primaryRoots: typeof trueRoots = []
+  const skippedAsSecondaryPartner = new Set<string>()
+  for (const d of trueRoots) {
+    if (skippedAsSecondaryPartner.has(d.id)) continue
+    primaryRoots.push(d)
+    for (const sid of d.rels.spouses) skippedAsSecondaryPartner.add(sid)
+  }
+
+  // 0 or 1 primary root: single-trunk tree (or empty). No super-root
   // injection needed; the standard walk from `main_id = data[0]` (which
   // FamilyTree.tsx already overrides to SUPER_ROOT_ID then falls back
   // to the lone root) covers everyone reachable.
-  if (trueRoots.length <= 1) return base
+  if (primaryRoots.length <= 1) return base
 
-  // Pass 3 — rewire each true root's parents to [SUPER_ROOT_ID].
-  const trueRootIds = new Set(trueRoots.map((d) => d.id))
+  // Pass 3 — rewire each PRIMARY root's parents to [SUPER_ROOT_ID].
+  // Secondary partners stay with `rels.parents = []` so they're reached
+  // only via spouse-link rendering.
+  const primaryRootIds = new Set(primaryRoots.map((d) => d.id))
   for (const d of base) {
-    if (trueRootIds.has(d.id)) {
+    if (primaryRootIds.has(d.id)) {
       d.rels.parents = [SUPER_ROOT_ID]
     }
   }
@@ -207,7 +227,7 @@ export function transformToFamilyChartShapeShowAll(rows: PersonRow[]): FamilyCha
     rels: {
       parents: [],
       spouses: [],
-      children: trueRoots.map((d) => d.id),
+      children: primaryRoots.map((d) => d.id),
     },
   }
 

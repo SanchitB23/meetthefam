@@ -53,7 +53,11 @@ describe('transformToFamilyChartShapeShowAll', () => {
     expect(out.find((d) => d.id === 'patriarch')!.rels.parents).toEqual([])
   })
 
-  test('multiple Gen-1 couples → super-root prepended with each couple as a child', () => {
+  test('multiple Gen-1 couples → only the primary partner of each couple is a super-root child', () => {
+    // For each true-root couple, only the first-declared partner becomes
+    // super-root's child. The second is reached via the first's spouse-
+    // link, eliminating the double-render that would otherwise emit one
+    // duplicate card per Gen-1 partner.
     const rows: PersonRow[] = [
       // Couple A — both rootless, married to each other.
       row({ id: 'a1', gender: 'm', spouse_id: 'a2' }),
@@ -66,14 +70,30 @@ describe('transformToFamilyChartShapeShowAll', () => {
 
     // Super-root sits at index 0.
     expect(out[0].id).toBe(SUPER_ROOT_ID)
-    // Owns every true-root as a child, preserving declaration order.
-    expect(out[0].rels.children).toEqual(['a1', 'a2', 'b1', 'b2'])
+    // Owns ONLY the primary partner of each couple.
+    expect(out[0].rels.children).toEqual(['a1', 'b1'])
     // Has no parents itself.
     expect(out[0].rels.parents).toEqual([])
-    // Every true-root has SUPER_ROOT_ID as its sole parent.
-    for (const id of ['a1', 'a2', 'b1', 'b2']) {
-      expect(out.find((d) => d.id === id)!.rels.parents).toEqual([SUPER_ROOT_ID])
-    }
+    // Primary partners have SUPER_ROOT_ID as their sole parent.
+    expect(out.find((d) => d.id === 'a1')!.rels.parents).toEqual([SUPER_ROOT_ID])
+    expect(out.find((d) => d.id === 'b1')!.rels.parents).toEqual([SUPER_ROOT_ID])
+    // Secondary partners stay rootless (reached via spouse-link).
+    expect(out.find((d) => d.id === 'a2')!.rels.parents).toEqual([])
+    expect(out.find((d) => d.id === 'b2')!.rels.parents).toEqual([])
+  })
+
+  test('solo rootless person (no spouse) is still a super-root child', () => {
+    const rows: PersonRow[] = [
+      row({ id: 'a1', gender: 'm', spouse_id: 'a2' }),
+      row({ id: 'a2', gender: 'f', spouse_id: 'a1' }),
+      // Solo rootless — no spouse, no children. True root.
+      row({ id: 'solo', gender: 'f' }),
+    ]
+    const out = transformToFamilyChartShapeShowAll(rows)
+    const superRoot = out.find((d) => d.id === SUPER_ROOT_ID)!
+    // `a1` is primary of couple A; `solo` is its own primary.
+    expect(superRoot.rels.children).toEqual(['a1', 'solo'])
+    expect(out.find((d) => d.id === 'solo')!.rels.parents).toEqual([SUPER_ROOT_ID])
   })
 
   test('cross-level in-law is NOT super-root child — stays rootless, reached via spouse link', () => {
@@ -96,9 +116,10 @@ describe('transformToFamilyChartShapeShowAll', () => {
     const inlaw = out.find((d) => d.id === 'inlaw')!
     // Cross-level in-law stays rootless — NOT rewired to super-root.
     expect(inlaw.rels.parents).toEqual([])
-    // Super-root children = only the Gen-1 patriarchs (not the in-law).
+    // Super-root children = primary partner of each Gen-1 couple ONLY
+    // (matriarchs reached via spouse-link); in-law not included.
     const superRoot = out.find((d) => d.id === SUPER_ROOT_ID)!
-    expect(superRoot.rels.children).toEqual(['a1', 'a2', 'b1', 'b2'])
+    expect(superRoot.rels.children).toEqual(['a1', 'b1'])
   })
 
   test('floating co-parent (rootless, no spouse, has children) — synthesise spouse link', () => {
