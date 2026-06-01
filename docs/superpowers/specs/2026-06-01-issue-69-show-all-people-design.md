@@ -1,12 +1,104 @@
-# Show all people in the tree (option (d) — synthetic super-root) — design
+# Show all people in the tree — design
 
 > Spec for [#69](https://github.com/SanchitB23/meetthefam/issues/69). Milestone:
 > **v1.1 — Post-launch polish**. Authored via `superpowers:brainstorming` on
-> 2026-06-01. Promotes the spike POC on
-> [`claude/issue-69-20260526-0835`](https://github.com/SanchitB23/meetthefam/tree/claude/issue-69-20260526-0835)
-> from a feature-flagged side-path to the default tree transform, plus the
-> two polish fixes the POC explicitly deferred and a seed-data expansion that
-> gives the change a realistic stress-test.
+> 2026-06-01. The original design (below) called for **option (d) — synthetic
+> super-root grafted onto a hash-driven main_id**. During implementation that
+> proved structurally insufficient (family-chart's walk doesn't traverse the
+> super-root's other subtrees from a deep main_id). We pivoted mid-stream to
+> **option (d') — pin main_id permanently to super-root and pan the camera on
+> re-center**, then iterated through five further fixes as the layout
+> pathologies of that approach surfaced. The §"Shipped design" below records
+> what actually ships in the PR; the §"Original design" further down records
+> the brainstorming session's design as historical context for the option-(e)
+> follow-up.
+
+## Shipped design (option d', after the iteration cycle)
+
+**`main_id` is pinned permanently to `__super_root__`.** The progeny walk from
+there reaches every real root → every subtree → every person on the canvas.
+"Re-center here" no longer re-roots the layout; it pans the d3-zoom camera
+via `f3.handlers.cardToMiddle` so the clicked card sits at the viewport
+centre while every other person stays on canvas.
+
+The show-all transform applies four passes on top of `transformToFamilyChartShape`:
+
+1. **Floating co-parent synthesis** — for rootless people with no spouse but
+   ≥ 1 child (Carlos Vargas in the local seed), synthesise a bidirectional
+   spouse link to the in-tree other-parent of one of their kids, iff that
+   other-parent isn't already married. In-memory only; never touches the DB.
+2. **Couple-level child dedupe** — the base transform lists every child
+   under BOTH parents. Walking from super-root, that emits duplicate progeny-
+   tree branches and a card-explosion (`168 cards for 55 people` measured).
+   Keep each two-parent child under exactly one parent — preferring the
+   parent reachable from super-root (rules out the Carlos branch).
+3. **True-root identification** — only people who are rootless AND have a
+   rootless spouse (or no spouse at all) become super-root's children.
+   Cross-level in-laws (rootless person married to a deeper-generation
+   in-tree person, e.g. Nora ↔ Daniel) stay rootless in `rels.parents` and
+   get rendered via their spouse's existing spouse link. Skipping this
+   exclusion was the original layout-pathology cause.
+4. **Primary-partner-only super-root linkage** — for each true-root couple,
+   only the first-declared partner becomes a super-root child; the second
+   partner is reached via the first's spouse-link only. Without this, every
+   Gen-1 patriarch + matriarch rendered twice (once via super-root's progeny
+   walk, once via the partner's spouse-link), adding 10 unnecessary
+   duplicate cards.
+
+**Click handler update**: family-chart's `setupTid`
+(family-chart.js:897-913) marks EVERY occurrence of a duplicated id as
+`duplicate > 0`, not just the second+. So for cross-subtree-married people
+(Robert ↔ Susan, Catherine ↔ James, Andrew ↔ Beth, Helen ↔ Marcus), every
+rendered card is dashed. The original 8b-3 design assumed a "canonical"
+instance with the actions and "echo" duplicates without — under d' that
+canonical doesn't exist, so we now render the 3-dot menu + add-relative "+"
+button on duplicate cards too. The "tap card body → recenter on duplicate"
+behaviour is dropped: card body tap opens the detail sheet (same as
+non-duplicate cards); re-centering is done explicitly via the action menu.
+
+### Result on the 55-person local seed
+
+| Metric | Result |
+|---|---|
+| Unique people rendered | **55 / 55** ✅ |
+| Total cards rendered | **63** (8 duplicates) |
+| Duplicate sources | 4 cross-subtree marriages (Robert ↔ Susan, Catherine ↔ James, Andrew ↔ Beth, Helen ↔ Marcus) × 2 partners each |
+| "Out of thin air" on re-center | **Eliminated** — camera pans, layout never re-roots |
+
+The 8 remaining duplicates are the **hard structural floor of option d'**:
+family-chart's `d3.hierarchy` walks each subtree independently, so a person
+whose spouse is in a different super-root subtree is necessarily rendered
+in both. Eliminating those last 8 requires option (e) — replace the layout
+engine. Filed as a v1.2+ follow-up.
+
+### Files actually changed (final state)
+
+| File | Change |
+|---|---|
+| `src/app/(app)/tree/[id]/_lib/family-chart-data-show-all.ts` | New — the 4-pass show-all transform. |
+| `src/app/(app)/tree/[id]/_lib/pan-camera-to.ts` | New — wraps `f3.handlers.cardToMiddle` with current-zoom preservation. |
+| `src/app/(app)/tree/[id]/_lib/super-root-link-suppressor.ts` | New — MutationObserver-backed suppression of link paths touching super-root. |
+| `src/app/(app)/tree/[id]/_lib/person-node-html.ts` | Render 3-dot + "+" buttons on duplicate cards too. |
+| `src/app/(app)/tree/[id]/_components/FamilyTree.tsx` | Pin `main_id = SUPER_ROOT_ID`; `panCameraTo` for hash-driven focus; click-handler reorder (action-trigger before duplicate-tap, which is now dropped). Removed `fallbackMainIdRef`. |
+| `src/app/globals.css` | Hide super-root foreignObject via `:has()`; scoped negative-margin to absorb the reserved card-row slot. |
+| `supabase/seed.sql` | 13 → 55 people. |
+| `supabase/seed-qa.sql` | 14 → 49 people. 8b-3 anchor (Catherine ↔ Andrew + Maya) preserved. |
+| `src/__tests__/lib/family-chart-data-show-all.test.ts` | New — 12 Vitest cases covering the 4-pass transform branches. |
+| `src/__tests__/lib/person-node-html.test.ts` | Inverted 2 cases — duplicate cards now INCLUDE the action buttons. |
+
+### Known limitations (filed for option-(e) follow-up)
+
+1. **8 cross-subtree-marriage duplicates** — structural; only option (e) (replace layout engine) eliminates them.
+2. **Wide horizontal layout** — 5 Gen-1 subtrees laid side-by-side stretches the canvas horizontally. Zoom-to-fit works but the bounding box is wide; mobile users will need to pan more than they would in a single-trunk tree.
+3. **Negative-margin CSS** — try-first hack to absorb the super-root's reserved card-row slot. If `chart.fit()` math drifts in QA, the rule can be deleted without functional impact.
+
+---
+
+## Original design (option d) — historical, kept for option-(e) follow-up context
+
+The sections below describe the design as it was locked at brainstorm time.
+They do **not** describe what ships. Read these for the option-(e) follow-up
+to understand the assumptions that proved wrong.
 
 ## Goal
 
