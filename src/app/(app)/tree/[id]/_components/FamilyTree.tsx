@@ -215,19 +215,14 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
 
         const target = (e.target as HTMLElement | null) ?? null
 
-        // 8b-3: tap on a duplicate card → jump to the primary instance.
-        // family-chart marks duplicates with the same data.id as the primary,
-        // so setting the hash to that id re-centers on the canonical occurrence
-        // via the existing hash-driven re-center wiring (handleRecenter /
-        // useSyncExternalStore). Use window.location.hash (not replaceState)
-        // so a new hashchange event fires and the subscriber picks it up.
-        // This branch fires BEFORE the action-trigger branch so a duplicate
-        // card never falls through to the action menu path.
-        if (target?.closest('[data-duplicate="true"]')) {
-          window.location.hash = `#p=${encodeURIComponent(id)}`
-          return
-        }
-
+        // #69 v1.1 — action-trigger checks now run BEFORE the duplicate-tap
+        // check below. Under option d', family-chart marks EVERY occurrence
+        // of a duplicated id as `duplicate > 0` (setupTid at family-chart.js
+        // line 897-913), so cross-subtree-married people (Catherine, James,
+        // Beth, etc.) end up with every card dashed and would lose their
+        // actions if we checked duplicate first. The 3-dot button and the
+        // "+" button now render on duplicate cards as well — see
+        // person-node-html.ts.
         if (!readOnly) {
           // 8b polish FIX 1 — in-card "+" button dispatches a CustomEvent that
           // AddRelativeFab picks up to open the add-relative form pre-seeded on

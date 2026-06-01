@@ -250,9 +250,17 @@ describe('personNodeHtml — duplicate marker (8b-3)', () => {
     expect(html).toContain('Already shown above')
   })
 
-  test('duplicate omits the ellipsis action button (no data-action-trigger)', () => {
+  test('duplicate INCLUDES the ellipsis action button — every card needs actions under #69 d\'', () => {
+    // #69 v1.1: family-chart's setupTid marks EVERY occurrence of a
+    // duplicated id with `duplicate > 0` (not just the second+), so the
+    // 8 cross-subtree-married people end up with every Catherine card
+    // dashed. If we skipped the action button on duplicates those 8
+    // people would have no actions anywhere. Render it on duplicates
+    // too; the click handler in FamilyTree.tsx routes a 3-dot click to
+    // the action menu (taking priority over the no-longer-used "tap
+    // duplicate → recenter" logic).
     const html = personNodeHtml(duplicateNode())
-    expect(html).not.toContain('data-action-trigger')
+    expect(html).toContain('data-action-trigger')
   })
 
   // 8b polish FIX 1 — in-card "+" add-relative button.
@@ -267,10 +275,14 @@ describe('personNodeHtml — duplicate marker (8b-3)', () => {
     expect(html).toContain('right:-10px')
   })
 
-  test('duplicate card omits mtf-node__add-btn (read-only echoes skip the "+")', () => {
+  test('duplicate card INCLUDES the mtf-node__add-btn ("+") — symmetric with the ellipsis fix above', () => {
+    // Same rationale as the ellipsis-button test: under #69 d', every
+    // cross-subtree-married card is marked duplicate, so suppressing
+    // the "+" on duplicates would strip the add-relative affordance
+    // from those people entirely.
     const html = personNodeHtml(duplicateNode())
-    expect(html).not.toContain('mtf-node__add-btn')
-    expect(html).not.toContain('data-action-plus')
+    expect(html).toContain('mtf-node__add-btn')
+    expect(html).toContain('data-action-plus')
   })
 
   test('deceased + duplicate compose without collision: both classes, both badges, different corners', () => {

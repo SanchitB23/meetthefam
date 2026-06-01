@@ -245,8 +245,18 @@ export function personNodeHtml(
   // the action menu just like long-press does. The 44×44 hit-area (Apple
   // HIG minimum) wraps a smaller 16×16 icon so the icon stays subtle
   // while the tap target meets accessibility.
-  // 8b-3: duplicate cards skip this button — they're not the canonical card;
-  // tapping a duplicate re-centers on the primary instance instead.
+  // 8b-3 (revised for #69 v1.1): family-chart's setupTid marks EVERY
+  // occurrence of a duplicated id with `duplicate > 0` (not just the
+  // second+), so under option d' there is no "canonical" instance — the
+  // 8 cross-subtree-married people end up with all their cards dashed.
+  // Originally we skipped the 3-dot button on duplicates because the
+  // intent was "tap → jump to canonical"; but with every Catherine card
+  // marked duplicate, every Catherine card would lose actions. We now
+  // render the button on duplicates too. The "tap card body → recenter"
+  // behavior in FamilyTree.tsx still fires for the rest of the card,
+  // but a click on this button is short-circuited via the
+  // [data-action-trigger] check that runs BEFORE the duplicate-tap
+  // check in setOnCardClick.
   const ellipsisButton = `
     <button
       type="button"
@@ -405,8 +415,8 @@ export function personNodeHtml(
                    0 4px 12px color-mix(in oklch, var(--foreground) 6%, transparent);
       "
     >
-      ${options.readOnly || isDuplicate ? '' : ellipsisButton}
-      ${options.readOnly || isDuplicate ? '' : addRelativeButton}
+      ${options.readOnly ? '' : ellipsisButton}
+      ${options.readOnly ? '' : addRelativeButton}
       ${duplicateBadge}
       ${avatarHtml(data)}
       <div
