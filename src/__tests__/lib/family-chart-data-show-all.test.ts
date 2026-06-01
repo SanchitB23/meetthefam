@@ -1,8 +1,10 @@
 // Issue #69 — unit tests for the super-root injection transform.
 // Same shape as `family-chart-data.test.ts`: pure function in, pure
-// array out — no DOM, no Supabase. Verifies the three branches the
-// wrapper exposes (no roots / one root / multi-root) and that real
-// root edges get rewired to the synthetic parent.
+// array out — no DOM, no Supabase. Covers the three branches the
+// wrapper exposes (no roots / one root / multi-root), the tighter
+// "only true patriarchs/matriarchs" rooting (cross-level in-laws
+// are NOT super-root's children — they're reached via spouse links),
+// and the floating-partner spouse synthesis.
 
 import { describe, expect, test } from 'vitest'
 
@@ -39,7 +41,7 @@ describe('transformToFamilyChartShapeShowAll', () => {
     expect(transformToFamilyChartShapeShowAll([])).toEqual([])
   })
 
-  test('one root → no super-root injected (base transform unchanged)', () => {
+  test('single-trunk tree (one rootless patriarch) → no super-root injected', () => {
     const rows: PersonRow[] = [
       row({ id: 'patriarch', gender: 'm' }),
       row({ id: 'kid', father_id: 'patriarch' }),
@@ -51,55 +53,129 @@ describe('transformToFamilyChartShapeShowAll', () => {
     expect(out.find((d) => d.id === 'patriarch')!.rels.parents).toEqual([])
   })
 
-  test('multiple roots → super-root prepended at data[0]', () => {
+  test('multiple Gen-1 couples → super-root prepended with each couple as a child', () => {
     const rows: PersonRow[] = [
-      row({ id: 'root-a', gender: 'm' }),
-      row({ id: 'root-b', gender: 'f' }),
-      row({ id: 'kid', father_id: 'root-a', mother_id: 'root-b' }),
-      // A second disconnected root, no edges to root-a / root-b.
-      row({ id: 'orphan-root', gender: 'f' }),
+      // Couple A — both rootless, married to each other.
+      row({ id: 'a1', gender: 'm', spouse_id: 'a2' }),
+      row({ id: 'a2', gender: 'f', spouse_id: 'a1' }),
+      // Couple B — both rootless, married to each other.
+      row({ id: 'b1', gender: 'm', spouse_id: 'b2' }),
+      row({ id: 'b2', gender: 'f', spouse_id: 'b1' }),
     ]
     const out = transformToFamilyChartShapeShowAll(rows)
 
-    // Super-root sits at index 0 (the "above-the-tree" slot family-chart
-    // assigns to data[0]).
+    // Super-root sits at index 0.
     expect(out[0].id).toBe(SUPER_ROOT_ID)
-    // It owns every real root as a child, preserving declaration order.
-    expect(out[0].rels.children).toEqual(['root-a', 'root-b', 'orphan-root'])
-    // And it has no parents itself.
+    // Owns every true-root as a child, preserving declaration order.
+    expect(out[0].rels.children).toEqual(['a1', 'a2', 'b1', 'b2'])
+    // Has no parents itself.
     expect(out[0].rels.parents).toEqual([])
+    // Every true-root has SUPER_ROOT_ID as its sole parent.
+    for (const id of ['a1', 'a2', 'b1', 'b2']) {
+      expect(out.find((d) => d.id === id)!.rels.parents).toEqual([SUPER_ROOT_ID])
+    }
   })
 
-  test('every real root has __super_root__ as its sole parent', () => {
+  test('cross-level in-law is NOT super-root child — stays rootless, reached via spouse link', () => {
+    // Tightened logic for #69 v1.1: making cross-level in-laws (rootless
+    // person married to a deeper-generation in-tree person) super-root
+    // children was the original layout-pathology cause (cards duplicate
+    // to bridge the level gap). They must remain rootless in `parents`.
     const rows: PersonRow[] = [
-      row({ id: 'a', gender: 'm' }),
-      row({ id: 'b', gender: 'f' }),
-      row({ id: 'c' }),
+      // Couple A — Gen-1 patriarchs.
+      row({ id: 'a1', gender: 'm', spouse_id: 'a2' }),
+      row({ id: 'a2', gender: 'f', spouse_id: 'a1' }),
+      // Couple B — Gen-1 patriarchs.
+      row({ id: 'b1', gender: 'm', spouse_id: 'b2' }),
+      row({ id: 'b2', gender: 'f', spouse_id: 'b1' }),
+      // Gen-2 son of A, married to a Gen-2 in-law (rootless).
+      row({ id: 'a_son', father_id: 'a1', mother_id: 'a2', spouse_id: 'inlaw' }),
+      row({ id: 'inlaw', gender: 'f', spouse_id: 'a_son' }), // rootless in-law
     ]
     const out = transformToFamilyChartShapeShowAll(rows)
-    const real = out.filter((d) => d.id !== SUPER_ROOT_ID)
-    for (const d of real) {
-      expect(d.rels.parents).toEqual([SUPER_ROOT_ID])
-    }
+    const inlaw = out.find((d) => d.id === 'inlaw')!
+    // Cross-level in-law stays rootless — NOT rewired to super-root.
+    expect(inlaw.rels.parents).toEqual([])
+    // Super-root children = only the Gen-1 patriarchs (not the in-law).
+    const superRoot = out.find((d) => d.id === SUPER_ROOT_ID)!
+    expect(superRoot.rels.children).toEqual(['a1', 'a2', 'b1', 'b2'])
+  })
+
+  test('floating co-parent (rootless, no spouse, has children) — synthesise spouse link', () => {
+    // Carlos-style case: rootless person whose only graph edges point
+    // DOWN to their kids. We synthesise a bidirectional spouse link to
+    // the child's other parent so family-chart can render them.
+    const rows: PersonRow[] = [
+      // Gen-1 couple — patriarch + matriarch.
+      row({ id: 'a1', gender: 'm', spouse_id: 'a2' }),
+      row({ id: 'a2', gender: 'f', spouse_id: 'a1' }),
+      // Gen-1 second couple — needed so super-root injection fires.
+      row({ id: 'b1', gender: 'm', spouse_id: 'b2' }),
+      row({ id: 'b2', gender: 'f', spouse_id: 'b1' }),
+      // Daughter of Gen-1 couple A (in-tree, unmarried).
+      row({ id: 'a_daughter', gender: 'f', father_id: 'a1', mother_id: 'a2' }),
+      // Floating co-parent — rootless, unmarried, has a kid with a_daughter.
+      row({ id: 'floater', gender: 'm' }),
+      // Their child — references both as parents.
+      row({ id: 'kid', father_id: 'floater', mother_id: 'a_daughter' }),
+    ]
+    const out = transformToFamilyChartShapeShowAll(rows)
+    const floater = out.find((d) => d.id === 'floater')!
+    const daughter = out.find((d) => d.id === 'a_daughter')!
+
+    // Synthesised spouse link is bidirectional.
+    expect(floater.rels.spouses).toEqual(['a_daughter'])
+    expect(daughter.rels.spouses).toEqual(['floater'])
+
+    // Now `floater` has a spouse (`a_daughter`) who is NOT rootless —
+    // so floater is NOT a true root → NOT super-root's child.
+    const superRoot = out.find((d) => d.id === SUPER_ROOT_ID)!
+    expect(superRoot.rels.children).not.toContain('floater')
+    expect(floater.rels.parents).toEqual([])
+  })
+
+  test('synthesis does not clobber an existing marriage', () => {
+    // If the floater's child has an other-parent who is already married,
+    // synthesis must not rewrite that marriage. The floater remains
+    // unreachable in that case (documented limitation).
+    const rows: PersonRow[] = [
+      // Gen-1 couples
+      row({ id: 'a1', gender: 'm', spouse_id: 'a2' }),
+      row({ id: 'a2', gender: 'f', spouse_id: 'a1' }),
+      row({ id: 'b1', gender: 'm', spouse_id: 'b2' }),
+      row({ id: 'b2', gender: 'f', spouse_id: 'b1' }),
+      // In-tree daughter married to in-tree husband.
+      row({ id: 'a_daughter', gender: 'f', father_id: 'a1', mother_id: 'a2', spouse_id: 'a_husband' }),
+      row({ id: 'a_husband', gender: 'm', father_id: 'b1', mother_id: 'b2', spouse_id: 'a_daughter' }),
+      // Floater claims to be co-parent of the kid (e.g. step-parent scenario).
+      row({ id: 'floater', gender: 'm' }),
+      row({ id: 'kid', father_id: 'floater', mother_id: 'a_daughter' }),
+    ]
+    const out = transformToFamilyChartShapeShowAll(rows)
+    const daughter = out.find((d) => d.id === 'a_daughter')!
+    const floater = out.find((d) => d.id === 'floater')!
+    // Daughter's marriage to a_husband is preserved.
+    expect(daughter.rels.spouses).toEqual(['a_husband'])
+    // Floater stays sad-and-spouseless.
+    expect(floater.rels.spouses).toEqual([])
   })
 
   test('non-root people keep their original parents (no rewire)', () => {
     const rows: PersonRow[] = [
-      row({ id: 'gp1', gender: 'm' }),
-      row({ id: 'gp2', gender: 'f' }),
+      row({ id: 'gp1', gender: 'm', spouse_id: 'gp2' }),
+      row({ id: 'gp2', gender: 'f', spouse_id: 'gp1' }),
+      row({ id: 'gp3', gender: 'm', spouse_id: 'gp4' }), // forces a 2nd true root
+      row({ id: 'gp4', gender: 'f', spouse_id: 'gp3' }),
       row({ id: 'parent', father_id: 'gp1', mother_id: 'gp2' }),
-      row({ id: 'sibling-root', gender: 'f' }), // forces a second root
     ]
     const out = transformToFamilyChartShapeShowAll(rows)
     const parent = out.find((d) => d.id === 'parent')!
     // `parent` is not a root (has gp1 + gp2), so super-root must NOT
-    // appear in its parents list — only the real grandparents do.
+    // appear in its parents list.
     expect(parent.rels.parents.sort()).toEqual(['gp1', 'gp2'])
   })
 
   test('SUPER_ROOT_ID is the documented sentinel string', () => {
-    // Pinned because globals.css + super-root-link-suppressor + the
-    // empty-card-html guard in FamilyTree.tsx all key off this exact id.
     expect(SUPER_ROOT_ID).toBe('__super_root__')
   })
 })
