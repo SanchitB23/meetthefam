@@ -24,6 +24,7 @@ function row(overrides: Partial<PersonRow>): PersonRow {
     photo_url: null,
     bio: null,
     birth_year: null,
+    birth_date: null,
     location: null,
     occupation: null,
     deceased: false,
