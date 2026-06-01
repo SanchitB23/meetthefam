@@ -245,8 +245,18 @@ export function personNodeHtml(
   // the action menu just like long-press does. The 44×44 hit-area (Apple
   // HIG minimum) wraps a smaller 16×16 icon so the icon stays subtle
   // while the tap target meets accessibility.
-  // 8b-3: duplicate cards skip this button — they're not the canonical card;
-  // tapping a duplicate re-centers on the primary instance instead.
+  // 8b-3 (revised for #69 v1.1): family-chart's setupTid marks EVERY
+  // occurrence of a duplicated id with `duplicate > 0` (not just the
+  // second+), so under option d' there is no "canonical" instance — the
+  // 8 cross-subtree-married people end up with all their cards dashed.
+  // Originally we skipped the 3-dot button on duplicates because the
+  // intent was "tap → jump to canonical"; but with every Catherine card
+  // marked duplicate, every Catherine card would lose actions. We now
+  // render the button on duplicates too. The "tap card body → recenter"
+  // behavior in FamilyTree.tsx still fires for the rest of the card,
+  // but a click on this button is short-circuited via the
+  // [data-action-trigger] check that runs BEFORE the duplicate-tap
+  // check in setOnCardClick.
   const ellipsisButton = `
     <button
       type="button"
@@ -288,21 +298,31 @@ export function personNodeHtml(
     </button>
   `
 
-  // 8b-3: ↑ badge at top-left of the CARD wrapper (top:-6px; left:-6px).
-  // The deceased † badge sits at top:0;right:0 on the AVATAR wrapper —
-  // different DOM element and opposite corner, so they never overlap even
-  // on a deceased+duplicate card.
+  // 8b-3 (revised for #69 v1.1): ↑ badge at top-left of the CARD wrapper
+  // (top:-6px; left:-6px). The deceased † badge sits at top:0;right:0 on
+  // the AVATAR wrapper — different DOM element and opposite corner, so
+  // they never overlap even on a deceased+duplicate card.
+  //
+  // The badge is now a real button. Clicking it cycles the camera
+  // between the duplicate instances of this person — for cross-subtree
+  // -married people (Catherine ↔ James, Andrew ↔ Beth, etc.) each card
+  // is marked duplicate and the user wants a way to navigate between
+  // them. See the click handler in FamilyTree.tsx that matches
+  // `[data-duplicate-jump]`.
   const duplicateBadge = isDuplicate
-    ? `<span
+    ? `<button
+        type="button"
         class="mtf-node__duplicate-badge"
-        title="Already shown above"
-        aria-hidden="true"
+        data-duplicate-jump
+        data-person-id="${id}"
+        aria-label="Jump to next instance of ${name}"
+        title="Tap to jump to the next instance of this person"
         style="
           position:absolute;
           top:-6px;
           left:-6px;
-          width:18px;
-          height:18px;
+          width:22px;
+          height:22px;
           border-radius:50%;
           background:var(--card);
           color:var(--accent);
@@ -314,8 +334,10 @@ export function personNodeHtml(
           font-weight:600;
           line-height:1;
           border:1px solid var(--border);
+          padding:0;
+          cursor:pointer;
         "
-      >↑</span>`
+      >↑</button>`
     : ''
 
   // mtf-node--deceased: softened card chrome (border opacity + subtle gradient)
@@ -405,8 +427,8 @@ export function personNodeHtml(
                    0 4px 12px color-mix(in oklch, var(--foreground) 6%, transparent);
       "
     >
-      ${options.readOnly || isDuplicate ? '' : ellipsisButton}
-      ${options.readOnly || isDuplicate ? '' : addRelativeButton}
+      ${options.readOnly ? '' : ellipsisButton}
+      ${options.readOnly ? '' : addRelativeButton}
       ${duplicateBadge}
       ${avatarHtml(data)}
       <div
