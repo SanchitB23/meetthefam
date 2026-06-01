@@ -56,6 +56,20 @@ button on duplicate cards too. The "tap card body → recenter on duplicate"
 behaviour is dropped: card body tap opens the detail sheet (same as
 non-duplicate cards); re-centering is done explicitly via the action menu.
 
+**Duplicate-card navigation via the ↑ badge**: the small ↑ badge in the
+top-left corner of every duplicate card is promoted from a decorative
+`<span aria-hidden>` to a real `<button data-duplicate-jump>`. Tapping
+it pans the camera to the next instance of the same person in the
+laid-out tree (wraps at the end). A `useRef<Map<personId, cursorIndex>>`
+in `FamilyTree.tsx` tracks per-person cycle position so repeated taps
+walk through all instances cleanly. With 2 instances (the common case
+for cross-subtree marriages) the badge becomes a toggle between the two
+cards. Available in read-only mode too — it's pure navigation, no edits.
+Powered by two new helpers in `pan-camera-to.ts`: `panCameraToDatum`
+(accepts a pre-resolved laid-out datum, used so we can target a specific
+instance rather than the always-first one `getTreeDatum` returns) and
+`getAllInstancesOf` (returns every laid-out entry for a person id).
+
 ### Result on the 55-person local seed
 
 | Metric | Result |
@@ -76,7 +90,7 @@ engine. Filed as a v1.2+ follow-up.
 | File | Change |
 |---|---|
 | `src/app/(app)/tree/[id]/_lib/family-chart-data-show-all.ts` | New — the 4-pass show-all transform. |
-| `src/app/(app)/tree/[id]/_lib/pan-camera-to.ts` | New — wraps `f3.handlers.cardToMiddle` with current-zoom preservation. |
+| `src/app/(app)/tree/[id]/_lib/pan-camera-to.ts` | New — wraps `f3.handlers.cardToMiddle` with current-zoom preservation. Exports `panCameraTo(id)`, `panCameraToDatum(datum)`, and `getAllInstancesOf(id)`. |
 | `src/app/(app)/tree/[id]/_lib/super-root-link-suppressor.ts` | New — MutationObserver-backed suppression of link paths touching super-root. |
 | `src/app/(app)/tree/[id]/_lib/person-node-html.ts` | Render 3-dot + "+" buttons on duplicate cards too. |
 | `src/app/(app)/tree/[id]/_components/FamilyTree.tsx` | Pin `main_id = SUPER_ROOT_ID`; `panCameraTo` for hash-driven focus; click-handler reorder (action-trigger before duplicate-tap, which is now dropped). Removed `fallbackMainIdRef`. |
