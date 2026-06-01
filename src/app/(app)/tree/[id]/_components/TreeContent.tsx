@@ -129,7 +129,7 @@ export async function TreeContent({
     .from('people')
     .select(
       `id, tree_id, full_name, nickname, gender, photo_url, bio,
-       birth_year, location, occupation, deceased, death_year,
+       birth_year, birth_date, location, occupation, deceased, death_year,
        father_id, mother_id, spouse_id, tone`,
     )
     .eq('tree_id', treeId)

@@ -150,11 +150,12 @@ function valuesFromPerson(person: PersonRow): PersonFormValues {
     nickname: person.nickname ?? '',
     bio: person.bio ?? '',
     gender: person.gender,
+    // When birth_date is set, birth_year is secondary (cleared on save per
+    // #184). We still populate birth_year so the field shows the stored value
+    // if only birth_year is present; the UI will disable it when birth_date
+    // is non-empty.
     birth_year: person.birth_year != null ? String(person.birth_year) : '',
-    // PersonRow doesn't carry birth_date today (sub-task 1's SELECT omitted
-    // it). Leaving blank preserves the DB value because update() builds a
-    // sparse patch and we only set fields that change — see below.
-    birth_date: '',
+    birth_date: person.birth_date ?? '',
     location: person.location ?? '',
     occupation: person.occupation ?? '',
     deceased: person.deceased,
@@ -250,7 +251,13 @@ export function PersonForm({
   const photoSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const deceased = watch('deceased')
   const birthYear = watch('birth_year')
+  const birthDate = watch('birth_date')
   const fullNameWatch = watch('full_name')
+
+  // #184 — birth_date is the source of truth.  When it has a value the
+  // birth_year input is disabled and shows a derived hint so users understand
+  // the year field is irrelevant while a full date is present.
+  const birthDateHasValue = Boolean(birthDate && birthDate.trim())
 
   // ---- #71: at-creation linking state ----
   //
@@ -572,9 +579,10 @@ export function PersonForm({
           ...payload,
           tone: values.tone,
         }
-        // birth_date isn't carried by PersonRow today, so the form field is
-        // blank on open. Don't overwrite the DB column with that blank —
-        // strip it from the patch unless the user actually typed a value.
+        // Keep birth_date in the patch only if the user has a value — an empty
+        // string should not overwrite a previously stored date.  When present,
+        // the server action enforces #184 priority (birth_date wins, birth_year
+        // cleared) so no extra client-side dance is needed here.
         if (!values.birth_date) delete editPayload.birth_date
         const result = await updatePerson(person.id, treeId, editPayload)
         if (!result.ok) {
@@ -1009,7 +1017,12 @@ export function PersonForm({
             min={1000}
             max={currentYear}
             aria-invalid={errors.birth_year ? true : undefined}
-            className={inputClass}
+            // #184 — disabled when Birth Date is populated. Birth date wins
+            // as the single source of truth; birth_year will be cleared on
+            // save. The disabled+hint combo makes the reason explicit.
+            disabled={birthDateHasValue}
+            aria-describedby={birthDateHasValue ? 'pf-birth-year-hint' : undefined}
+            className={`${inputClass} disabled:opacity-50 disabled:cursor-not-allowed`}
             {...register('birth_year', {
               validate: (v) => {
                 if (!v) return true
@@ -1021,8 +1034,14 @@ export function PersonForm({
               },
             })}
           />
-          {errors.birth_year && (
-            <p className="text-xs text-destructive">{errors.birth_year.message}</p>
+          {birthDateHasValue ? (
+            <p id="pf-birth-year-hint" className="text-xs text-foreground/50">
+              Cleared on save — Birth Date is set
+            </p>
+          ) : (
+            errors.birth_year && (
+              <p className="text-xs text-destructive">{errors.birth_year.message}</p>
+            )
           )}
         </div>
         <div className="flex flex-col gap-1">
