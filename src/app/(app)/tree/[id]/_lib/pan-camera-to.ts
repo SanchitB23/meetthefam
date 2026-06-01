@@ -80,6 +80,31 @@ export function panCameraTo(
   const datum = store.getTreeDatum(personId)
   if (!datum) return
 
+  panCameraToDatum(chart, svg, datum, opts)
+}
+
+/**
+ * Like `panCameraTo`, but accepts the laid-out tree datum directly
+ * instead of looking it up by id. Used to navigate between duplicate
+ * instances of the same person — `getTreeDatum(id)` would always
+ * return the FIRST occurrence in the tree, so we need to point at a
+ * specific instance via its already-resolved `{ x, y }`.
+ */
+export function panCameraToDatum(
+  chart: Chart,
+  svgOrContainer: SVGSVGElement | HTMLElement,
+  datum: { x: number; y: number },
+  opts: { transitionTime?: number } = {},
+): void {
+  const svg =
+    svgOrContainer instanceof SVGSVGElement
+      ? svgOrContainer
+      : svgOrContainer.querySelector<SVGSVGElement>('svg.main_svg')
+  if (!svg) return
+  // chart parameter kept for API symmetry / future use (scale clamping
+  // against chart bounds, etc.) — silence unused warning.
+  void chart
+
   const handlers = getHandlers()
   const currentZoom = handlers.getCurrentZoom(svg)
   handlers.cardToMiddle({
@@ -88,5 +113,27 @@ export function panCameraTo(
     svg_dim: svg.getBoundingClientRect(),
     scale: currentZoom.k,
     transition_time: opts.transitionTime ?? 800,
+  })
+}
+
+/**
+ * Find every laid-out instance of `personId` in the chart's tree.
+ * Useful for navigating between duplicate cards: under #69's option d',
+ * cross-subtree-married people are intentionally rendered in both
+ * subtrees, and the ↑ badge on duplicate cards lets the user cycle
+ * through those instances.
+ */
+export function getAllInstancesOf(
+  chart: Chart,
+  personId: string,
+): Array<{ x: number; y: number }> {
+  const tree = (chart as unknown as {
+    store: { state: { tree?: { data?: Array<{ x: number; y: number; data?: { id?: unknown } }> } } }
+  }).store.state.tree
+  const data = tree?.data
+  if (!Array.isArray(data)) return []
+  return data.filter((d) => {
+    const id = d.data?.id
+    return typeof id === 'string' && id === personId
   })
 }

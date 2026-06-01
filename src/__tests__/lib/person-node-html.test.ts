@@ -250,6 +250,18 @@ describe('personNodeHtml — duplicate marker (8b-3)', () => {
     expect(html).toContain('Already shown above')
   })
 
+  test('duplicate ↑ badge is now a button with [data-duplicate-jump] for cycling through instances', () => {
+    // #69 v1.1: tapping the ↑ badge on a duplicate card cycles the
+    // camera to the next instance of that person. The button must
+    // expose data-duplicate-jump + data-person-id so the click handler
+    // in FamilyTree.tsx can resolve it.
+    const html = personNodeHtml(duplicateNode())
+    expect(html).toContain('data-duplicate-jump')
+    expect(html).toContain('aria-label="Jump to next instance')
+    // The badge is now a <button>, not an <aria-hidden> <span>.
+    expect(html).toMatch(/<button[^>]*data-duplicate-jump/)
+  })
+
   test('duplicate INCLUDES the ellipsis action button — every card needs actions under #69 d\'', () => {
     // #69 v1.1: family-chart's setupTid marks EVERY occurrence of a
     // duplicated id with `duplicate > 0` (not just the second+), so the

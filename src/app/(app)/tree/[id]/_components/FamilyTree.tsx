@@ -52,7 +52,11 @@ import {
   transformToFamilyChartShapeShowAll,
 } from '../_lib/family-chart-data-show-all'
 import { attachNonSpouseParentLinkRewriter } from '../_lib/non-spouse-parent-links'
-import { panCameraTo } from '../_lib/pan-camera-to'
+import {
+  getAllInstancesOf,
+  panCameraTo,
+  panCameraToDatum,
+} from '../_lib/pan-camera-to'
 import { attachSuperRootLinkSuppressor } from '../_lib/super-root-link-suppressor'
 import { personNodeHtml } from '../_lib/person-node-html'
 import { usePressActions } from '../_lib/usePressActions'
@@ -124,6 +128,12 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
   // pivot — see `_lib/pan-camera-to.ts` for rationale). The old
   // `fallbackMainIdRef` is no longer needed: the layout never re-roots,
   // so there is no "previous main_id" to restore on un-recenter.
+
+  // #69 — per-person cursor for the ↑ duplicate-jump badge. When a user
+  // taps the badge on a card, we cycle the camera to the next instance
+  // of that person in the laid-out tree. The cursor persists across
+  // taps so repeated taps walk through all instances (wraps at end).
+  const duplicateNavCursorRef = useRef<Map<string, number>>(new Map())
 
   // Hash is the runtime source of truth for the focus id. Server + first
   // client paint see no hash (matches the SSR snapshot); subsequent paints
@@ -214,6 +224,25 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
         if (!peopleByIdRef.current.has(id)) return
 
         const target = (e.target as HTMLElement | null) ?? null
+
+        // #69 v1.1 — duplicate-jump ↑ badge. Tapping the badge cycles the
+        // camera to the next instance of this person in the laid-out
+        // tree. Fires BEFORE the action-trigger / "+" / detail-sheet
+        // branches so the badge button takes priority. Read-only mode
+        // still allows duplicate-jump (it's pure navigation; no edits).
+        if (target?.closest('[data-duplicate-jump]')) {
+          const chart = chartRef.current
+          if (chart) {
+            const instances = getAllInstancesOf(chart, id)
+            if (instances.length > 1) {
+              const cursor = duplicateNavCursorRef.current.get(id) ?? 0
+              const nextIndex = (cursor + 1) % instances.length
+              duplicateNavCursorRef.current.set(id, nextIndex)
+              panCameraToDatum(chart, cont, instances[nextIndex])
+            }
+          }
+          return
+        }
 
         // #69 v1.1 — action-trigger checks now run BEFORE the duplicate-tap
         // check below. Under option d', family-chart marks EVERY occurrence
