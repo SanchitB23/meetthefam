@@ -77,7 +77,10 @@ vi.mock('@/app/(app)/tree/[id]/_components/FamilyTree', () => ({
 import SharePage from '@/app/share/[token]/page'
 
 async function renderPage(token = 'valid-token') {
-  const props = { params: Promise.resolve({ token }) }
+  const props = {
+    params: Promise.resolve({ token }),
+    searchParams: Promise.resolve({}),
+  }
   const jsx = await SharePage(props)
   return render(jsx)
 }
