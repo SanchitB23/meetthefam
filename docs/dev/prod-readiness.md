@@ -1,28 +1,65 @@
-# Prod readiness checklist (pre-v1.0 / go-live)
+# Prod readiness checklist
 
-> **Status:** collecting through Phases 6–9. Final pass at Phase 9 ticks every box before flipping live.
-
-## Policy (set 2026-05-14, during Phase 6 close-out)
-
-**No production DB or production Vercel config changes happen during Phases 6, 7, 8.** All per-phase migrations apply to **local + QA only**. The Vercel production project will deploy whatever lands on `main`, but **production traffic is zero in the pre-v1 window**, so a "main has schema features `family-tree-prod` doesn't" gap is acceptable until the v1.0 cut applies everything in one pass.
-
-**Implication for the release recipe** ([ADR 0009 §4](../adrs/0009-versioning-and-releases.md)): the standard `release/vX.Y.Z` flow runs end-to-end (release-branch → main with merge commit → `gh release create --target main --prerelease` → forward-PR back to `qa`), but the "Apply Phase N migration to prod" step is **skipped** for v0.2.0 through v0.9.x. Phase close-out checklists in `docs/tasks/current-phase.md` reflect this by ticking the prod-apply box as "deferred — see `docs/dev/prod-readiness.md`".
-
-**Want production Vercel deployments to keep matching prod DB state during the freeze?** Pin the Vercel production branch to the `v0.1.0` tag via the Vercel dashboard (Settings → Git → Production Branch). Production builds stop following `main` and stay on the last working state until you un-pin at v1.0.
+> **Status (2026-06-01):** v1.0.0 has shipped (commit `071fcbb` on `main`). This checklist is the ongoing post-launch gate for future releases and for any remaining pre-launch items that weren't ticked at the v1.0 cut.
 
 ---
 
-## 1. Supabase: `family-tree-prod` (`ycnsgkotrbjifsjkqmvn`) parity with QA
+## 1. Supabase: `family-tree-prod` (`ycnsgkotrbjifsjkqmvn`) — migration parity
 
-- [ ] Apply ALL accumulated post-v0.1.0 migrations to prod in timestamp order via `mcp__supabase__apply_migration`. As of v0.2.0 the queue is:
-  - [ ] `20260513211135_tree_invites.sql` (Phase 6 sub-task 1 — already on QA as version `20260514032107` per the MCP-clock-drift pattern)
-  - *(future Phase 7 / 8 migrations get appended here as they land)*
-- [ ] After each apply, run `mcp__supabase__list_migrations` against prod and cross-check (name, order) against QA — timestamp prefix drift is expected and OK per [`docs/dev/migrations.md`](migrations.md).
-- [ ] Run `mcp__supabase__get_advisors` (security + performance) on prod. Compare drift against the v0.1.0-baseline-13-security-WARNs / 5-performance-INFOs disposition. Document any NEW prod-only entries in this file under "Known advisor entries".
-- [ ] Run `mcp__supabase__list_tables` against prod; row-count parity isn't expected (prod is empty), but **RLS-enabled flag on each table must match QA**.
-- [ ] Enable "Leaked Password Protection" via Supabase Auth dashboard (cleans up one of the baseline-13 security WARNs).
-- [ ] Bump Auth rate limits (Auth → Rate Limits) to handle launch-day traffic. Default ~3–4/hr per project, per [`project_smtp_rate_limit.md`](../../../.claude/projects/-Users-sqb6461-Workspace-SelfProjects-meetthefam/memory/project_smtp_rate_limit.md). Lifts only after custom SMTP lands (§4).
-- [ ] Verify Storage `photos` bucket on prod: `public=true`, `file_size_limit=524288`, `allowed_mime_types=['image/jpeg']`, plus the 4 RLS policies (`photos_insert_editor` / `photos_update_editor` / `photos_delete_editor` / `photos_select_editor`). Phase 5 sub-task 5 installed these; re-verify post-migration replay.
+### How prod migrations actually apply
+
+**The Supabase ↔ GitHub integration is the default and primary mechanism.** It was enabled at some point during Phases 2–9 (no change-log record) and silently auto-applied 6 of 7 historical migrations during prior `release/vX.Y.Z → main` merges. Migrations do not need to be applied manually under normal circumstances — the integration fires automatically on every merge to `main`.
+
+History for reference:
+- Phases 2–9: 6 migrations auto-applied by the integration on each release merge to `main`.
+- v1.0.0 cut: `20260513211135_tree_invites.sql` (the `tree_invites` table) was NOT auto-applied by the integration (reason unknown — integration anomaly, not a policy decision). It was applied manually via `mcp__supabase__apply_migration` as a one-off contingency after the launch merge.
+
+### Required verification after every release merge to `main`
+
+**After each `release/vX.Y.Z → main` merge, verify that prod migration state matches QA:**
+
+```
+# 1. List migrations on prod (ycnsgkotrbjifsjkqmvn)
+mcp__supabase__list_migrations  →  project: ycnsgkotrbjifsjkqmvn
+
+# 2. List migrations on QA (ljjvwtpifmoshfknlbaj)
+mcp__supabase__list_migrations  →  project: ljjvwtpifmoshfknlbaj
+
+# 3. Cross-check: every migration present on QA must be present on prod
+#    (by migration name, ignoring timestamp prefix — MCP-clock-drift
+#    is expected and documented in docs/dev/migrations.md).
+#    If a migration name is on QA but absent from prod, apply it manually
+#    using the fallback path below.
+```
+
+This verification step is also noted in the release recipe ([`docs/dev/releases.md`](releases.md)).
+
+### Fallback: manual MCP apply (use only when integration skips)
+
+If verification shows a QA migration missing from prod after the merge (as happened with `tree_invites` at v1.0.0), apply it manually:
+
+```
+mcp__supabase__apply_migration
+  project: ycnsgkotrbjifsjkqmvn
+  name:    <migration_name>
+  query:   <contents of supabase/migrations/<timestamp>_<name>.sql>
+```
+
+After applying, re-run `mcp__supabase__list_migrations` against prod and confirm the name now appears. Note the timestamp drift: MCP generates a fresh "applied at" timestamp rather than using the file's timestamp prefix — this is expected. Patch the tracking row if exact timestamp parity matters:
+
+```sql
+UPDATE schema_migrations
+SET version = '<original_file_timestamp>'
+WHERE version = '<mcp_generated_timestamp>';
+```
+
+### Additional prod DB checks (run at each major release)
+
+- [ ] Run `mcp__supabase__get_advisors` (security + performance) on prod. Compare against the QA baseline. Document any NEW prod-only entries in this file under "Known advisor entries".
+- [ ] Run `mcp__supabase__list_tables` against prod; **RLS-enabled flag on each table must match QA**.
+- [ ] Verify Storage `photos` bucket on prod: `public=true`, `file_size_limit=524288`, `allowed_mime_types=['image/jpeg']`, plus the 4 RLS policies (`photos_insert_editor` / `photos_update_editor` / `photos_delete_editor` / `photos_select_editor`).
+- [ ] Enable "Leaked Password Protection" via Supabase Auth dashboard (if not yet done).
+- [ ] Bump Auth rate limits (Auth → Rate Limits) to handle traffic. Default ~3–4/hr per project — lifts only after custom SMTP lands (§4).
 - [ ] Set a strong prod DB password (if still the default); record in a password manager.
 
 ## 2. Vercel: production project
