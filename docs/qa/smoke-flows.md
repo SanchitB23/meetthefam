@@ -136,22 +136,36 @@ Tests: at 375px (iPhone SE width) the card grid is single-column with no horizon
 4. Assert no horizontal scrollbar (compare `document.documentElement.scrollWidth` to viewport width — must be equal).
 5. **Cleanup:** resize back to 1280×800; delete any temporary trees created in step 2.
 
-#### `editor-card-no-menu` *(env: local — requires test setup)*
+#### `editor-card-no-menu` *(env: local | qa)*
 
 Tests: non-owner (`editor` role) cards hide the `…` menu.
 
-Setup: needs two test accounts. The agent should accept `--editor-fixture` mode that:
-- Signs in as user A, creates a tree, signs out.
-- Uses the Supabase service-role admin API to insert user A's tree into `tree_members` with user B as editor.
-- Signs in as user B.
+**Prerequisites — seed the editor fixture before running this flow.**
+
+The flow requires two test accounts: owner A (who owns the tree) and editor B (who will view it as an editor). Before dispatching the smoke-tester, seed the editor membership row with:
+
+```
+pnpm tsx scripts/qa/seed-editor-fixture.ts \
+  --tree=<owner-tree-id> \
+  --email=<editor-account-email>
+```
+
+Required env vars (add to `.env.local` for local runs; set in Vercel env for QA):
+- `NEXT_PUBLIC_SUPABASE_URL` — Supabase project URL (local: `http://127.0.0.1:54321`, QA: your hosted URL)
+- `SUPABASE_SERVICE_ROLE_KEY` — service-role key (bypasses RLS; **never expose to the client**)
+
+The script is idempotent: running it twice for the same `(tree_id, email)` pair exits 0 with a no-op message. If the user does not yet exist it is created with `email_confirm: true` via the admin API (same pattern as `src/__tests__/_helpers.ts`).
+
+Setup flow:
+1. As user A: sign in, create a tree (note its UUID from the URL), sign out.
+2. Run the seed script with A's tree UUID and B's email address.
+3. Sign in as user B.
 
 Then:
 1. Navigate to `/dashboard`.
 2. Find the card for the tree owned by A. Assert its role badge says "editor".
 3. Snapshot the card — assert the `…` button is NOT present.
 4. **Cleanup:** sign out, sign in as A, delete the tree.
-
-If service-role admin API is not available in env (e.g. QA without a fixture loader), **SKIP** with reason "needs-service-role-admin".
 
 ---
 
