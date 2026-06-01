@@ -179,8 +179,9 @@ describe('transformToFamilyChartShapeShowAll', () => {
     // The base transform lists every child under BOTH parents. That
     // double-listing causes family-chart's d3.hierarchy progeny walk
     // (from main_id=super_root) to visit each kid twice and emit a
-    // duplicate card. The dedupe pass keeps the kid under the FIRST
-    // parent listed (father by base-transform convention) only.
+    // duplicate card. The dedupe pass keeps the kid under one parent
+    // only — preferring the father (parents[0]) when both are equally
+    // reachable from super-root.
     const rows: PersonRow[] = [
       row({ id: 'a1', gender: 'm', spouse_id: 'a2' }),
       row({ id: 'a2', gender: 'f', spouse_id: 'a1' }),
@@ -191,6 +192,30 @@ describe('transformToFamilyChartShapeShowAll', () => {
     const out = transformToFamilyChartShapeShowAll(rows)
     expect(out.find((d) => d.id === 'a1')!.rels.children).toEqual(['kid'])
     expect(out.find((d) => d.id === 'a2')!.rels.children).toEqual([])
+  })
+
+  test('dedupe prefers the parent reachable from super-root (Sophia/Diego case)', () => {
+    // Carlos is a "floating co-parent" — rootless with no DB spouse but
+    // children with in-tree Eve. The synthesis pass gives Carlos
+    // spouses=[eve], eve gets spouses=[carlos]. But Carlos's spouse is
+    // non-rootless (Eve has parents), so Carlos won't be a super-root
+    // child → Carlos is NEVER walked by d3.hierarchy from super-root.
+    //
+    // Sophia.rels.parents = [carlos, eve]. If the dedupe naively kept
+    // Sophia under parents[0]=carlos, Sophia would be unreachable from
+    // any walk. Must keep her under Eve (the reachable parent).
+    const rows: PersonRow[] = [
+      row({ id: 'a1', gender: 'm', spouse_id: 'a2' }),
+      row({ id: 'a2', gender: 'f', spouse_id: 'a1' }),
+      row({ id: 'b1', gender: 'm', spouse_id: 'b2' }), // forces a 2nd true root
+      row({ id: 'b2', gender: 'f', spouse_id: 'b1' }),
+      row({ id: 'eve', gender: 'f', father_id: 'a1', mother_id: 'a2' }),
+      row({ id: 'carlos', gender: 'm' }), // rootless floater
+      row({ id: 'sophia', gender: 'f', father_id: 'carlos', mother_id: 'eve' }),
+    ]
+    const out = transformToFamilyChartShapeShowAll(rows)
+    expect(out.find((d) => d.id === 'eve')!.rels.children).toEqual(['sophia'])
+    expect(out.find((d) => d.id === 'carlos')!.rels.children).toEqual([])
   })
 
   test('single-parent child remains under their only parent (no dedupe)', () => {

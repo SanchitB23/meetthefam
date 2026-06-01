@@ -108,30 +108,48 @@ export function transformToFamilyChartShapeShowAll(rows: PersonRow[]): FamilyCha
     }
   }
 
-  // Pass 1.5 — dedupe `rels.children` across spouse couples.
+  // Pass 1.5 — dedupe `rels.children` across spouse couples, choosing
+  // the parent reachable from super-root.
   //
   // The base transform lists every child under BOTH their father and
-  // their mother. That's fine when family-chart's main_id is at a leaf
-  // (each ancestor appears once in the ancestry walk), but with our
+  // their mother. That's fine when main_id is at a leaf, but with our
   // pinned main_id = super-root the *progeny* walk runs in two parallel
   // branches: super_root → George → his kids, AND super_root → Margaret
   // → her kids. Same kids, both walks, two layout positions, a duplicate
   // card cascade across every Gen-2+ person.
   //
-  // Fix: for every datum with TWO in-tree parents, keep it as a child
-  // of only the FIRST parent listed (the father by base-transform
-  // convention — see `family-chart-data.ts:107-109`). The second parent
-  // is still rendered as the first parent's spouse via family-chart's
-  // setupSpouses, and the marriage bar positions the kid centered under
-  // both. No visible-layout regression vs. the dual-listing approach.
-  //
-  // Single-parent kids (e.g. Luca, whose father isn't in the tree) are
-  // already in only one parent's list — this pass leaves them alone.
+  // Fix: keep each two-parent child under exactly one parent. Pick the
+  // parent reachable from super-root (the parent who themselves has
+  // parents, OR who is rootless-with-rootless-spouse and will become a
+  // super-root child in Pass 3). If only one parent is reachable, that's
+  // the keeper (Sophia + Diego case — their father Carlos is rootless
+  // with a non-rootless spouse, so he won't be a super-root child; they
+  // must be kept under Eve). If both are reachable, default to parents[0].
+  // Single-parent kids are untouched.
+  function isReachableFromSuperRoot(d: FamilyChartDatum): boolean {
+    if (d.rels.parents.length > 0) return true // has parents — walked via them
+    if (d.rels.spouses.length === 0) return true // floating rootless solo — becomes super-root child
+    // Rootless with spouses — reachable only if every spouse is also rootless
+    // (i.e. this is a Gen-1 patriarch/matriarch couple, both become super-root
+    // children).
+    return d.rels.spouses.every((sid) => {
+      const sp = byId.get(sid)
+      return sp ? sp.rels.parents.length === 0 : false
+    })
+  }
   for (const d of base) {
     if (d.rels.parents.length < 2) continue
-    const dropFromId = d.rels.parents[1] // second parent
-    const dropFrom = byId.get(dropFromId)
-    if (!dropFrom) continue
+    const [pidA, pidB] = d.rels.parents
+    const a = byId.get(pidA)
+    const b = byId.get(pidB)
+    if (!a || !b) continue
+    const aReachable = isReachableFromSuperRoot(a)
+    const bReachable = isReachableFromSuperRoot(b)
+    // Pick keeper: prefer parents[0] when both reachable, else the
+    // reachable one, else fall back to parents[0] (kid would be hidden
+    // anyway — at least keep the link semantically with the father).
+    const keeper = aReachable ? a : bReachable ? b : a
+    const dropFrom = keeper === a ? b : a
     dropFrom.rels.children = dropFrom.rels.children.filter((cid) => cid !== d.id)
   }
 
