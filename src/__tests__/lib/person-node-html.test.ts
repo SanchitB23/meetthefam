@@ -166,11 +166,12 @@ describe('personNodeHtml — gender shape (8b-1)', () => {
     expect(html).toContain('border-radius:9px') // Math.round(48 * 0.18) = 9
   })
 
-  test('other renders squircle avatar (border-radius ~34% of 48px = 16px)', () => {
+  test('other renders soft octagon avatar (clip-path polygon, border-radius 0)', () => {
     const html = personNodeHtml(
       treeNode(datum({ gender_raw: 'other', gender: 'M' })),
     )
-    expect(html).toContain('border-radius:16px') // Math.round(48 * 0.34) = 16
+    expect(html).toContain('clip-path:polygon(')
+    expect(html).toContain('border-radius:0')
   })
 
   test('female renders circle avatar (border-radius 50%)', () => {
@@ -180,11 +181,11 @@ describe('personNodeHtml — gender shape (8b-1)', () => {
     expect(html).toContain('border-radius:50%')
   })
 
-  test('unknown renders circle (default)', () => {
+  test('unknown renders squircle (border-radius ~34% of 48px = 16px)', () => {
     const html = personNodeHtml(
       treeNode(datum({ gender_raw: 'unknown', gender: 'M' })),
     )
-    expect(html).toContain('border-radius:50%')
+    expect(html).toContain('border-radius:16px') // Math.round(48 * 0.34) = 16
   })
 })
 
