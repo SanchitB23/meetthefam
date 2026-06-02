@@ -27,6 +27,7 @@ describe('<SiteFooter>', () => {
     expect(hrefs).toContain('/childrens-privacy')
     expect(hrefs).toContain('/dmca')
     expect(hrefs).toContain('/contact')
+    expect(hrefs).toContain('/faq')
     expect(hrefs).toContain('/about')
   })
 
