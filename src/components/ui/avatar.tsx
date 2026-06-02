@@ -109,32 +109,6 @@ export function computeInitials(fullName: string): string {
   return (first + last).toUpperCase() || '?'
 }
 
-/**
- * Maps a gender value to a CSS border-radius string.
- * 'm'       → rounded-square (~18% of px)
- * 'other'   → squircle (~34% of px)
- * 'f'       → circle (50%)
- * 'unknown' → circle (50%)
- * undefined → circle (50%)
- */
-export function borderRadiusForGender(
-  gender: 'm' | 'f' | 'other' | 'unknown' | undefined,
-  px: number,
-): string {
-  switch (gender) {
-    case 'm':
-      return `${Math.round(px * 0.18)}px`
-    case 'other':
-      return `${Math.round(px * 0.34)}px`
-    case 'f':
-      return '50%'
-    case 'unknown':
-      return '50%'
-    default:
-      return '50%'
-  }
-}
-
 export function Avatar({
   fullName,
   initials,
@@ -151,7 +125,7 @@ export function Avatar({
 
   // Initials sit at ~34% of the avatar diameter (matches the Kintree prototype).
   const fontSize = Math.round(px * 0.34)
-  const borderRadius = borderRadiusForGender(gender, px)
+  const shape = shapeCssForGender(gender, px)
 
   // The inner container clips the photo / background to the correct border-radius.
   // It must NOT be position:relative — that role is taken by the outer wrapper so
@@ -159,8 +133,13 @@ export function Avatar({
   const innerStyle: React.CSSProperties = {
     width: px,
     height: px,
-    borderRadius,
+    ...(shape.kind === 'radius'
+      ? { borderRadius: shape.borderRadius }
+      : { clipPath: shape.clipPath, borderRadius: 0 }),
     // Ring is drawn as an outline so it doesn't change layout dimensions.
+    // Note: outline follows border-radius but NOT clip-path, so for `other`
+    // a ring will currently draw a square outline around the octagon. The
+    // ring prop has no callers today; tracked in the spec for a follow-up.
     outline: ring ? `2px solid var(--tone-${tone}-ring)` : undefined,
     outlineOffset: ring ? 2 : undefined,
     // Deceased: aggressive desaturation + small grayscale so the effect
