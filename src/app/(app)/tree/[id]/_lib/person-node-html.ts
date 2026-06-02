@@ -67,6 +67,9 @@ function avatarHtml(data: FamilyChartDatum['data']): string {
   // Correction (8b-1): read data.gender_raw (truthful 4-value field),
   // NOT data.gender (layout-only 'M'|'F' for the library's spouse positioning).
   const shape = shapeCssForGender(data.gender_raw, sizePx)
+  // For the clip-path branch (gender_raw='other'), explicitly reset border-radius
+  // to 0 so any inherited rounding from the family-chart container doesn't
+  // double up with the polygon clip and produce a visually cropped octagon.
   const shapeStyle =
     shape.kind === 'radius'
       ? `border-radius:${shape.borderRadius};`

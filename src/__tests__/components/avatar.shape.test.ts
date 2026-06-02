@@ -53,7 +53,6 @@ describe('shapeCssForGender', () => {
 
   it('SOFT_OCTAGON_CLIP_PATH is a polygon with exactly 40 vertices', () => {
     const matches = SOFT_OCTAGON_CLIP_PATH.match(/\d+(\.\d+)?%\s+\d+(\.\d+)?%/g)
-    expect(matches).not.toBeNull()
-    expect(matches!.length).toBe(40)
+    expect(matches?.length).toBe(40)
   })
 })

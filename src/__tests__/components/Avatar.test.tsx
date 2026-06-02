@@ -32,6 +32,7 @@ describe('<Avatar>', () => {
       <Avatar fullName="Sam Doe" tone="rose" gender="m" size={48} />,
     )
     const inner = container.querySelector('span[style*="border-radius"]')
+    expect(inner).not.toBeNull()
     const style = inner!.getAttribute('style') ?? ''
     expect(style).toMatch(/border-radius:\s*9px/)
   })
@@ -41,6 +42,7 @@ describe('<Avatar>', () => {
       <Avatar fullName="Jane Doe" tone="amber" gender="f" size={48} />,
     )
     const inner = container.querySelector('span[style*="border-radius"]')
+    expect(inner).not.toBeNull()
     const style = inner!.getAttribute('style') ?? ''
     expect(style).toMatch(/border-radius:\s*50%/)
   })
