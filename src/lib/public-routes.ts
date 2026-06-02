@@ -22,6 +22,7 @@ export const PUBLIC_PATHS = [
   '/about',
   '/childrens-privacy',
   '/dmca',
+  '/faq',
 ] as const
 
 /**
