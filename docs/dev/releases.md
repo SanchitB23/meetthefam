@@ -94,6 +94,12 @@ gh release create vX.Y.Z \
 #    main. Give it 2–3 minutes to run, then confirm every QA migration
 #    name is also on prod. If any are missing, apply manually — see
 #    docs/dev/prod-readiness.md §1 for the fallback recipe.
+#    KNOWN FAILURE MODE (#177): the integration applies migrations at
+#    connect-time and on direct file-change diffs, but is unreliable for
+#    files that first reach main via a release-branch MERGE COMMIT — those
+#    can be silently skipped (as tree_invites was on the v1.0.0 merge).
+#    Since every release lands on main via a release/* merge commit, treat
+#    a post-release manual apply as the EXPECTED path, not the exception.
 #
 #    mcp__supabase__list_migrations  →  project: ycnsgkotrbjifsjkqmvn  (prod)
 #    mcp__supabase__list_migrations  →  project: ljjvwtpifmoshfknlbaj  (QA)
