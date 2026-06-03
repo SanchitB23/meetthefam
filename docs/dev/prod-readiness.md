@@ -138,8 +138,8 @@ WHERE version = '<mcp_generated_timestamp>';
 
 ## 9. Backups + DR
 
-- [ ] Tier decision: Supabase Free (1-day backup retention) vs Pro (7-day + point-in-time recovery). Pro is $25/mo; consider closer to launch.
-- [ ] DB restore runbook: [`docs/runbooks/db-restore.md`](../runbooks/db-restore.md) — covers PITR via Supabase dashboard, pre-checks, verification, and comms. (≤200 lines, no screenshots required for v1.)
+- [x] Tier decision: shipped on Free at v1.0. Pro is $25/mo and reactive — see [`docs/runbooks/db-restore.md`](../runbooks/db-restore.md) §8 for upgrade triggers; revisit at v2.0 (paywall launch).
+- [x] DB restore runbook: [`docs/runbooks/db-restore.md`](../runbooks/db-restore.md) — covers Free-tier `psql` restore path, Vercel env swap, Storage caveat, verification, and comms. Pro-tier PITR preserved in Appendix A.
 - [ ] Optional: scheduled `pg_dump` snapshots to S3 / R2 for offsite backups. Skip if Pro covers the SLA needs.
 - [ ] Storage `photos` bucket — Supabase's built-in backup covers it; no separate plan needed.
 
