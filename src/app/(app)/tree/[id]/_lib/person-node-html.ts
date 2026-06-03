@@ -26,7 +26,7 @@
 // which exposes `duplicate?: number` in its type definition.
 
 import type { TreeDatum } from 'family-chart'
-import { computeInitials } from '@/components/ui/avatar'
+import { computeInitials, shapeCssForGender } from '@/components/ui/avatar'
 import type { FamilyChartDatum } from './family-chart-data'
 
 const ESCAPE_MAP: Record<string, string> = {
@@ -57,35 +57,6 @@ function formatDates(
   return `d. ${deathYear}`
 }
 
-/**
- * Maps a gender_raw value to a CSS border-radius string for the inline avatar.
- * Mirrors the exported `borderRadiusForGender` in avatar.tsx but operates on
- * raw string templates (no React) for the family-chart HTML context.
- *
- * 'm'       → rounded-square (~18% of px)
- * 'other'   → squircle (~34% of px)
- * 'f'       → circle (50%)
- * 'unknown' → circle (50%)
- * undefined → circle (50%)
- */
-function borderRadiusForGender(
-  gender: 'm' | 'f' | 'other' | 'unknown' | undefined,
-  px: number,
-): string {
-  switch (gender) {
-    case 'm':
-      return `${Math.round(px * 0.18)}px`
-    case 'other':
-      return `${Math.round(px * 0.34)}px`
-    case 'f':
-      return '50%'
-    case 'unknown':
-      return '50%'
-    default:
-      return '50%'
-  }
-}
-
 function avatarHtml(data: FamilyChartDatum['data']): string {
   const sizePx = 48
   // Mirror the React <Avatar>'s chrome — `inline-flex items-center
@@ -95,7 +66,14 @@ function avatarHtml(data: FamilyChartDatum['data']): string {
   //
   // Correction (8b-1): read data.gender_raw (truthful 4-value field),
   // NOT data.gender (layout-only 'M'|'F' for the library's spouse positioning).
-  const radius = borderRadiusForGender(data.gender_raw, sizePx)
+  const shape = shapeCssForGender(data.gender_raw, sizePx)
+  // For the clip-path branch (gender_raw='other'), explicitly reset border-radius
+  // to 0 so any inherited rounding from the family-chart container doesn't
+  // double up with the polygon clip and produce a visually cropped octagon.
+  const shapeStyle =
+    shape.kind === 'radius'
+      ? `border-radius:${shape.borderRadius};`
+      : `clip-path:${shape.clipPath};border-radius:0;`
   // 8b polish revision — aggressive saturate + grayscale so the
   // treatment is visible on PHOTO avatars (a low-saturation portrait
   // at saturate(0.55) alone is visually indistinguishable from a
@@ -112,7 +90,7 @@ function avatarHtml(data: FamilyChartDatum['data']): string {
   const innerStyle = `
     width:${sizePx}px;
     height:${sizePx}px;
-    border-radius:${radius};
+    ${shapeStyle}
     display:inline-flex;
     align-items:center;
     justify-content:center;
