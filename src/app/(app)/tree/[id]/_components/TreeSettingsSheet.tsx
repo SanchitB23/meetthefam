@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/sheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useIsDesktop } from '@/components/ui/use-is-desktop'
+import { TreeSettingsGeneralPanel } from './TreeSettingsGeneralPanel'
 
 type Role = 'owner' | 'editor'
 type TabId = 'general' | 'members' | 'visitors'
@@ -121,8 +122,11 @@ export function TreeSettingsSheet({
 
       {isOwner && (
         <TabsContent value="general">
-          {/* Placeholder — replaced in Task 5 by <TreeSettingsGeneralPanel /> */}
-          <div data-testid="general-placeholder" />
+          <TreeSettingsGeneralPanel
+            treeId={treeId}
+            treeName={treeName}
+            onAfterDelete={() => setOpen(false)}
+          />
         </TabsContent>
       )}
       <TabsContent value="members">
@@ -136,8 +140,8 @@ export function TreeSettingsSheet({
     </Tabs>
   )
 
-  // Suppress unused warnings until panels land in Tasks 5–7.
-  void treeId; void currentUserId; void members; void pendingInvites
+  // Suppress unused warnings until panels land in Tasks 6–7.
+  void currentUserId; void members; void pendingInvites
   void shareToken; void baseUrl; void loading
 
   const surface = desktop ? (
