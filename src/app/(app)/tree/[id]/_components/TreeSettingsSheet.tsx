@@ -21,11 +21,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useIsDesktop } from '@/components/ui/use-is-desktop'
 import { TreeSettingsGeneralPanel } from './TreeSettingsGeneralPanel'
 import { TreeSettingsMembersPanel, type MemberRow, type PendingInviteRow } from './TreeSettingsMembersPanel'
-
-// Re-export so call-sites can import co-located types from TreeSettingsSheet
-// without needing to know the internal file structure.
-export type { MemberRow, PendingInviteRow }
 import { TreeSettingsVisitorsPanel } from './TreeSettingsVisitorsPanel'
+
+// Re-export so call-sites (e.g. TreeCardMenu) can import these prop types
+// from the public-API surface (TreeSettingsSheet) without reaching into
+// the internal TreeSettingsMembersPanel module.
+export type { MemberRow, PendingInviteRow }
 
 type Role = 'owner' | 'editor'
 type TabId = 'general' | 'members' | 'visitors'
