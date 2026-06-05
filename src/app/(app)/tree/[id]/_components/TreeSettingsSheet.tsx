@@ -20,25 +20,11 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useIsDesktop } from '@/components/ui/use-is-desktop'
 import { TreeSettingsGeneralPanel } from './TreeSettingsGeneralPanel'
+import { TreeSettingsMembersPanel } from './TreeSettingsMembersPanel'
+import type { MemberRow, PendingInviteRow } from './TreeSettingsMembersPanel'
 
 type Role = 'owner' | 'editor'
 type TabId = 'general' | 'members' | 'visitors'
-
-// Inline types — replaced by `import type` from TreeSettingsMembersPanel in Task 6.
-export type MemberRow = {
-  user_id: string
-  display_name: string | null
-  avatar_url: string | null
-  role: 'owner' | 'editor'
-  joined_at: string
-}
-export type PendingInviteRow = {
-  id: string
-  email: string
-  created_at: string
-  expires_at: string
-  token: string
-}
 
 type Props = {
   treeId: string
@@ -130,8 +116,14 @@ export function TreeSettingsSheet({
         </TabsContent>
       )}
       <TabsContent value="members">
-        {/* Placeholder — replaced in Task 6 by <TreeSettingsMembersPanel /> */}
-        <div data-testid="members-placeholder" />
+        <TreeSettingsMembersPanel
+          treeId={treeId}
+          currentUserId={currentUserId}
+          currentUserRole={currentUserRole}
+          members={members}
+          pendingInvites={pendingInvites}
+          loading={loading}
+        />
       </TabsContent>
       <TabsContent value="visitors">
         {/* Placeholder — replaced in Task 7 by <TreeSettingsVisitorsPanel /> */}
@@ -140,9 +132,8 @@ export function TreeSettingsSheet({
     </Tabs>
   )
 
-  // Suppress unused warnings until panels land in Tasks 6–7.
-  void currentUserId; void members; void pendingInvites
-  void shareToken; void baseUrl; void loading
+  // Suppress unused warnings until panels land in Task 7.
+  void shareToken; void baseUrl
 
   const surface = desktop ? (
     <Dialog open={open} onOpenChange={setOpen}>
