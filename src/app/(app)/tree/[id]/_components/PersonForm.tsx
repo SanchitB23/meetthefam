@@ -33,6 +33,7 @@ import { Button } from '@/components/ui/button'
 import { useIsDesktop } from '@/components/ui/use-is-desktop'
 import { ErrorAlert } from '@/components/ui/error-alert'
 import { mapErrorCode } from '@/lib/errors'
+import { notify } from '@/lib/toast/notify'
 
 import {
   createPerson,
@@ -646,6 +647,15 @@ export function PersonForm({
 
       const result = await createPerson(treeId, payload, linkPayload)
       if (!result.ok) {
+        // #70 prototype: link-constraint failures mean the person row WAS created
+        // server-side (revalidatePath already fired) — only the relationship failed.
+        // Close the host and surface as an error toast. Validation/unknown stay inline.
+        const LINK_CODES = new Set(['self_spouse', 'cross_tree', 'ancestor_cycle'])
+        if (LINK_CODES.has(result.error)) {
+          notify.error(mapErrorCode(result.error))
+          onOpenChange(false)
+          return
+        }
         setSubmitError(result.error)
         return
       }
@@ -677,6 +687,26 @@ export function PersonForm({
 
       onSaved?.(result.personId)
       onOpenChange(false)
+      if (linkPayload) {
+        notify.success(`Added ${payload.full_name}`)
+      } else {
+        notify.warning(
+          `Added ${payload.full_name} — not linked yet. They won't show on the tree until you link them.`,
+          {
+            action: {
+              label: 'Link now',
+              // Prototype: reuse the existing in-card "+" event to open
+              // "add a relative to <new person>", reconnecting the orphan.
+              onClick: () =>
+                window.dispatchEvent(
+                  new CustomEvent('mtf-add-relative', {
+                    detail: { personId: result.personId },
+                  }),
+                ),
+            },
+          },
+        )
+      }
     })
   }
 
