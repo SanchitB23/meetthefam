@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useIsDesktop } from '@/components/ui/use-is-desktop'
 import { TreeSettingsGeneralPanel } from './TreeSettingsGeneralPanel'
 import { TreeSettingsMembersPanel, type MemberRow, type PendingInviteRow } from './TreeSettingsMembersPanel'
+import { TreeSettingsVisitorsPanel } from './TreeSettingsVisitorsPanel'
 
 type Role = 'owner' | 'editor'
 type TabId = 'general' | 'members' | 'visitors'
@@ -125,14 +126,15 @@ export function TreeSettingsSheet({
         />
       </TabsContent>
       <TabsContent value="visitors">
-        {/* Placeholder — replaced in Task 7 by <TreeSettingsVisitorsPanel /> */}
-        <div data-testid="visitors-placeholder" />
+        <TreeSettingsVisitorsPanel
+          treeId={treeId}
+          currentUserRole={currentUserRole}
+          shareToken={shareToken}
+          baseUrl={baseUrl}
+        />
       </TabsContent>
     </Tabs>
   )
-
-  // Suppress unused warnings until panels land in Task 7.
-  void shareToken; void baseUrl
 
   const surface = desktop ? (
     <Dialog open={open} onOpenChange={setOpen}>
