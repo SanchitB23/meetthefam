@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useMemo } from 'react'
 import { deleteTree, type DeleteTreeState } from '../actions'
 import {
   Dialog,
@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { ErrorAlert } from '@/components/ui/error-alert'
 import { mapErrorCode } from '@/lib/errors'
+import { useToastOnResult } from '@/lib/toast/useToastOnResult'
 
 type Props = {
   treeId: string
@@ -31,6 +32,9 @@ export function DeleteTreeDialog({ treeId, treeName, open, onClose }: Props) {
   }
 
   const [state, formAction, isPending] = useActionState(action, null)
+
+  const toastMessages = useMemo(() => ({ success: `Deleted "${treeName}"` }), [treeName])
+  useToastOnResult(state, toastMessages)
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>

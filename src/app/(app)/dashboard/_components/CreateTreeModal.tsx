@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useMemo, useState } from 'react'
 import { createTree, type CreateTreeState } from '../actions'
 import {
   Dialog,
@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { ErrorAlert } from '@/components/ui/error-alert'
 import { mapErrorCode } from '@/lib/errors'
+import { useToastOnResult, type ActionResult } from '@/lib/toast/useToastOnResult'
 
 export function CreateTreeModal() {
   const [open, setOpen] = useState(false)
@@ -30,6 +31,12 @@ export function CreateTreeModal() {
   }
 
   const [state, formAction, isPending] = useActionState(action, null)
+
+  const toastMessages = useMemo(
+    () => ({ success: (s: NonNullable<ActionResult>) => `Created "${(s as { name?: string }).name ?? 'tree'}"` }),
+    [],
+  )
+  useToastOnResult(state, toastMessages)
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

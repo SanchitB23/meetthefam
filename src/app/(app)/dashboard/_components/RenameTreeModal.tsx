@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useMemo } from 'react'
 import { renameTree, type RenameTreeState } from '../actions'
 import {
   Dialog,
@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { ErrorAlert } from '@/components/ui/error-alert'
 import { mapErrorCode } from '@/lib/errors'
+import { useToastOnResult, type ActionResult } from '@/lib/toast/useToastOnResult'
 
 type Props = {
   treeId: string
@@ -33,6 +34,12 @@ export function RenameTreeModal({ treeId, currentName, open, onClose }: Props) {
   }
 
   const [state, formAction, isPending] = useActionState(action, null)
+
+  const toastMessages = useMemo(
+    () => ({ success: (s: NonNullable<ActionResult>) => `Renamed to "${(s as { name?: string }).name ?? 'tree'}"` }),
+    [],
+  )
+  useToastOnResult(state, toastMessages)
 
   return (
     // key={treeId} remounts the dialog (and resets `state` + defaultValue)
