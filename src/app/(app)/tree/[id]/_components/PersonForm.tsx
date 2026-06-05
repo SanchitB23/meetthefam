@@ -560,6 +560,7 @@ export function PersonForm({
         setLocalPhotoUrl(null)
         // Belt and braces — should already be null in edit mode.
         clearPendingBlob()
+        notify.success('Photo removed')
       } else {
         setPhotoError(result.error)
       }
@@ -631,6 +632,7 @@ export function PersonForm({
         }
         onSaved?.(person.id)
         onOpenChange(false)
+        notify.success('Saved')
         return
       }
 
@@ -674,13 +676,9 @@ export function PersonForm({
         )
         clearPendingBlob()
         if (!photoResult.ok) {
-          setSubmitError(
-            `Person saved, but the photo didn't upload: ${photoResult.error}. Try editing this person to attach it.`,
-          )
-          // The row exists — still fire onSaved + dismiss so the parent
-          // sees the new person on the tree.
           onSaved?.(result.personId)
           onOpenChange(false)
+          notify.warning(`Added ${payload.full_name}, but the photo didn't upload. Edit them to attach it.`)
           return
         }
       }
