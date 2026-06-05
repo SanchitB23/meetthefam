@@ -3,8 +3,7 @@ import { ArrowLeft, Settings } from 'lucide-react'
 import { FamilyTree } from './FamilyTree'
 import type { PersonRow } from '../_lib/types'
 import { AddRelativeFab } from './AddRelativeFab'
-import type { MemberRow, PendingInviteRow } from './TreeSettingsMembersPanel'
-import { TreeSettingsSheet } from './TreeSettingsSheet'
+import { TreeSettingsSheet, type MemberRow, type PendingInviteRow } from './TreeSettingsSheet'
 import { LinkProgress } from '@/components/ui/LinkProgress'
 
 type TreeRow = {

@@ -395,7 +395,7 @@ export async function revokeMember(
 // getMembersAndInvites — lazy read for the dashboard's inline Members modal
 // ============================================================================
 //
-// The dashboard renders a `<MembersSheet>` inline from the tree-card 3-dots
+// The dashboard renders a `<TreeSettingsSheet>` inline from the tree-card 3-dots
 // menu (no navigation). To avoid pre-fetching members for every tree on
 // dashboard render — wasteful for users with many trees — we lazy-fetch the
 // data on menu-click via this Server Action. The action mirrors the same
