@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useActionState } from 'react'
-import { X } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 
 import {
   renameTree,
@@ -81,6 +81,12 @@ export function TreeSettingsGeneralPanel({
             message={mapErrorCode(renameState.error, 'Something went wrong.')}
           />
         )}
+        {renameState?.success && (
+          <p className="text-xs text-foreground/70 flex items-center gap-1.5">
+            <Check className="h-3.5 w-3.5 text-green-600" />
+            Tree name saved.
+          </p>
+        )}
         <div className="flex justify-end">
           <Button type="submit" disabled={renamePending}>
             {renamePending ? 'Saving…' : 'Save'}
@@ -112,8 +118,8 @@ export function TreeSettingsGeneralPanel({
             <>
               <Button
                 type="submit"
+                variant="destructive"
                 disabled={deletePending}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 {deletePending ? 'Deleting…' : 'Confirm'}
               </Button>
@@ -131,8 +137,9 @@ export function TreeSettingsGeneralPanel({
           ) : (
             <Button
               type="button"
+              variant="outline"
               disabled={deletePending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="border-destructive text-destructive hover:bg-destructive/10"
               onClick={() => setConfirmDelete(true)}
             >
               Delete tree
