@@ -20,8 +20,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useIsDesktop } from '@/components/ui/use-is-desktop'
 import { TreeSettingsGeneralPanel } from './TreeSettingsGeneralPanel'
-import { TreeSettingsMembersPanel } from './TreeSettingsMembersPanel'
-import type { MemberRow, PendingInviteRow } from './TreeSettingsMembersPanel'
+import { TreeSettingsMembersPanel, type MemberRow, type PendingInviteRow } from './TreeSettingsMembersPanel'
 
 type Role = 'owner' | 'editor'
 type TabId = 'general' | 'members' | 'visitors'

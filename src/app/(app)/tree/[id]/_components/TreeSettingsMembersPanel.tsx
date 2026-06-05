@@ -527,15 +527,29 @@ export function TreeSettingsMembersPanel({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center gap-2 py-10 text-sm text-foreground/50">
-        <LoaderCircle className="h-4 w-4 animate-spin" />
-        Loading members…
-      </div>
+      <>
+        {/*
+          Loading skeleton — same note as the non-loading branch below: the outer
+          px-4/pb-4 spacing classes from MembersSheet are intentionally dropped
+          because the parent sheet provides the inset.
+        */}
+        <div className="flex items-center justify-center gap-2 py-10 text-sm text-foreground/50">
+          <LoaderCircle className="h-4 w-4 animate-spin" />
+          Loading members…
+        </div>
+      </>
     )
   }
 
   return (
-    <div className="flex flex-col gap-4 overflow-y-auto">
+    <>
+      {/*
+        Outer container — note: deliberately drops the px-4 pb-4 sm:px-0 sm:pb-0 sm:mt-2
+        classes that MembersSheet carried on this same div. Those existed to absorb
+        the inner-Dialog/Sheet chrome padding; here the parent TreeSettingsSheet
+        provides the inset, so the panel stays padding-free.
+      */}
+      <div className="flex flex-col gap-4 overflow-y-auto">
       <div className="flex flex-col gap-0.5">
         <h3 className="text-sm font-semibold text-foreground">Members</h3>
         <div className="divide-y divide-border">
@@ -564,5 +578,6 @@ export function TreeSettingsMembersPanel({
 
       {isOwner && <InviteForm treeId={treeId} />}
     </div>
+    </>
   )
 }
