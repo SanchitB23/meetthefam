@@ -22,4 +22,12 @@ describe('pickToast', () => {
   it('returns null when no matching message is configured', () => {
     expect(pickToast({ ok: true }, { error: () => 'x' })).toBeNull()
   })
+
+  it('success accepts a function of state', () => {
+    expect(
+      pickToast({ ok: true, name: 'Smiths' } as never, {
+        success: (s) => `Created ${(s as unknown as { name: string }).name}`,
+      }),
+    ).toEqual({ channel: 'success', message: 'Created Smiths' })
+  })
 })

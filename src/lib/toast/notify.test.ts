@@ -31,4 +31,9 @@ describe('notify', () => {
     notify.error('Boom')
     expect(error).toHaveBeenCalledWith('Boom', expect.objectContaining({ duration: Infinity }))
   })
+
+  it('info: 4s auto-dismiss', () => {
+    notify.info('Heads up')
+    expect(info).toHaveBeenCalledWith('Heads up', expect.objectContaining({ duration: 4000 }))
+  })
 })

@@ -12,7 +12,7 @@ export type ActionResult =
   | undefined
 
 export type ToastMessages = {
-  success?: string
+  success?: string | ((state: NonNullable<ActionResult>) => string)
   error?: (code: string) => string
 }
 
@@ -24,7 +24,10 @@ export function pickToast(state: ActionResult, messages: ToastMessages): Picked 
   if (!state) return null
   const ok = 'ok' in state ? state.ok : 'success' in state ? state.success === true : false
   if (ok) {
-    return messages.success ? { channel: 'success', message: messages.success } : null
+    if (!messages.success) return null
+    const message =
+      typeof messages.success === 'function' ? messages.success(state) : messages.success
+    return { channel: 'success', message }
   }
   if ('error' in state && state.error && messages.error) {
     return { channel: 'error', message: messages.error(state.error) }
@@ -34,6 +37,9 @@ export function pickToast(state: ActionResult, messages: ToastMessages): Picked 
 
 // Adapter for `useActionState` call sites: fires a toast once per new
 // terminal result (deduped by object identity so re-renders don't re-fire).
+// NOTE: callers MUST pass a stable `messages` (useMemo/useCallback) — the effect
+// deps include `messages`; the ref-guard prevents double-toasting on re-render,
+// but a stable object avoids redundant effect runs.
 export function useToastOnResult(state: ActionResult, messages: ToastMessages): void {
   const seen = useRef<ActionResult>(null)
   useEffect(() => {
