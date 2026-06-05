@@ -47,6 +47,8 @@ import {
   regenerateShareToken,
   disableShareLink,
 } from '../share/actions'
+import { notify } from '@/lib/toast/notify'
+import { copyWithToast } from '@/lib/toast/copyWithToast'
 
 // Same Tailwind chrome MembersSheet uses for read-only URL inputs.
 const inputClass =
@@ -101,7 +103,7 @@ export function ShareLinkSheet({
   const [confirmDisable, setConfirmDisable] = useState(false)
 
   const copyToClipboard = (url: string) => {
-    navigator.clipboard.writeText(url).then(() => {
+    copyWithToast(url).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
@@ -113,8 +115,13 @@ export function ShareLinkSheet({
       const res = await enableShareLink(treeId)
       if (res.ok) {
         setLocalToken(res.shareToken)
+        notify.success('Share link enabled')
       } else {
-        setError('Could not enable sharing. Please try again.')
+        if (res.error === 'forbidden') {
+          window.dispatchEvent(new CustomEvent('mtf-access-lost'))
+        } else {
+          setError('Could not update sharing. Please try again.')
+        }
       }
     })
   }
@@ -130,9 +137,14 @@ export function ShareLinkSheet({
       if (res.ok) {
         setLocalToken(res.shareToken)
         setConfirmRegen(false)
+        notify.warning('New link created — the old link no longer works')
       } else {
-        setError('Could not regenerate token. Please try again.')
         setConfirmRegen(false)
+        if (res.error === 'forbidden') {
+          window.dispatchEvent(new CustomEvent('mtf-access-lost'))
+        } else {
+          setError('Could not update sharing. Please try again.')
+        }
       }
     })
   }
@@ -148,9 +160,14 @@ export function ShareLinkSheet({
       if (res.ok) {
         setLocalToken(null)
         setConfirmDisable(false)
+        notify.success('Share link disabled')
       } else {
-        setError('Could not disable sharing. Please try again.')
         setConfirmDisable(false)
+        if (res.error === 'forbidden') {
+          window.dispatchEvent(new CustomEvent('mtf-access-lost'))
+        } else {
+          setError('Could not update sharing. Please try again.')
+        }
       }
     })
   }
