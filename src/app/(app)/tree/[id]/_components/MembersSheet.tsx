@@ -31,6 +31,8 @@ import { Avatar } from '@/components/ui/avatar'
 import { useIsDesktop } from '@/components/ui/use-is-desktop'
 import { ErrorAlert } from '@/components/ui/error-alert'
 import { mapErrorCode } from '@/lib/errors'
+import { notify } from '@/lib/toast/notify'
+import { copyWithToast } from '@/lib/toast/copyWithToast'
 
 import {
   inviteEditor,
@@ -164,7 +166,7 @@ function InviteForm({ treeId }: { treeId: string }) {
   const [copied, setCopied] = useState(false)
 
   const copyToClipboard = (url: string) => {
-    navigator.clipboard.writeText(url).then(() => {
+    copyWithToast(url).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
@@ -308,7 +310,9 @@ function MemberListRow({
     setError(null)
     startTransition(async () => {
       const res = await revokeMember(treeId, member.user_id)
-      if (!res.ok) {
+      if (res.ok) {
+        notify.success('Member removed')
+      } else {
         setError('Could not revoke member. Please try again.')
         setConfirmRevoke(false)
       }
@@ -418,7 +422,7 @@ function PendingInviteListRow({
   const [error, setError] = useState<string | null>(null)
 
   const copyToClipboard = (url: string) => {
-    navigator.clipboard.writeText(url).then(() => {
+    copyWithToast(url).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
@@ -430,6 +434,7 @@ function PendingInviteListRow({
       const res = await resendInvite(invite.id)
       if (res.ok) {
         setResendUrl(res.inviteUrl)
+        notify.success('Invite resent')
       } else {
         setError('Could not resend invite. Please try again.')
       }
@@ -446,6 +451,7 @@ function PendingInviteListRow({
       const res = await revokeInvite(invite.id)
       if (res.ok) {
         setRevoked(true)
+        notify.success('Invite revoked')
       } else {
         setError('Could not revoke invite. Please try again.')
         setConfirmRevoke(false)

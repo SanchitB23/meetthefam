@@ -17,6 +17,8 @@ import {
   type GetMembersAndInvitesResult,
 } from '@/app/(app)/tree/[id]/members/actions'
 import type { TreeRow } from './TreeCard'
+import { notify } from '@/lib/toast/notify'
+import { mapErrorCode } from '@/lib/errors'
 
 type Props = { tree: TreeRow }
 
@@ -52,9 +54,7 @@ export function TreeCardMenu({ tree }: Props) {
           pendingInvites: res.pendingInvites,
         })
       } else {
-        // Surface as a closed sheet with a TODO comment — Phase 8 polish
-        // could render an inline error card. For now, RLS / not-signed-in
-        // are unreachable from this code path (menu is owner-gated).
+        notify.error(mapErrorCode(res.error, 'Could not load members.'))
         setManaging(false)
       }
     })
