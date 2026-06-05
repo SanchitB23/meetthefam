@@ -37,13 +37,19 @@ export function TreeSettingsVisitorsPanel({
   baseUrl,
 }: Props) {
   const isOwner = currentUserRole === 'owner'
-  const isEnabled = shareToken != null
 
   // Local mirror of the token so we can show the freshly-minted URL
   // optimistically without waiting for the revalidatePath round-trip.
   const [localToken, setLocalToken] = useState<string | null>(shareToken)
   const currentToken = localToken ?? shareToken
   const currentUrl = currentToken ? `${baseUrl}/share/${currentToken}` : null
+  // `isEnabled` derives from currentToken (not the raw prop) so that after
+  // handleEnable mints a token into localToken, the manage UI renders
+  // without waiting for the parent to re-fetch and pass a fresh shareToken.
+  // The source ShareLinkSheet had the same `shareToken != null` check but
+  // masked the staleness with its close/reopen lifecycle; the always-mounted
+  // panel exposes it.
+  const isEnabled = currentToken != null
 
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
