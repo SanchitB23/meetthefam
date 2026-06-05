@@ -2,17 +2,12 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { headers } from 'next/headers'
 import { randomBytes } from 'crypto'
+import { getBaseUrl } from '@/lib/baseUrl'
 
 // ---------------------------------------------------------------------------
-// Helpers (mirror `src/app/tree/[id]/members/actions.ts`).
+// Helpers
 // ---------------------------------------------------------------------------
-
-async function getBaseUrl(): Promise<string> {
-  const headersList = await headers()
-  return headersList.get('origin') ?? 'http://localhost:3000'
-}
 
 function mintToken(): string {
   return randomBytes(32).toString('base64url')

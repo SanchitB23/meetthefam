@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getBaseUrl } from '@/lib/baseUrl'
 import { Leaf } from '@/components/icons/Leaf'
 import { TreeCard, type TreeRow } from './TreeCard'
 import { CreateTreeModal } from './CreateTreeModal'
@@ -19,6 +20,7 @@ type Membership = {
  */
 export async function DashboardContent({ userId }: { userId: string }) {
   const supabase = await createClient()
+  const baseUrl = await getBaseUrl()
 
   // `tree_members.tree_id` is a single FK to `trees.id` (many-to-one), so
   // `trees` is a single row per membership. Supabase's generic inference
@@ -65,7 +67,7 @@ export async function DashboardContent({ userId }: { userId: string }) {
               tree={m.trees}
               role={m.role}
               actions={
-                m.role === 'owner' ? <TreeCardMenu tree={m.trees} /> : null
+                m.role === 'owner' ? <TreeCardMenu tree={m.trees} baseUrl={baseUrl} /> : null
               }
             />
           ))}

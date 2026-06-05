@@ -9,16 +9,18 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { RenameTreeModal } from './RenameTreeModal'
-import { DeleteTreeDialog } from './DeleteTreeDialog'
-import { MembersSheet, type MemberRow, type PendingInviteRow } from '@/app/(app)/tree/[id]/_components/MembersSheet'
 import {
   getMembersAndInvites,
   type GetMembersAndInvitesResult,
 } from '@/app/(app)/tree/[id]/members/actions'
+import {
+  TreeSettingsSheet,
+  type MemberRow,
+  type PendingInviteRow,
+} from '@/app/(app)/tree/[id]/_components/TreeSettingsSheet'
 import type { TreeRow } from './TreeCard'
 
-type Props = { tree: TreeRow }
+type Props = { tree: TreeRow; baseUrl: string }
 
 type MembersData = {
   currentUserId: string
@@ -27,23 +29,18 @@ type MembersData = {
   pendingInvites: PendingInviteRow[]
 }
 
-export function TreeCardMenu({ tree }: Props) {
-  const [renaming, setRenaming] = useState(false)
-  const [deleting, setDeleting] = useState(false)
-  const [managing, setManaging] = useState(false)
+export function TreeCardMenu({ tree, baseUrl }: Props) {
+  const [open, setOpenState] = useState(false)
   const [data, setData] = useState<MembersData | null>(null)
   const [, startTransition] = useTransition()
 
-  // Open the MembersSheet IN the dashboard — no navigation to /tree/<id>.
-  // The Server Action fetches members + pendingInvites lazily; the sheet
-  // opens immediately with a loading skeleton, then swaps to real data
-  // once the action returns. Single source of truth still lives in
-  // `<MembersSheet>` — this is just a second mount point.
-  const handleManageMembers = () => {
-    setManaging(true)
+  const handleOpen = () => {
+    setOpenState(true)
     setData(null)
     startTransition(async () => {
-      const res = (await getMembersAndInvites(tree.id)) as GetMembersAndInvitesResult
+      const res = (await getMembersAndInvites(
+        tree.id,
+      )) as GetMembersAndInvitesResult
       if (res.ok) {
         setData({
           currentUserId: res.currentUserId,
@@ -52,20 +49,16 @@ export function TreeCardMenu({ tree }: Props) {
           pendingInvites: res.pendingInvites,
         })
       } else {
-        // Surface as a closed sheet with a TODO comment — Phase 8 polish
-        // could render an inline error card. For now, RLS / not-signed-in
-        // are unreachable from this code path (menu is owner-gated).
-        setManaging(false)
+        setOpenState(false)
       }
     })
   }
 
-  const loading = managing && data === null
+  const loading = open && data === null
 
   return (
     <>
       <DropdownMenu>
-        {/* Base UI Menu.Trigger uses `render`, not `asChild`. */}
         <DropdownMenuTrigger
           render={
             <Button
@@ -79,50 +72,29 @@ export function TreeCardMenu({ tree }: Props) {
           }
         />
         <DropdownMenuContent align="end">
-          {/* Base UI MenuItem uses `onClick` (not `onSelect`). The menu
-              auto-closes on click by default (`closeOnClick` defaults true). */}
-          <DropdownMenuItem onClick={() => setRenaming(true)}>
-            Rename
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleManageMembers}>
-            Manage members
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            variant="destructive"
-            onClick={() => setDeleting(true)}
-          >
-            Delete
-          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleOpen}>Tree settings</DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <RenameTreeModal
-        treeId={tree.id}
-        currentName={tree.name}
-        open={renaming}
-        onClose={() => setRenaming(false)}
-      />
-      <DeleteTreeDialog
+      {/*
+        key={tree.id} is REQUIRED on the component boundary so all internal
+        state (active tab, internal-open, form state) resets cleanly when
+        the user switches between trees while the sheet is open. The
+        component's JSDoc documents this contract.
+      */}
+      <TreeSettingsSheet
+        key={tree.id}
         treeId={tree.id}
         treeName={tree.name}
-        open={deleting}
-        onClose={() => setDeleting(false)}
-      />
-      {/* Controlled-mode MembersSheet — no internal trigger; the
-          parent (this component) owns open-state. The TreeCardMenu
-          itself is owner-only-gated by the dashboard (m.role === 'owner'),
-          so the role passed here is always 'owner' once data lands.
-          During loading we pass owner + empty arrays as placeholders;
-          the `loading` prop swaps the body to a spinner skeleton. */}
-      <MembersSheet
-        treeId={tree.id}
         currentUserId={data?.currentUserId ?? ''}
         currentUserRole={data?.currentUserRole ?? 'owner'}
         members={data?.members ?? []}
         pendingInvites={data?.pendingInvites ?? []}
-        open={managing}
+        shareToken={tree.share_token}
+        baseUrl={baseUrl}
+        open={open}
         onOpenChange={(next) => {
-          setManaging(next)
+          setOpenState(next)
           if (!next) setData(null)
         }}
         loading={loading}
