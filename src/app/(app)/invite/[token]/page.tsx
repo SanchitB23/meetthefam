@@ -105,7 +105,9 @@ function ErrorCard({ title, message, showDashboardLink = true }: ErrorCardProps)
 
 export default async function InvitePage({ params, searchParams }: InvitePageProps) {
   const { token } = await params
-  await searchParams // consumed by ToastFromSearchParams client bridge
+  // Next.js 16: await the dynamic searchParams to opt into dynamic rendering.
+  // The ?error= value itself is surfaced by <ToastFromSearchParams> (client).
+  await searchParams
 
   // --- Auth gate (defence-in-depth; proxy already redirects anon users) ---
   const supabase = await createClient()
