@@ -29,7 +29,7 @@ export async function DashboardContent({ userId }: { userId: string }) {
     .select(`
       role,
       trees (
-        id, name, description, owner_id, created_at, updated_at
+        id, name, description, owner_id, created_at, updated_at, share_token
       )
     `)
     .eq('user_id', userId)
