@@ -28,7 +28,7 @@ export type MemberRow = {
   user_id: string
   display_name: string | null
   avatar_url: string | null
-  role: Role
+  role: 'owner' | 'editor'
   joined_at: string
 }
 export type PendingInviteRow = {
@@ -58,6 +58,22 @@ type Props = {
   loading?: boolean
 }
 
+/**
+ * Unified Tree settings affordance — Rename / Members / Delete / Visitors,
+ * dual-mounted on the dashboard 3-dots and the tree-page top bar.
+ *
+ * **Call-site contract:** mount this component with `key={treeId}` so all
+ * internal state (active tab, form state, internal-open) resets cleanly
+ * when the user switches between trees while the sheet is open:
+ *
+ * ```tsx
+ * <TreeSettingsSheet key={tree.id} treeId={tree.id} … />
+ * ```
+ *
+ * Without the call-site key, switching from tree A (owner) to tree B
+ * (editor) without closing the sheet would leave `activeTab='general'`
+ * even though editors don't have a General tab.
+ */
 export function TreeSettingsSheet({
   treeId,
   treeName,
@@ -125,7 +141,7 @@ export function TreeSettingsSheet({
   void shareToken; void baseUrl; void loading
 
   const surface = desktop ? (
-    <Dialog key={treeId} open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="sm:max-w-md max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="font-serif text-xl flex items-center gap-2">
@@ -140,7 +156,7 @@ export function TreeSettingsSheet({
       </DialogContent>
     </Dialog>
   ) : (
-    <Sheet key={treeId} open={open} onOpenChange={setOpen}>
+    <Sheet open={open} onOpenChange={setOpen}>
       <SheetContent
         side="bottom"
         className="max-h-[90vh] overflow-y-auto rounded-t-xl"
