@@ -8,31 +8,13 @@ import {
   X,
   Copy,
   Check,
-  Users2,
   LoaderCircle,
 } from 'lucide-react'
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Avatar } from '@/components/ui/avatar'
-import { useIsDesktop } from '@/components/ui/use-is-desktop'
 import { ErrorAlert } from '@/components/ui/error-alert'
 import { mapErrorCode } from '@/lib/errors'
-import { notify } from '@/lib/toast/notify'
-import { copyWithToast } from '@/lib/toast/copyWithToast'
 
 import {
   inviteEditor,
@@ -59,41 +41,6 @@ export type PendingInviteRow = {
   created_at: string
   expires_at: string
   token: string
-}
-
-type Props = {
-  treeId: string
-  currentUserId: string
-  currentUserRole: 'owner' | 'editor'
-  members: MemberRow[]
-  pendingInvites: PendingInviteRow[]
-  /**
-   * Optional click target that opens the sheet. When omitted, the sheet
-   * has no own trigger — the parent controls open-state via the
-   * `open` / `onOpenChange` controlled-mode props. Used by the dashboard's
-   * `TreeCardMenu`, which fires the open from a `DropdownMenuItem` and
-   * doesn't need its own visible trigger inside the sheet's JSX.
-   */
-  trigger?: React.ReactNode
-  /**
-   * Controlled-mode open state. When provided alongside `onOpenChange`,
-   * the parent owns the open state. When omitted, the sheet manages its
-   * own internal open state (uncontrolled mode — current tree-page usage).
-   */
-  open?: boolean
-  onOpenChange?: (open: boolean) => void
-  /**
-   * Uncontrolled-mode initial-open. Ignored when `open` is provided.
-   */
-  defaultOpen?: boolean
-  /**
-   * When true, render a small "Loading members…" skeleton in place of the
-   * Members section + pending-invites section + invite form. Used by the
-   * dashboard's inline-open path while the `getMembersAndInvites` Server
-   * Action is in flight. The chrome (header, title, description, close
-   * button) renders normally so the user sees the sheet open immediately.
-   */
-  loading?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -166,7 +113,7 @@ function InviteForm({ treeId }: { treeId: string }) {
   const [copied, setCopied] = useState(false)
 
   const copyToClipboard = (url: string) => {
-    copyWithToast(url).then(() => {
+    navigator.clipboard.writeText(url).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
@@ -310,9 +257,7 @@ function MemberListRow({
     setError(null)
     startTransition(async () => {
       const res = await revokeMember(treeId, member.user_id)
-      if (res.ok) {
-        notify.success('Member removed')
-      } else {
+      if (!res.ok) {
         setError('Could not revoke member. Please try again.')
         setConfirmRevoke(false)
       }
@@ -422,7 +367,7 @@ function PendingInviteListRow({
   const [error, setError] = useState<string | null>(null)
 
   const copyToClipboard = (url: string) => {
-    copyWithToast(url).then(() => {
+    navigator.clipboard.writeText(url).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
@@ -434,7 +379,6 @@ function PendingInviteListRow({
       const res = await resendInvite(invite.id)
       if (res.ok) {
         setResendUrl(res.inviteUrl)
-        notify.success('Invite resent')
       } else {
         setError('Could not resend invite. Please try again.')
       }
@@ -451,7 +395,6 @@ function PendingInviteListRow({
       const res = await revokeInvite(invite.id)
       if (res.ok) {
         setRevoked(true)
-        notify.success('Invite revoked')
       } else {
         setError('Could not revoke invite. Please try again.')
         setConfirmRevoke(false)
@@ -560,46 +503,53 @@ function PendingInviteListRow({
 }
 
 // ---------------------------------------------------------------------------
-// MembersSheet (main export)
+// TreeSettingsMembersPanel (main export)
 // ---------------------------------------------------------------------------
 
-export function MembersSheet({
+type Props = {
+  treeId: string
+  currentUserId: string
+  currentUserRole: 'owner' | 'editor'
+  members: MemberRow[]
+  pendingInvites: PendingInviteRow[]
+  loading?: boolean
+}
+
+export function TreeSettingsMembersPanel({
   treeId,
   currentUserId,
   currentUserRole,
   members,
   pendingInvites,
-  trigger,
-  open: openProp,
-  onOpenChange,
-  defaultOpen = false,
   loading = false,
 }: Props) {
-  const desktop = useIsDesktop()
-  const [internalOpen, setInternalOpen] = useState(defaultOpen)
-
-  // Controlled-mode vs uncontrolled-mode pattern: when the parent passes
-  // both `open` and `onOpenChange`, the parent owns the state. Otherwise,
-  // we manage it ourselves (existing tree-page usage).
-  const isControlled = openProp !== undefined
-  const open = isControlled ? openProp : internalOpen
-  const setOpen = (next: boolean) => {
-    if (isControlled) onOpenChange?.(next)
-    else setInternalOpen(next)
-  }
-
   const isOwner = currentUserRole === 'owner'
 
-  const body = loading ? (
-    <div className="flex flex-col gap-4 px-4 pb-4 sm:px-0 sm:pb-0 sm:mt-2">
-      <div className="flex items-center justify-center gap-2 py-10 text-sm text-foreground/50">
-        <LoaderCircle className="h-4 w-4 animate-spin" />
-        Loading members…
-      </div>
-    </div>
-  ) : (
-    <div className="flex flex-col gap-4 px-4 pb-4 sm:px-0 sm:pb-0 sm:mt-2 overflow-y-auto">
-      {/* Members section */}
+  if (loading) {
+    return (
+      <>
+        {/*
+          Loading skeleton — same note as the non-loading branch below: the outer
+          px-4/pb-4 spacing classes from MembersSheet are intentionally dropped
+          because the parent sheet provides the inset.
+        */}
+        <div className="flex items-center justify-center gap-2 py-10 text-sm text-foreground/50">
+          <LoaderCircle className="h-4 w-4 animate-spin" />
+          Loading members…
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <>
+      {/*
+        Outer container — note: deliberately drops the px-4 pb-4 sm:px-0 sm:pb-0 sm:mt-2
+        classes that MembersSheet carried on this same div. Those existed to absorb
+        the inner-Dialog/Sheet chrome padding; here the parent TreeSettingsSheet
+        provides the inset, so the panel stays padding-free.
+      */}
+      <div className="flex flex-col gap-4 overflow-y-auto">
       <div className="flex flex-col gap-0.5">
         <h3 className="text-sm font-semibold text-foreground">Members</h3>
         <div className="divide-y divide-border">
@@ -615,87 +565,19 @@ export function MembersSheet({
         </div>
       </div>
 
-      {/* Pending invites — owner only, only when there are open invites */}
       {isOwner && pendingInvites.length > 0 && (
         <div className="flex flex-col gap-0.5 pt-3 border-t border-border">
           <h3 className="text-sm font-semibold text-foreground">Pending invites</h3>
           <div className="divide-y divide-border">
             {pendingInvites.map((inv) => (
-              <PendingInviteListRow
-                key={inv.id}
-                invite={inv}
-              />
+              <PendingInviteListRow key={inv.id} invite={inv} />
             ))}
           </div>
         </div>
       )}
 
-      {/* Invite form — owner only */}
       {isOwner && <InviteForm treeId={treeId} />}
     </div>
-  )
-
-  const title = 'Members'
-  const description = isOwner
-    ? 'Manage who can edit this tree.'
-    : 'People who can view and edit this tree.'
-
-  const surface = desktop ? (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="sm:max-w-md max-h-[80vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="font-serif text-xl flex items-center gap-2">
-            <Users2 className="h-5 w-5" />
-            {title}
-          </DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-        <div className="overflow-y-auto flex-1 -mx-4 px-4 sm:mx-0 sm:px-0">
-          {body}
-        </div>
-      </DialogContent>
-    </Dialog>
-  ) : (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetContent
-        side="bottom"
-        className="max-h-[90vh] overflow-y-auto rounded-t-xl"
-      >
-        <SheetHeader>
-          <SheetTitle className="font-serif text-xl flex items-center gap-2">
-            <Users2 className="h-5 w-5" />
-            {title}
-          </SheetTitle>
-          <SheetDescription>{description}</SheetDescription>
-        </SheetHeader>
-        {body}
-      </SheetContent>
-    </Sheet>
-  )
-
-  return (
-    <>
-      {/* Trigger is optional — in controlled mode the parent owns open-state
-          and doesn't need a built-in click target (e.g. the dashboard fires
-          open from a DropdownMenuItem). */}
-      {trigger && (
-        <span
-          role="button"
-          tabIndex={0}
-          onClick={() => setOpen(true)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              setOpen(true)
-            }
-          }}
-          aria-label="Manage members"
-          className="contents"
-        >
-          {trigger}
-        </span>
-      )}
-      {surface}
     </>
   )
 }
