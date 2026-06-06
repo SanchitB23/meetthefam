@@ -73,6 +73,12 @@ The `photos` bucket is public-read. A photo URL is `https://<project>.supabase.c
 
 The path itself is unguessable (UUIDs both for tree and person), so we accept that anyone with the URL can view the photo — same security model as Slack's image links.
 
+## CORS / canvas export
+
+Tree export (#60 / #218) rasterises the rendered family-chart DOM onto an HTML `<canvas>`. A cross-origin avatar `<img>` loaded without CORS taints the canvas, making `canvas.toBlob()` / `toDataURL()` throw. The avatar `<img>` in `src/app/(app)/tree/[id]/_lib/person-node-html.ts` therefore carries `crossorigin="anonymous"`.
+
+This is sufficient and needs no bucket/CDN configuration: the `photos` bucket serves `access-control-allow-origin: *` **unconditionally** — on every response, with or without an `Origin` request header, on cached (`cf-cache-status: HIT`) and uncached responses alike. Because the ACAO value never varies, there is no `Vary: Origin` and no cache-poisoning risk (a no-`Origin` cached response is still CORS-valid for a later cross-origin fetch). Validated against QA (`ljjvwtpifmoshfknlbaj`) on 2026-06-06. Prod (`ycnsgkotrbjifsjkqmvn`) uses the identical storage layer; re-probe is a one-line launch-checklist item, not a design risk.
+
 ## `next/image` config (Next.js 16)
 
 Photo `<img>` tags use `next/image` for automatic resizing + WebP. Next.js 16 changed several `images.*` defaults — set them explicitly in `next.config.ts` so behavior is predictable across upgrades:
