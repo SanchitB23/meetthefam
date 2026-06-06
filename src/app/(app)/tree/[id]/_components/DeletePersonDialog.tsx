@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { ErrorAlert } from '@/components/ui/error-alert'
 import { mapErrorCode } from '@/lib/errors'
+import { notify } from '@/lib/toast/notify'
 
 import { deletePerson } from '../actions'
 
@@ -50,6 +51,7 @@ export function DeletePersonDialog({
         setError(result.error)
         return
       }
+      notify.success(`Deleted ${personName}`)
       onDeleted?.()
       onClose()
     })

@@ -1,6 +1,7 @@
 import { SignOutButton } from './_components/SignOutButton'
 import { Logo } from '@/components/icons/Logo'
 import { SiteFooter } from '@/components/layout/SiteFooter'
+import { AccessLostBanner } from '@/components/ui/AccessLostBanner'
 
 /**
  * Shared chrome for authenticated routes — dashboard, tree page, invite
@@ -17,6 +18,7 @@ export default function AppLayout({
 }) {
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      <AccessLostBanner />
       <nav className="border-b border-border px-4 py-3 flex items-center justify-between">
         <a href="/dashboard" className="flex items-center gap-2 text-primary">
           <Logo size={28} />

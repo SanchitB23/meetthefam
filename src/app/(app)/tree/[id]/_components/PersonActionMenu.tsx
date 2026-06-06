@@ -32,6 +32,7 @@ import {
 import { clearSpouse, setSpouse } from '../actions'
 import { ErrorAlert } from '@/components/ui/error-alert'
 import { mapErrorCode } from '@/lib/errors'
+import { notify } from '@/lib/toast/notify'
 import {
   collectAncestors,
   collectDescendants,
@@ -123,14 +124,20 @@ export function PersonActionMenu({
         return
       }
       setSpousePickerForId(null)
+      notify.success('Spouse linked')
     })
   }
 
   const handleClearSpouse = () => {
     if (!person) return
     const id = person.id
-    startTransition(() => {
-      void clearSpouse(id, treeId)
+    startTransition(async () => {
+      const result = await clearSpouse(id, treeId)
+      if (!result.ok) {
+        notify.error(mapErrorCode(result.error, 'Could not remove the spouse link.'))
+        return
+      }
+      notify.success('Spouse link removed')
     })
   }
 

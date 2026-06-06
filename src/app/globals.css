@@ -197,6 +197,17 @@
   .f3 .mtf-node__add-btn { opacity: 0.85; transform: scale(1); }
 }
 
+/* sonner toast theming — heirloom tokens (see #70 spike) */
+[data-sonner-toast] {
+  --mtf-accent: var(--border);
+  border-left: 3px solid var(--mtf-accent);
+}
+[data-sonner-toast][data-type="success"] { --mtf-accent: var(--primary); }
+[data-sonner-toast][data-type="info"]    { --mtf-accent: var(--muted-foreground); }
+[data-sonner-toast][data-type="warning"] { --mtf-accent: var(--accent); }
+[data-sonner-toast][data-type="error"]   { --mtf-accent: var(--destructive); }
+[data-sonner-toast] [data-icon] { color: var(--mtf-accent); }
+
 /*
  * 8b polish FIX 2 — Deceased card chrome, strengthened.
  * The mtf-node--deceased class is emitted by personNodeHtml when data.deceased

@@ -6,6 +6,7 @@ const ERROR_MAP: Record<string, string> = {
   email_rate_limit: 'Too many sign-in attempts. Wait a few minutes and try again.',
   not_signed_in: 'Sign in to continue.',
   forbidden: 'You do not have permission to do that.',
+  not_authorized: 'You do not have permission to view that.',
   not_found: 'That page or resource could not be found.',
   not_found_or_revoked: 'That link is no longer active or could not be found.',
   self_spouse: 'A person cannot be their own spouse.',

@@ -13,12 +13,14 @@
  * session check here is a defence-in-depth guard (e.g. after session expiry).
  */
 
+import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceRoleClient } from '@/lib/supabase/service'
 import { acceptInvite } from '@/app/(app)/tree/[id]/members/actions'
 import { SubmitButton } from '@/components/ui/submit-button'
+import { ToastFromSearchParams } from '@/components/ui/ToastFromSearchParams'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -103,8 +105,9 @@ function ErrorCard({ title, message, showDashboardLink = true }: ErrorCardProps)
 
 export default async function InvitePage({ params, searchParams }: InvitePageProps) {
   const { token } = await params
-  const sp = await searchParams
-  const actionError = typeof sp.error === 'string' ? sp.error : null
+  // Next.js 16: await the dynamic searchParams to opt into dynamic rendering.
+  // The ?error= value itself is surfaced by <ToastFromSearchParams> (client).
+  await searchParams
 
   // --- Auth gate (defence-in-depth; proxy already redirects anon users) ---
   const supabase = await createClient()
@@ -151,6 +154,9 @@ export default async function InvitePage({ params, searchParams }: InvitePagePro
   // --- Render wrapper ---
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12">
+      <Suspense fallback={null}>
+        <ToastFromSearchParams />
+      </Suspense>
       <div className="w-full max-w-md space-y-6">
         <h1 className="font-serif text-3xl text-foreground text-center">
           meetthefam
@@ -162,7 +168,6 @@ export default async function InvitePage({ params, searchParams }: InvitePagePro
           user,
           treeName,
           inviterName,
-          actionError,
         })}
       </div>
     </main>
@@ -179,7 +184,6 @@ interface CardProps {
   user: { email?: string | null }
   treeName: string
   inviterName: string
-  actionError: string | null
 }
 
 function renderCard({
@@ -188,7 +192,6 @@ function renderCard({
   user,
   treeName,
   inviterName,
-  actionError,
 }: CardProps) {
   // 1. Not found
   if (!invite) {
@@ -272,9 +275,8 @@ function renderCard({
   }
 
   // --- Confirm card (happy path) ---
-  // actionError is only set when the form was submitted and the RPC returned
-  // an error after the page-level checks passed (e.g. a race condition where
-  // the invite was revoked between page load and submit).
+  // Post-submit errors are surfaced as `?error=<code>` and shown via the
+  // ToastFromSearchParams client bridge (e.g. race-condition revoke after load).
   return (
     <div className="rounded-lg border border-border bg-card p-6 space-y-4 max-w-md w-full">
       <div className="space-y-1 text-center">
@@ -290,12 +292,6 @@ function renderCard({
         You&rsquo;ll be able to add, edit, and manage people in this tree.
       </div>
 
-      {actionError && (
-        <p className="text-sm text-destructive text-center">
-          {friendlyActionError(actionError)}
-        </p>
-      )}
-
       <form action={acceptInviteAction}>
         <input type="hidden" name="token" value={token} />
         <SubmitButton pendingText="Joining…">Accept invite</SubmitButton>
@@ -308,21 +304,3 @@ function renderCard({
   )
 }
 
-function friendlyActionError(error: string): string {
-  switch (error) {
-    case 'not_found':
-      return 'This invite link is invalid or has already been used.'
-    case 'revoked':
-      return 'The tree owner has cancelled this invite.'
-    case 'expired':
-      return 'This invite link has expired. Ask the owner to resend it.'
-    case 'email_mismatch':
-      return 'This invite was sent to a different email address.'
-    case 'already_accepted':
-      return 'You have already accepted this invite.'
-    case 'not_signed_in':
-      return 'You must be signed in to accept this invite.'
-    default:
-      return 'Something went wrong. Please try again or contact the tree owner.'
-  }
-}

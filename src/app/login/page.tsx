@@ -1,15 +1,14 @@
+import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { signInWithGoogle, signInWithMagicLink } from './actions'
 import { SubmitButton } from '@/components/ui/submit-button'
 import { createClient } from '@/lib/supabase/server'
-import { ErrorAlert } from '@/components/ui/error-alert'
-import { mapErrorCode } from '@/lib/errors'
 import { PublicHeader } from '@/components/layout/PublicHeader'
 import { SiteFooter } from '@/components/layout/SiteFooter'
+import { ToastFromSearchParams } from '@/components/ui/ToastFromSearchParams'
 
 type SearchParams = Promise<{
   sent?: string
-  error?: string
   email?: string
   next?: string
 }>
@@ -27,7 +26,7 @@ export default async function LoginPage({
 }: {
   searchParams: SearchParams
 }) {
-  const { sent, error, email, next: nextParam } = await searchParams
+  const { sent, email, next: nextParam } = await searchParams
   const next = safeNext(nextParam)
 
   const supabase = await createClient()
@@ -38,6 +37,9 @@ export default async function LoginPage({
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      <Suspense fallback={null}>
+        <ToastFromSearchParams />
+      </Suspense>
       <PublicHeader />
       <main className="flex flex-1 items-center justify-center px-4 py-12">
         <div className="w-full max-w-sm space-y-6">
@@ -60,8 +62,6 @@ export default async function LoginPage({
             </div>
           ) : (
             <div className="space-y-4">
-              {error && <ErrorAlert size="sm" message={mapErrorCode(error)} />}
-
               <form action={signInWithGoogle}>
                 {next && <input type="hidden" name="next" value={next} />}
                 <SubmitButton variant="outline" pendingText="Redirecting…">
