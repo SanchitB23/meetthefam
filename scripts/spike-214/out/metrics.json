@@ -1,0 +1,29 @@
+{
+  "seedPeople": 55,
+  "engines": [
+    {
+      "engine": "dagre",
+      "personCards": 55,
+      "uniquePeople": 55,
+      "duplicates": 0,
+      "expectedPeople": 55,
+      "allRenderedOnce": true,
+      "width": 4984,
+      "height": 966,
+      "aspect": 5.16,
+      "layoutMs": 18
+    },
+    {
+      "engine": "d3-dag",
+      "personCards": 55,
+      "uniquePeople": 55,
+      "duplicates": 0,
+      "expectedPeople": 55,
+      "allRenderedOnce": true,
+      "width": 3964,
+      "height": 1130,
+      "aspect": 3.51,
+      "layoutMs": 1701
+    }
+  ]
+}
