@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { notFound, redirect } from 'next/navigation'
-import { headers } from 'next/headers'
+import { getBaseUrl } from '@/lib/baseUrl'
 import { TreeContent } from './_components/TreeContent'
 import TreeLoading from './loading'
 
@@ -34,7 +34,7 @@ export default async function TreePage(props: PageProps<'/tree/[id]'>) {
   const initialFocusId =
     typeof rawFocus === 'string' && rawFocus.length > 0 ? rawFocus : null
 
-  const baseUrl = (await headers()).get('origin') ?? 'http://localhost:3000'
+  const baseUrl = await getBaseUrl()
 
   const supabase = await createClient()
   const {

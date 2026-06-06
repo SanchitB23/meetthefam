@@ -3,19 +3,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { sendInviteEmail } from '@/lib/email/inviteEmail'
 import { revalidatePath } from 'next/cache'
-import { headers } from 'next/headers'
 import { randomBytes } from 'crypto'
-
-// ---------------------------------------------------------------------------
-// baseUrl helper — mirrors `getOrigin()` in `src/app/login/actions.ts` so
-// invite URLs are constructed with the same request-derived origin.  Falls
-// back to localhost for `pnpm test` environments that never have an HTTP
-// request in flight.
-// ---------------------------------------------------------------------------
-async function getBaseUrl(): Promise<string> {
-  const headersList = await headers()
-  return headersList.get('origin') ?? 'http://localhost:3000'
-}
+import { getBaseUrl } from '@/lib/baseUrl'
 
 // ---------------------------------------------------------------------------
 // Token helper — Node 18+ `crypto.randomBytes(32).toString('base64url')`
@@ -406,7 +395,7 @@ export async function revokeMember(
 // getMembersAndInvites — lazy read for the dashboard's inline Members modal
 // ============================================================================
 //
-// The dashboard renders a `<MembersSheet>` inline from the tree-card 3-dots
+// The dashboard renders a `<TreeSettingsSheet>` inline from the tree-card 3-dots
 // menu (no navigation). To avoid pre-fetching members for every tree on
 // dashboard render — wasteful for users with many trees — we lazy-fetch the
 // data on menu-click via this Server Action. The action mirrors the same

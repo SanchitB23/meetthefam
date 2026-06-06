@@ -89,14 +89,33 @@ gh release create vX.Y.Z \
 #       curl -s https://meetthefam.vercel.app/ | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+'
 #       # should print v<X.Y.Z>, NOT v<PREV>-dev.<sha>
 
-# 7. Fast-forward qa to the release-branch tip (which is a parent of main's
+# 7. Verify migration parity between QA and prod (Amendment 5, 2026-06-01).
+#    The Supabase ↔ GitHub integration auto-applies migrations on merge to
+#    main. Give it 2–3 minutes to run, then confirm every QA migration
+#    name is also on prod. If any are missing, apply manually — see
+#    docs/dev/prod-readiness.md §1 for the fallback recipe.
+#    KNOWN FAILURE MODE (#177): the integration applies migrations at
+#    connect-time and on direct file-change diffs, but is unreliable for
+#    files that first reach main via a release-branch MERGE COMMIT — those
+#    can be silently skipped (as tree_invites was on the v1.0.0 merge).
+#    Since every release lands on main via a release/* merge commit, treat
+#    a post-release manual apply as the EXPECTED path, not the exception.
+#
+#    mcp__supabase__list_migrations  →  project: ycnsgkotrbjifsjkqmvn  (prod)
+#    mcp__supabase__list_migrations  →  project: ljjvwtpifmoshfknlbaj  (QA)
+#
+#    Cross-check by name (ignore timestamp prefix — clock-drift is expected).
+#    If all QA names are present on prod → proceed. If any are absent →
+#    apply the missing migration(s) using the fallback in prod-readiness.md §1.
+
+# 8. Fast-forward qa to the release-branch tip (which is a parent of main's
 #    merge commit). No PR; no squash; no ghost commits. Eliminates the
 #    structural divergence that caused v0.1.0 and v0.3.0 conflicts.
 #    See ADR 0009 Amendment 4.
 git push origin release/vX.Y.Z:qa
 git push origin --delete release/vX.Y.Z
 
-# 8. Sync local state and verify the tag exists.
+# 9. Sync local state and verify the tag exists.
 git checkout qa && git pull --ff-only
 git fetch --tags --prune
 git tag -l vX.Y.Z                        # should print vX.Y.Z
@@ -104,7 +123,7 @@ git tag -l vX.Y.Z                        # should print vX.Y.Z
 
 ### Rare-case fallback (qa moved during the release window)
 
-If `git push origin release/vX.Y.Z:qa` rejects with "non-fast-forward" — someone landed a non-emergency PR on qa between cutting the release branch and merging the release PR — fall back to a real merge:
+If `git push origin release/vX.Y.Z:qa` (step 8) rejects with "non-fast-forward" — someone landed a non-emergency PR on qa between cutting the release branch and merging the release PR — fall back to a real merge:
 
 ```bash
 git checkout qa

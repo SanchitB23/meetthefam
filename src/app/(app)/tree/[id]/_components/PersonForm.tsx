@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition, useCallback } from 'react'
 import { Controller, useForm, type SubmitHandler } from 'react-hook-form'
 import {
   Trash2,
@@ -10,6 +10,8 @@ import {
   AlertCircle,
   ChevronDown,
   X,
+  CheckCircle2,
+  Loader2,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -31,6 +33,7 @@ import { Button } from '@/components/ui/button'
 import { useIsDesktop } from '@/components/ui/use-is-desktop'
 import { ErrorAlert } from '@/components/ui/error-alert'
 import { mapErrorCode } from '@/lib/errors'
+import { notify } from '@/lib/toast/notify'
 
 import {
   createPerson,
@@ -149,11 +152,12 @@ function valuesFromPerson(person: PersonRow): PersonFormValues {
     nickname: person.nickname ?? '',
     bio: person.bio ?? '',
     gender: person.gender,
+    // When birth_date is set, birth_year is secondary (cleared on save per
+    // #184). We still populate birth_year so the field shows the stored value
+    // if only birth_year is present; the UI will disable it when birth_date
+    // is non-empty.
     birth_year: person.birth_year != null ? String(person.birth_year) : '',
-    // PersonRow doesn't carry birth_date today (sub-task 1's SELECT omitted
-    // it). Leaving blank preserves the DB value because update() builds a
-    // sparse patch and we only set fields that change — see below.
-    birth_date: '',
+    birth_date: person.birth_date ?? '',
     location: person.location ?? '',
     occupation: person.occupation ?? '',
     deceased: person.deceased,
@@ -242,10 +246,32 @@ export function PersonForm({
 
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  // #181 — notify FamilyTree of the in-flight state so it can show the
+  // translucent pending overlay over the canvas. We use a CustomEvent so
+  // the signal travels without prop-drilling through the component tree.
+  // The event fires on every isPending toggle (false→true at submit start,
+  // true→false once revalidatePath streams the updated tree back).
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.dispatchEvent(
+      new CustomEvent('mtf-add-pending', { detail: { pending: isPending } }),
+    )
+  }, [isPending])
   const [deleteOpen, setDeleteOpen] = useState(false)
+  // #185 — in-modal photo upload success notification. Shown for 2.5 s after
+  // a successful edit-mode upload, then auto-dismissed. Cleared on open/close.
+  const [photoUploadSuccess, setPhotoUploadSuccess] = useState(false)
+  const photoSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const deceased = watch('deceased')
   const birthYear = watch('birth_year')
+  const birthDate = watch('birth_date')
   const fullNameWatch = watch('full_name')
+
+  // #184 — birth_date is the source of truth.  When it has a value the
+  // birth_year input is disabled and shows a derived hint so users understand
+  // the year field is irrelevant while a full date is present.
+  const birthDateHasValue = Boolean(birthDate && birthDate.trim())
 
   // ---- #71: at-creation linking state ----
   //
@@ -265,6 +291,10 @@ export function PersonForm({
   const [pickerOpen, setPickerOpen] = useState(false)
   const [confirmStandaloneOpen, setConfirmStandaloneOpen] = useState(false)
   const peopleForPickerRef = useRef(peopleForPicker)
+  // #182 — ref for the Link-to picker trigger button so we can auto-focus it
+  // on form open (instead of Full Name) and restore focus to it after the
+  // standalone-confirm Cancel (#183).
+  const linkToTriggerRef = useRef<HTMLButtonElement | null>(null)
   useEffect(() => {
     peopleForPickerRef.current = peopleForPicker
   }, [peopleForPicker])
@@ -291,6 +321,11 @@ export function PersonForm({
   //                             null after remove, undefined to fall back
   //                             to person.photo_url.
   //   photoError              — inline error rendered next to the avatar.
+  // #185 — track the previous `open` value so the reset-on-open effect only
+  // fires when `open` transitions false → true (not when formDefaults changes
+  // mid-session due to refresh() propagating a new PersonRow reference).
+  const prevOpenRef = useRef(false)
+
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const pendingPhotoRef = useRef<Blob | null>(null)
   const pendingPhotoBlobUrlRef = useRef<string | null>(null)
@@ -319,6 +354,17 @@ export function PersonForm({
   }
   const clearPendingBlob = () => setPendingBlob(null)
 
+  // #185 — show the in-modal success banner and auto-dismiss after 2.5 s.
+  // Using useCallback so the reference is stable for the upload handler.
+  const showPhotoSuccess = useCallback(() => {
+    setPhotoUploadSuccess(true)
+    if (photoSuccessTimerRef.current) clearTimeout(photoSuccessTimerRef.current)
+    photoSuccessTimerRef.current = setTimeout(() => {
+      setPhotoUploadSuccess(false)
+      photoSuccessTimerRef.current = null
+    }, 2500)
+  }, [])
+
   // ---- Resolve the avatar's photoUrl + tone ----
   //
   // Priority: local object URL (just-picked blob) → edit-mode local override
@@ -345,12 +391,28 @@ export function PersonForm({
   const currentYear = new Date().getFullYear()
   const todayISO = new Date().toISOString().slice(0, 10)
 
-  // Reset the form whenever the surface (re)opens, or the target row
-  // changes — keeps stale field values from leaking between sessions.
+  // Reset the form when the surface (re)opens (false → true transition).
+  //
+  // #185 fix: previously the dep list included `formDefaults`, which caused
+  // the effect to re-run mid-session whenever `refresh()` delivered a new
+  // `PersonRow` reference (even with the same values) via the PersonActionMenu
+  // path. That reset all form fields + cleared photo state while the user was
+  // still editing, making the modal appear to close or lose work.
+  //
+  // Fix: guard on `prevOpenRef` so we only reset on the actual open transition,
+  // not on identity changes to `formDefaults`. `formDefaults` is captured at
+  // open time; any field changes the user makes after that are intentional.
   useEffect(() => {
-    if (open) {
+    const justOpened = open && !prevOpenRef.current
+    prevOpenRef.current = open
+    if (justOpened) {
       reset(formDefaults)
       setSubmitError(null)
+      setPhotoUploadSuccess(false)
+      if (photoSuccessTimerRef.current) {
+        clearTimeout(photoSuccessTimerRef.current)
+        photoSuccessTimerRef.current = null
+      }
       // Photo state lives outside RHF so reset() doesn't touch it. Reset
       // by hand on (re)open so a closed-without-save create session
       // doesn't leak a pending Blob into the next session.
@@ -359,21 +421,27 @@ export function PersonForm({
       // setPendingBlob(null) handles the URL.revokeObjectURL bookkeeping.
       setPendingBlob(null)
     }
-    // setPendingBlob / setLocalPhotoUrl / setPhotoError are stable
-    // per-render but identity-unstable across renders. We deliberately
-    // only re-run this effect when `open` flips — including them in the
-    // dep list would re-run on every keystroke and reset the form.
-  }, [open, reset, formDefaults])
+  // `reset` is stable (react-hook-form guarantee). `formDefaults` intentionally
+  // omitted — see #185 note above. `setPendingBlob` / `setLocalPhotoUrl` /
+  // `setPhotoError` are inline-defined and identity-unstable; reading them via
+  // closure is safe here since `justOpened` gates the entire body.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
-  // Revoke any lingering object URL on unmount. Belt-and-braces — the
-  // reset-on-open path above already revokes when the form is reused for
-  // a different person, but the component might unmount while a Blob is
-  // still held (e.g. the parent removes the dialog from the tree).
+  // Revoke any lingering object URL and clear timers on unmount.
+  // Belt-and-braces — the reset-on-open path above already revokes when the
+  // form is reused for a different person, but the component might unmount
+  // while a Blob is still held (e.g. the parent removes the dialog from the tree).
   useEffect(() => {
     return () => {
       if (pendingPhotoBlobUrlRef.current) {
         URL.revokeObjectURL(pendingPhotoBlobUrlRef.current)
         pendingPhotoBlobUrlRef.current = null
+      }
+      // #185 — clear the success-notification auto-dismiss timer.
+      if (photoSuccessTimerRef.current) {
+        clearTimeout(photoSuccessTimerRef.current)
+        photoSuccessTimerRef.current = null
       }
     }
   }, [])
@@ -383,6 +451,11 @@ export function PersonForm({
   // identity changes of the array don't trip this effect on every render).
   // Keyed on linkSpec.focusPersonId so re-opening with a different focus
   // person (e.g. in-card "+") repaints correctly.
+  //
+  // #182 — auto-focus the Link-to picker trigger when the linking block is
+  // visible (create mode with candidate people). This runs after the DOM has
+  // updated so the button ref is populated. On mobile the `scrollIntoView`
+  // call ensures the picker is visible even when the sheet has scrolled.
   useEffect(() => {
     if (!open) return
     const list = peopleForPickerRef.current
@@ -393,7 +466,24 @@ export function PersonForm({
     setSelectedLinkPerson(initial)
     setPickerOpen(false)
     setConfirmStandaloneOpen(false)
-  }, [open, linkSpec])
+
+    // showLinkingBlock depends on `isEdit` and `peopleForPicker`, both stable
+    // for the lifetime of an open session. We read the condition inline here
+    // (not via the outer variable) to avoid adding it to the dep list.
+    const hasCandidates = !isEdit && (peopleForPickerRef.current?.length ?? 0) > 0
+    if (hasCandidates) {
+      // requestAnimationFrame defers until after the Dialog/Sheet animation
+      // frame so the button is guaranteed to be in the composed layer.
+      requestAnimationFrame(() => {
+        const btn = linkToTriggerRef.current
+        if (btn) {
+          btn.focus()
+          // scrollIntoView is absent in jsdom; guard for test environments.
+          btn.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+        }
+      })
+    }
+  }, [open, linkSpec, isEdit])
 
   // ---- Photo picker handlers ----
   //
@@ -439,6 +529,8 @@ export function PersonForm({
           // (server `refresh()` will eventually update the prop too).
           clearPendingBlob()
           setLocalPhotoUrl(result.photoUrl)
+          // #185 — show in-modal success notification; auto-dismisses in 2.5 s.
+          showPhotoSuccess()
         } else {
           // Revert the optimistic preview.
           clearPendingBlob()
@@ -468,6 +560,7 @@ export function PersonForm({
         setLocalPhotoUrl(null)
         // Belt and braces — should already be null in edit mode.
         clearPendingBlob()
+        notify.success('Photo removed')
       } else {
         setPhotoError(result.error)
       }
@@ -527,9 +620,10 @@ export function PersonForm({
           ...payload,
           tone: values.tone,
         }
-        // birth_date isn't carried by PersonRow today, so the form field is
-        // blank on open. Don't overwrite the DB column with that blank —
-        // strip it from the patch unless the user actually typed a value.
+        // Keep birth_date in the patch only if the user has a value — an empty
+        // string should not overwrite a previously stored date.  When present,
+        // the server action enforces #184 priority (birth_date wins, birth_year
+        // cleared) so no extra client-side dance is needed here.
         if (!values.birth_date) delete editPayload.birth_date
         const result = await updatePerson(person.id, treeId, editPayload)
         if (!result.ok) {
@@ -538,6 +632,7 @@ export function PersonForm({
         }
         onSaved?.(person.id)
         onOpenChange(false)
+        notify.success('Saved')
         return
       }
 
@@ -554,6 +649,15 @@ export function PersonForm({
 
       const result = await createPerson(treeId, payload, linkPayload)
       if (!result.ok) {
+        // #70 prototype: link-constraint failures mean the person row WAS created
+        // server-side (revalidatePath already fired) — only the relationship failed.
+        // Close the host and surface as an error toast. Validation/unknown stay inline.
+        const LINK_CODES = new Set(['self_spouse', 'cross_tree', 'ancestor_cycle'])
+        if (LINK_CODES.has(result.error)) {
+          notify.error(mapErrorCode(result.error))
+          onOpenChange(false)
+          return
+        }
         setSubmitError(result.error)
         return
       }
@@ -572,19 +676,35 @@ export function PersonForm({
         )
         clearPendingBlob()
         if (!photoResult.ok) {
-          setSubmitError(
-            `Person saved, but the photo didn't upload: ${photoResult.error}. Try editing this person to attach it.`,
-          )
-          // The row exists — still fire onSaved + dismiss so the parent
-          // sees the new person on the tree.
           onSaved?.(result.personId)
           onOpenChange(false)
+          notify.warning(`Added ${payload.full_name}, but the photo didn't upload. Edit them to attach it.`)
           return
         }
       }
 
       onSaved?.(result.personId)
       onOpenChange(false)
+      if (linkPayload) {
+        notify.success(`Added ${payload.full_name}`)
+      } else {
+        notify.warning(
+          `Added ${payload.full_name} — not linked yet. They won't show on the tree until you link them.`,
+          {
+            action: {
+              label: 'Link now',
+              // Prototype: reuse the existing in-card "+" event to open
+              // "add a relative to <new person>", reconnecting the orphan.
+              onClick: () =>
+                window.dispatchEvent(
+                  new CustomEvent('mtf-add-relative', {
+                    detail: { personId: result.personId },
+                  }),
+                ),
+            },
+          },
+        )
+      }
     })
   }
 
@@ -628,6 +748,7 @@ export function PersonForm({
             </div>
             <div className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 focus-within:ring-2 focus-within:ring-primary">
               <button
+                ref={linkToTriggerRef}
                 type="button"
                 onClick={() => setPickerOpen(true)}
                 aria-label={
@@ -804,6 +925,21 @@ export function PersonForm({
         {photoError && (
           <ErrorAlert size="sm" message={mapErrorCode(photoError, photoError)} />
         )}
+        {/*
+         * #185 — in-modal photo upload success notification.
+         * Shown for ~2.5 s after a successful edit-mode upload.
+         * Auto-dismissed by showPhotoSuccess() timer.
+         */}
+        {photoUploadSuccess && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-700 dark:text-green-400"
+          >
+            <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>Photo uploaded</span>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-1">
@@ -813,7 +949,6 @@ export function PersonForm({
         <input
           id="pf-full-name"
           type="text"
-          autoFocus
           maxLength={80}
           placeholder="Jane Smith"
           aria-invalid={errors.full_name ? true : undefined}
@@ -949,7 +1084,12 @@ export function PersonForm({
             min={1000}
             max={currentYear}
             aria-invalid={errors.birth_year ? true : undefined}
-            className={inputClass}
+            // #184 — disabled when Birth Date is populated. Birth date wins
+            // as the single source of truth; birth_year will be cleared on
+            // save. The disabled+hint combo makes the reason explicit.
+            disabled={birthDateHasValue}
+            aria-describedby={birthDateHasValue ? 'pf-birth-year-hint' : undefined}
+            className={`${inputClass} disabled:opacity-50 disabled:cursor-not-allowed`}
             {...register('birth_year', {
               validate: (v) => {
                 if (!v) return true
@@ -961,8 +1101,14 @@ export function PersonForm({
               },
             })}
           />
-          {errors.birth_year && (
-            <p className="text-xs text-destructive">{errors.birth_year.message}</p>
+          {birthDateHasValue ? (
+            <p id="pf-birth-year-hint" className="text-xs text-foreground/50">
+              Cleared on save — Birth Date is set
+            </p>
+          ) : (
+            errors.birth_year && (
+              <p className="text-xs text-destructive">{errors.birth_year.message}</p>
+            )
           )}
         </div>
         <div className="flex flex-col gap-1">
@@ -1101,7 +1247,13 @@ export function PersonForm({
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={isPending}>
+          <Button type="submit" disabled={isPending} className="min-w-[7rem]">
+            {isPending && (
+              <Loader2
+                className="h-4 w-4 mr-1.5 animate-spin shrink-0"
+                aria-hidden="true"
+              />
+            )}
             {submitLabel}
           </Button>
         </div>
@@ -1189,24 +1341,47 @@ export function PersonForm({
               card.
             </DialogDescription>
           </DialogHeader>
+          {/*
+           * #183 — button emphasis swapped: Cancel is now the primary
+           * (filled) action since it's the safe recovery path; Add as
+           * Standalone is secondary (outline) because it creates an orphan
+           * node. "Add anyway" renamed to "Add as Standalone" so the
+           * consequence is explicit. On Cancel, focus is returned to the
+           * Link-to picker trigger so the user is guided to complete the
+           * link rather than re-opening the modal.
+           */}
           <div className="flex justify-end gap-2 mt-4">
             <Button
               type="button"
               variant="outline"
-              onClick={() => setConfirmStandaloneOpen(false)}
-              disabled={isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
               onClick={() => {
                 setConfirmStandaloneOpen(false)
                 runSubmit(getValues())
               }}
               disabled={isPending}
             >
-              {isPending ? 'Adding…' : 'Add anyway'}
+              {isPending ? 'Adding…' : 'Add as Standalone'}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setConfirmStandaloneOpen(false)
+                // #183 — return focus to the Link-to picker trigger so the
+                // user is guided toward completing the link. rAF defers
+                // until after the dialog's close animation settles so the
+                // trigger is back in the composed layer.
+                requestAnimationFrame(() => {
+                  const btn = linkToTriggerRef.current
+                  if (btn) {
+                    btn.focus()
+                    // scrollIntoView is absent in jsdom; guard for test environments.
+                    btn.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+                  }
+                })
+              }}
+              disabled={isPending}
+            >
+              Cancel
             </Button>
           </div>
         </DialogContent>

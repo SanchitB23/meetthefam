@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache'
 
 export type CreateTreeState =
   | { error: string; success?: never }
-  | { success: true; treeId: string; error?: never }
+  | { success: true; treeId: string; name: string; error?: never }
   | null
 
 export async function createTree(
@@ -40,14 +40,14 @@ export async function createTree(
     return { error: 'unknown' }
   }
   revalidatePath('/dashboard')
-  return { success: true, treeId: treeId as string }
+  return { success: true, treeId: treeId as string, name }
 }
 
 // ---- Rename ----
 
 export type RenameTreeState =
   | { error: string; success?: never }
-  | { success: true; error?: never }
+  | { success: true; name: string; error?: never }
   | null
 
 export async function renameTree(
@@ -77,7 +77,7 @@ export async function renameTree(
     return { error: 'unknown' }
   }
   revalidatePath('/dashboard')
-  return { success: true }
+  return { success: true, name }
 }
 
 // ---- Delete ----

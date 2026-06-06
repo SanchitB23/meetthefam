@@ -10,6 +10,7 @@ export type TreeRow = {
   owner_id: string
   created_at: string
   updated_at: string
+  share_token: string | null
 }
 
 type Props = {

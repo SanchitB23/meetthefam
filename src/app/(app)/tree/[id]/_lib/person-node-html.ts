@@ -26,7 +26,7 @@
 // which exposes `duplicate?: number` in its type definition.
 
 import type { TreeDatum } from 'family-chart'
-import { computeInitials } from '@/components/ui/avatar'
+import { computeInitials, shapeCssForGender } from '@/components/ui/avatar'
 import type { FamilyChartDatum } from './family-chart-data'
 
 const ESCAPE_MAP: Record<string, string> = {
@@ -57,35 +57,6 @@ function formatDates(
   return `d. ${deathYear}`
 }
 
-/**
- * Maps a gender_raw value to a CSS border-radius string for the inline avatar.
- * Mirrors the exported `borderRadiusForGender` in avatar.tsx but operates on
- * raw string templates (no React) for the family-chart HTML context.
- *
- * 'm'       → rounded-square (~18% of px)
- * 'other'   → squircle (~34% of px)
- * 'f'       → circle (50%)
- * 'unknown' → circle (50%)
- * undefined → circle (50%)
- */
-function borderRadiusForGender(
-  gender: 'm' | 'f' | 'other' | 'unknown' | undefined,
-  px: number,
-): string {
-  switch (gender) {
-    case 'm':
-      return `${Math.round(px * 0.18)}px`
-    case 'other':
-      return `${Math.round(px * 0.34)}px`
-    case 'f':
-      return '50%'
-    case 'unknown':
-      return '50%'
-    default:
-      return '50%'
-  }
-}
-
 function avatarHtml(data: FamilyChartDatum['data']): string {
   const sizePx = 48
   // Mirror the React <Avatar>'s chrome — `inline-flex items-center
@@ -95,7 +66,14 @@ function avatarHtml(data: FamilyChartDatum['data']): string {
   //
   // Correction (8b-1): read data.gender_raw (truthful 4-value field),
   // NOT data.gender (layout-only 'M'|'F' for the library's spouse positioning).
-  const radius = borderRadiusForGender(data.gender_raw, sizePx)
+  const shape = shapeCssForGender(data.gender_raw, sizePx)
+  // For the clip-path branch (gender_raw='other'), explicitly reset border-radius
+  // to 0 so any inherited rounding from the family-chart container doesn't
+  // double up with the polygon clip and produce a visually cropped octagon.
+  const shapeStyle =
+    shape.kind === 'radius'
+      ? `border-radius:${shape.borderRadius};`
+      : `clip-path:${shape.clipPath};border-radius:0;`
   // 8b polish revision — aggressive saturate + grayscale so the
   // treatment is visible on PHOTO avatars (a low-saturation portrait
   // at saturate(0.55) alone is visually indistinguishable from a
@@ -112,7 +90,7 @@ function avatarHtml(data: FamilyChartDatum['data']): string {
   const innerStyle = `
     width:${sizePx}px;
     height:${sizePx}px;
-    border-radius:${radius};
+    ${shapeStyle}
     display:inline-flex;
     align-items:center;
     justify-content:center;
@@ -245,8 +223,18 @@ export function personNodeHtml(
   // the action menu just like long-press does. The 44×44 hit-area (Apple
   // HIG minimum) wraps a smaller 16×16 icon so the icon stays subtle
   // while the tap target meets accessibility.
-  // 8b-3: duplicate cards skip this button — they're not the canonical card;
-  // tapping a duplicate re-centers on the primary instance instead.
+  // 8b-3 (revised for #69 v1.1): family-chart's setupTid marks EVERY
+  // occurrence of a duplicated id with `duplicate > 0` (not just the
+  // second+), so under option d' there is no "canonical" instance — the
+  // 8 cross-subtree-married people end up with all their cards dashed.
+  // Originally we skipped the 3-dot button on duplicates because the
+  // intent was "tap → jump to canonical"; but with every Catherine card
+  // marked duplicate, every Catherine card would lose actions. We now
+  // render the button on duplicates too. The "tap card body → recenter"
+  // behavior in FamilyTree.tsx still fires for the rest of the card,
+  // but a click on this button is short-circuited via the
+  // [data-action-trigger] check that runs BEFORE the duplicate-tap
+  // check in setOnCardClick.
   const ellipsisButton = `
     <button
       type="button"
@@ -288,21 +276,31 @@ export function personNodeHtml(
     </button>
   `
 
-  // 8b-3: ↑ badge at top-left of the CARD wrapper (top:-6px; left:-6px).
-  // The deceased † badge sits at top:0;right:0 on the AVATAR wrapper —
-  // different DOM element and opposite corner, so they never overlap even
-  // on a deceased+duplicate card.
+  // 8b-3 (revised for #69 v1.1): ↑ badge at top-left of the CARD wrapper
+  // (top:-6px; left:-6px). The deceased † badge sits at top:0;right:0 on
+  // the AVATAR wrapper — different DOM element and opposite corner, so
+  // they never overlap even on a deceased+duplicate card.
+  //
+  // The badge is now a real button. Clicking it cycles the camera
+  // between the duplicate instances of this person — for cross-subtree
+  // -married people (Catherine ↔ James, Andrew ↔ Beth, etc.) each card
+  // is marked duplicate and the user wants a way to navigate between
+  // them. See the click handler in FamilyTree.tsx that matches
+  // `[data-duplicate-jump]`.
   const duplicateBadge = isDuplicate
-    ? `<span
+    ? `<button
+        type="button"
         class="mtf-node__duplicate-badge"
-        title="Already shown above"
-        aria-hidden="true"
+        data-duplicate-jump
+        data-person-id="${id}"
+        aria-label="Jump to next instance of ${name}"
+        title="Tap to jump to the next instance of this person"
         style="
           position:absolute;
           top:-6px;
           left:-6px;
-          width:18px;
-          height:18px;
+          width:22px;
+          height:22px;
           border-radius:50%;
           background:var(--card);
           color:var(--accent);
@@ -314,8 +312,10 @@ export function personNodeHtml(
           font-weight:600;
           line-height:1;
           border:1px solid var(--border);
+          padding:0;
+          cursor:pointer;
         "
-      >↑</span>`
+      >↑</button>`
     : ''
 
   // mtf-node--deceased: softened card chrome (border opacity + subtle gradient)
@@ -405,8 +405,8 @@ export function personNodeHtml(
                    0 4px 12px color-mix(in oklch, var(--foreground) 6%, transparent);
       "
     >
-      ${options.readOnly || isDuplicate ? '' : ellipsisButton}
-      ${options.readOnly || isDuplicate ? '' : addRelativeButton}
+      ${options.readOnly ? '' : ellipsisButton}
+      ${options.readOnly ? '' : addRelativeButton}
       ${duplicateBadge}
       ${avatarHtml(data)}
       <div

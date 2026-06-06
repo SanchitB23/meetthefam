@@ -6,6 +6,52 @@
 - **Google OAuth** — secondary, one-click.
 - No password-reset flows because there are no passwords. See [`../adrs/0004-magic-link-only-no-passwords.md`](../adrs/0004-magic-link-only-no-passwords.md).
 
+## Provider linking — same email across providers
+
+When a user authenticates with **Google OAuth** and **email magic link** using the
+*same* email address, Supabase Auth always resolves them to **one `auth.users`
+row** — never a duplicate account. This is GoTrue's default; manual identity
+linking (`linkIdentity()`) is **disabled and unused**. Linking is gated on a
+**verified email** — Google returns verified emails and the magic-link/OTP click
+sets `email_confirmed_at`.
+
+The *mechanism* depends on which provider arrives second (both verified live on QA
+in issue #186):
+
+- **Google first, then magic-link:** the OTP **signs into the existing user by
+  email** — `last_sign_in_at` bumps, no new identity row is created (the account
+  keeps its single `google` identity). No `email` identity is minted.
+- **Magic-link first, then Google:** the Google sign-in **automatically links** a
+  new `google` identity onto the existing email user — one `auth.users` row, **two
+  `auth.identities`** (`email` + `google`).
+
+Either ordering yields **one email = one `user_id`**, which is what the rest of the
+app depends on.
+
+**Why it's load-bearing.** `accept_invite` (the SECURITY DEFINER RPC in
+`supabase/migrations/20260513211135_tree_invites.sql`) attaches
+`tree_members.user_id` to `auth.uid()` and gates on
+`auth.users.email = tree_invites.email`. Because both providers resolve to one
+`user_id`, an invitee who later switches login provider keeps the same membership —
+no orphaned second account. The `/invite/[token]` page's email-mismatch gate and
+`profiles.id = auth.users.id` keying rely on the same guarantee.
+
+**Settings state:** QA (`ljjvwtpifmoshfknlbaj`) and prod (`ycnsgkotrbjifsjkqmvn`)
+both have email confirmation on and manual linking off.
+
+**Evidence (issue #186, QA, 2026-06-03):**
+- Run 1 (Google → magic-link), user `09c335e2…`: stayed **1 user / 1 `google`
+  identity**; OTP authenticated the same user.
+- Run 2 (magic-link → Google), user `c1bc423f…`: **1 user / 2 identities**
+  (`email` created 21:47, `google` linked 21:48).
+- Prod parity: 3 users / 3 distinct emails / **0 duplicate-email rows**, and 1
+  prod user already carries multiple linked identities — automatic linking is live
+  on prod.
+
+**Code audit (issue #186):** `accept_invite`, the invite-page email gate, and
+`profiles` keying all rely on one-user-per-email, which the merge guarantee
+satisfies — **no code change required**.
+
 ## Session management
 
 - Supabase session lives in a secure `httpOnly` cookie, set by `@supabase/ssr`.

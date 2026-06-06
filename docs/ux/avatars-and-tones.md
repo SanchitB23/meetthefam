@@ -97,6 +97,31 @@ Behavior:
 - **Photo present**: render `<img>` in a circular mask. The `tone` is ignored visually but still drives the `ring` color when `ring={true}`.
 - **No photo**: tinted circle (`bg` from tone) with the initials in the `ink` color. Initials use Cormorant Garamond (heading font) at ~`size * 0.34` font-size, weight 600, with `letter-spacing: 0.02em` — matching the prototype's `Avatar` in [`shared.jsx`](inspiration/kintree/project/shared.jsx).
 
+The `gender` prop drives the avatar's border-radius / clip-path shape (8b-1: gender prop drives border-radius shape):
+
+```
+//   'm'       → rounded-square (~18% of px)
+//   'unknown' → squircle (~34% of px)
+//   'f'       → circle (50%)
+//   'other'   → soft octagon (40-vertex CSS clip-path polygon)
+```
+
+### Gender shape spectrum
+
+The four gender values render along a deliberate visual axis:
+
+- **`m` → `unknown` → `f`** form a soft-to-round spectrum. `unknown` sits at the
+  geometric midpoint of `m` and `f`, encoding "the gender is unset" as "between
+  the two known states."
+- **`other`** jumps off that spectrum onto its own distinctive shape — a soft
+  octagon. `other` represents a deliberate identity choice, not a halfway
+  point, and earns a shape with a different geometric character (8 sides
+  rather than a varying border-radius on a square).
+
+Implementation: see `src/components/ui/avatar.tsx#shapeCssForGender` and the
+`SOFT_OCTAGON_CLIP_PATH` constant. Full design rationale:
+[`docs/superpowers/specs/2026-06-02-gender-shape-system-remap-design.md`](../superpowers/specs/2026-06-02-gender-shape-system-remap-design.md).
+
 ## What tones are NOT for
 
 - **Not a gender / sex indicator** — never assign tones based on `people.gender`.

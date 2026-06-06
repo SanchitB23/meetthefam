@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation'
 import { createServiceRoleClient } from '@/lib/supabase/service'
 import { FamilyTree } from '@/app/(app)/tree/[id]/_components/FamilyTree'
 import type { PersonRow } from '@/app/(app)/tree/[id]/_lib/types'
+import { PublicHeader } from '@/components/layout/PublicHeader'
+import { SiteFooter } from '@/components/layout/SiteFooter'
 import { ShareBanner } from './_components/ShareBanner'
 
 // Phase 7 sub-task 3 — public read-only share view.
@@ -44,7 +46,7 @@ export default async function SharePage(props: PageProps<'/share/[token]'>) {
     .from('people')
     .select(
       `id, tree_id, full_name, nickname, gender, photo_url, bio,
-       birth_year, location, occupation, deceased, death_year,
+       birth_year, birth_date, location, occupation, deceased, death_year,
        father_id, mother_id, spouse_id, tone`,
     )
     .eq('tree_id', tree.id)
@@ -54,33 +56,39 @@ export default async function SharePage(props: PageProps<'/share/[token]'>) {
   const people = peopleRows ?? []
 
   return (
-    <main className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
+      <PublicHeader />
+
       <ShareBanner />
 
-      <div className="px-4 pt-6 pb-2 max-w-4xl mx-auto w-full">
-        <h1 className="font-serif text-3xl text-foreground leading-tight">
-          {tree.name}
-        </h1>
-        {tree.description && (
-          <p className="text-foreground/70 text-sm mt-1">{tree.description}</p>
-        )}
-      </div>
+      <main className="flex flex-col flex-1">
+        <div className="px-4 pt-6 pb-2 max-w-4xl mx-auto w-full">
+          <h1 className="font-serif text-3xl text-foreground leading-tight">
+            {tree.name}
+          </h1>
+          {tree.description && (
+            <p className="text-foreground/70 text-sm mt-1">{tree.description}</p>
+          )}
+        </div>
 
-      <div className="px-4 pb-8 flex-1 max-w-4xl mx-auto w-full">
-        {people.length === 0 ? (
-          <div className="text-center py-16 border border-dashed border-border rounded-lg bg-card/50">
-            <p className="font-serif text-xl text-foreground/70">
-              This tree is empty.
-            </p>
-          </div>
-        ) : (
-          <FamilyTree
-            treeId={tree.id}
-            people={people}
-            readOnly
-          />
-        )}
-      </div>
-    </main>
+        <div className="px-4 pb-8 flex-1 max-w-4xl mx-auto w-full">
+          {people.length === 0 ? (
+            <div className="text-center py-16 border border-dashed border-border rounded-lg bg-card/50">
+              <p className="font-serif text-xl text-foreground/70">
+                This tree is empty.
+              </p>
+            </div>
+          ) : (
+            <FamilyTree
+              treeId={tree.id}
+              people={people}
+              readOnly
+            />
+          )}
+        </div>
+      </main>
+
+      <SiteFooter />
+    </div>
   )
 }

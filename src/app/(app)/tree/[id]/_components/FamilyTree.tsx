@@ -46,11 +46,18 @@ import f3 from 'family-chart'
 import 'family-chart/styles/family-chart.css'
 import type { TreeDatum } from 'family-chart'
 
+import { type FamilyChartDatum } from '../_lib/family-chart-data'
 import {
-  transformToFamilyChartShape,
-  type FamilyChartDatum,
-} from '../_lib/family-chart-data'
+  SUPER_ROOT_ID,
+  transformToFamilyChartShapeShowAll,
+} from '../_lib/family-chart-data-show-all'
 import { attachNonSpouseParentLinkRewriter } from '../_lib/non-spouse-parent-links'
+import {
+  getAllInstancesOf,
+  panCameraTo,
+  panCameraToDatum,
+} from '../_lib/pan-camera-to'
+import { attachSuperRootLinkSuppressor } from '../_lib/super-root-link-suppressor'
 import { personNodeHtml } from '../_lib/person-node-html'
 import { usePressActions } from '../_lib/usePressActions'
 import type { PersonRow } from '../_lib/types'
@@ -107,6 +114,19 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
   const [detailPersonId, setDetailPersonId] = useState<string | null>(null)
   const [actionAnchor, setActionAnchor] = useState<ActionAnchor | null>(null)
 
+  // #181 — pending overlay state. Toggled by 'mtf-add-pending' CustomEvent
+  // dispatched from PersonForm's useTransition hook (isPending → true when the
+  // Server Action starts, → false once revalidatePath streams the new tree).
+  const [addPending, setAddPending] = useState(false)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const pending = (e as CustomEvent<{ pending: boolean }>).detail?.pending ?? false
+      setAddPending(pending)
+    }
+    window.addEventListener('mtf-add-pending', handler)
+    return () => window.removeEventListener('mtf-add-pending', handler)
+  }, [])
+
   const peopleById = useMemo(
     () => new Map(people.map((p) => [p.id, p])),
     [people],
@@ -116,10 +136,17 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
     peopleByIdRef.current = peopleById
   }, [peopleById])
 
-  // Captured in the chart-init effect — see "un-recenter fallback" comment
-  // there. Holds the main_id we restore when `currentFocusId` flips to null
-  // (hash cleared / browser back from a `#p=` URL / zoom-to-fit button).
-  const fallbackMainIdRef = useRef<string | null>(null)
+  // #69 — `main_id` is permanently pinned to `__super_root__` so the
+  // progeny walk from there covers every person in the tree (option d'
+  // pivot — see `_lib/pan-camera-to.ts` for rationale). The old
+  // `fallbackMainIdRef` is no longer needed: the layout never re-roots,
+  // so there is no "previous main_id" to restore on un-recenter.
+
+  // #69 — per-person cursor for the ↑ duplicate-jump badge. When a user
+  // taps the badge on a card, we cycle the camera to the next instance
+  // of that person in the laid-out tree. The cursor persists across
+  // taps so repeated taps walk through all instances (wraps at end).
+  const duplicateNavCursorRef = useRef<Map<string, number>>(new Map())
 
   // Hash is the runtime source of truth for the focus id. Server + first
   // client paint see no hash (matches the SSR snapshot); subsequent paints
@@ -154,7 +181,11 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
     const cont = containerRef.current
     if (!cont) return
 
-    const data: FamilyChartDatum[] = transformToFamilyChartShape(people)
+    // #69 — `transformToFamilyChartShapeShowAll` wraps the base transform
+    // and grafts a synthetic __super_root__ parent onto every otherwise-
+    // rootless person, so family-chart's single-root walk reaches every
+    // subtree regardless of main_id. No-op when the tree has 0 or 1 roots.
+    const data: FamilyChartDatum[] = transformToFamilyChartShapeShowAll(people)
 
     const chart = f3.createChart(cont, data)
       .setTransitionTime(800)
@@ -174,14 +205,57 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
     // the override applied across d3's transition window. See
     // `../_lib/non-spouse-parent-links.ts` for full rationale.
     const linkRewriter = attachNonSpouseParentLinkRewriter(cont, peopleByIdRef)
+    // #69 — zero ancestry links that target the invisible super-root
+    // every time d3 tweens `d=` during re-center transitions. Without
+    // this, the connector lines flash visibly for ~800ms before
+    // setAfterUpdate's one-shot suppression catches up.
+    const superRootLinkSuppressor = attachSuperRootLinkSuppressor(cont)
+
+    // #187 — track which person IDs are currently rendered so we can
+    // identify newly-added nodes after each update and apply the entry
+    // animation class to them.
+    const renderedPersonIds = new Set<string>()
+
     chart.setAfterUpdate(() => {
       linkRewriter.kick()
+      superRootLinkSuppressor.kick()
+
+      // #187 — new-node entry animation. After each update (which family-chart
+      // fires once D3 finishes laying out / transitioning), scan the DOM for
+      // .mtf-node cards. Any card whose data-person-id wasn't in the previous
+      // render set is a newly-added node; apply .mtf-node--entering so the CSS
+      // keyframe fades it in. Remove the class after 350 ms (300 ms animation
+      // + 40 ms delay + 10 ms buffer) so repeated re-renders don't re-animate
+      // the same card.
+      const nodeEls = cont.querySelectorAll<HTMLElement>('.mtf-node[data-person-id]')
+      const currentIds = new Set<string>()
+      nodeEls.forEach((el) => {
+        const pid = el.dataset.personId
+        if (!pid || pid === '__super_root__') return
+        currentIds.add(pid)
+        if (!renderedPersonIds.has(pid)) {
+          el.classList.add('mtf-node--entering')
+          setTimeout(() => el.classList.remove('mtf-node--entering'), 350)
+        }
+      })
+      // Replace the tracked set in-place (can't reassign a const).
+      renderedPersonIds.clear()
+      currentIds.forEach((id) => renderedPersonIds.add(id))
     })
 
     chart
       .setCardHtml()
       .setCardDim({ w: 158, h: 110 })
-      .setCardInnerHtmlCreator((d) => personNodeHtml(d, { readOnly }))
+      .setCardInnerHtmlCreator((d) => {
+        // #69 — the synthetic super-root has no real person row; render
+        // a zero-size sentinel <div> so CSS can target the foreignObject
+        // via :has() without disturbing the layout's reserved card slot.
+        const datumId = (d.data as unknown as FamilyChartDatum).id
+        if (datumId === SUPER_ROOT_ID) {
+          return '<div data-person-id="__super_root__" aria-hidden="true" style="width:0;height:0;overflow:hidden;"></div>'
+        }
+        return personNodeHtml(d, { readOnly })
+      })
       .setOnCardClick((e: Event, d: TreeDatum) => {
         if (shouldSuppressNextClickRef.current) {
           shouldSuppressNextClickRef.current = false
@@ -192,19 +266,33 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
 
         const target = (e.target as HTMLElement | null) ?? null
 
-        // 8b-3: tap on a duplicate card → jump to the primary instance.
-        // family-chart marks duplicates with the same data.id as the primary,
-        // so setting the hash to that id re-centers on the canonical occurrence
-        // via the existing hash-driven re-center wiring (handleRecenter /
-        // useSyncExternalStore). Use window.location.hash (not replaceState)
-        // so a new hashchange event fires and the subscriber picks it up.
-        // This branch fires BEFORE the action-trigger branch so a duplicate
-        // card never falls through to the action menu path.
-        if (target?.closest('[data-duplicate="true"]')) {
-          window.location.hash = `#p=${encodeURIComponent(id)}`
+        // #69 v1.1 — duplicate-jump ↑ badge. Tapping the badge cycles the
+        // camera to the next instance of this person in the laid-out
+        // tree. Fires BEFORE the action-trigger / "+" / detail-sheet
+        // branches so the badge button takes priority. Read-only mode
+        // still allows duplicate-jump (it's pure navigation; no edits).
+        if (target?.closest('[data-duplicate-jump]')) {
+          const chart = chartRef.current
+          if (chart) {
+            const instances = getAllInstancesOf(chart, id)
+            if (instances.length > 1) {
+              const cursor = duplicateNavCursorRef.current.get(id) ?? 0
+              const nextIndex = (cursor + 1) % instances.length
+              duplicateNavCursorRef.current.set(id, nextIndex)
+              panCameraToDatum(chart, cont, instances[nextIndex])
+            }
+          }
           return
         }
 
+        // #69 v1.1 — action-trigger checks now run BEFORE the duplicate-tap
+        // check below. Under option d', family-chart marks EVERY occurrence
+        // of a duplicated id as `duplicate > 0` (setupTid at family-chart.js
+        // line 897-913), so cross-subtree-married people (Catherine, James,
+        // Beth, etc.) end up with every card dashed and would lose their
+        // actions if we checked duplicate first. The 3-dot button and the
+        // "+" button now render on duplicate cards as well — see
+        // person-node-html.ts.
         if (!readOnly) {
           // 8b polish FIX 1 — in-card "+" button dispatches a CustomEvent that
           // AddRelativeFab picks up to open the add-relative form pre-seeded on
@@ -232,32 +320,30 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
         setDetailPersonId(id)
       })
 
-    // Seed initial focus before the first render so the chart paints
-    // already-centered on the SSR / hash-derived person. Hash wins over
-    // the SSR seed (matches the rendering contract above).
-    const seedFocus = readHashFocus() ?? initialFocusId ?? null
-    if (seedFocus && peopleByIdRef.current.has(seedFocus)) {
-      chart.updateMainId(seedFocus)
-    }
-
-    // Capture the "un-recenter" fallback target — the main_id we restore
-    // when the hash is cleared (zoom-to-fit button, manual address-bar
-    // clear, browser back from a `#p=` URL). Priority:
-    //   1. `initialFocusId` (the `?p=` deep-link the user opened with)
-    //   2. `people[0].id` (family-chart's natural default when no main_id
-    //      is set explicitly — matches the first-paint behaviour when
-    //      `seedFocus` is null)
-    // Without this fallback, the un-recenter path stays anchored on the
-    // most recent `#p=` person because family-chart's `main_id` is sticky
-    // and there's no implicit "no focus" state to revert to.
-    fallbackMainIdRef.current =
-      initialFocusId ?? people[0]?.id ?? null
-
+    // #69 — pin `main_id` to the synthetic super-root so family-chart's
+    // progeny walk reaches every real root → every subtree → every
+    // person on the canvas. The hash-derived focus is honoured by
+    // panning the camera (not by re-rooting the layout); see
+    // `panCameraTo` and the `currentFocusId` sync effect below.
+    chart.updateMainId(SUPER_ROOT_ID)
     chart.updateTree({ initial: true })
     chartRef.current = chart
 
+    // After the initial paint, if there's a hash / SSR-seeded focus,
+    // pan the camera to that card. `updateTree({ initial: true })`
+    // schedules a transition; we defer the pan to the next tick so it
+    // composes cleanly with the auto-fit transition rather than
+    // racing it.
+    const seedFocus = readHashFocus() ?? initialFocusId ?? null
+    if (seedFocus && peopleByIdRef.current.has(seedFocus)) {
+      setTimeout(() => {
+        if (chartRef.current) panCameraTo(chartRef.current, cont, seedFocus)
+      }, 0)
+    }
+
     return () => {
       linkRewriter.dispose()
+      superRootLinkSuppressor.dispose()
       chartRef.current = null
       cont.innerHTML = ''
     }
@@ -267,16 +353,16 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [people, shouldSuppressNextClickRef, readOnly])
 
-  // React → chart sync. The hash-derived `currentFocusId` is the source;
-  // whenever it changes we push the new id into family-chart's store.
-  // Initial mount is handled inline in the chart-init effect above to
-  // avoid the first-paint flicker that a separate effect would cause.
+  // #69 — React → camera sync. The hash-derived `currentFocusId` no
+  // longer drives `main_id` (that's pinned to super-root for life of
+  // the chart). Instead we pan the d3-zoom camera to the focused
+  // person's card without changing the layout root, so every person
+  // stays on canvas across re-centres.
   //
-  // Un-recenter path (#62): when `currentFocusId` becomes null (hash
-  // cleared by the zoom-to-fit button, the address-bar, or browser back),
-  // we restore `fallbackMainIdRef` and force a zoom-fit. Without this
-  // family-chart's `main_id` is sticky and the previous focus stays the
-  // layout root even though the URL no longer says so.
+  // Un-recenter path (#62 retained): when `currentFocusId` becomes
+  // null (hash cleared by zoom-to-fit, address-bar, or browser back),
+  // we just re-fit the whole tree via `updateTree({ initial: true })`
+  // — same as the dedicated zoom-to-fit button below.
   const initialMountRef = useRef(true)
   useEffect(() => {
     if (initialMountRef.current) {
@@ -284,22 +370,18 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
       return
     }
     const chart = chartRef.current
-    if (!chart) return
+    const cont = containerRef.current
+    if (!chart || !cont) return
 
     if (currentFocusId == null) {
-      // Un-recenter — restore the fallback main_id (initialFocusId or
-      // people[0]) and zoom-fit so the canvas matches the initial view.
-      const fallback = fallbackMainIdRef.current
-      if (fallback && peopleByIdRef.current.has(fallback)) {
-        chart.updateMainId(fallback)
-      }
+      // Un-recenter — re-fit the whole tree.
       chart.updateTree({ initial: true })
       return
     }
 
     if (!peopleByIdRef.current.has(currentFocusId)) return
-    chart.updateMainId(currentFocusId)
-    chart.updateTree()
+    // Pan the camera; main_id stays pinned to super-root.
+    panCameraTo(chart, cont, currentFocusId)
   }, [currentFocusId])
 
   // 8b-2 — zoom-to-fit the whole tree. Clears the URL hash (so the canvas
@@ -360,15 +442,19 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
   const handleRecenter = useCallback((personId: string) => {
     // Hash is the single source of truth — write it via window.location.hash
     // so the native hashchange fires and browser back can undo the re-center
-    // (Phase 9 fix — was history.replaceState which silenced the back stack).
-    // If the hash is already current, force the chart update directly since
-    // no hashchange fires for a no-op assignment.
+    // (#62). If the hash is already current, force the camera pan directly
+    // since no hashchange fires for a no-op assignment.
+    //
+    // #69 — "re-center" no longer re-roots the layout (main_id stays at
+    // super-root). It pans the d3-zoom camera so the clicked person's
+    // card sits at the viewport centre. Every other person stays on
+    // canvas at their existing position.
     const target = `#p=${encodeURIComponent(personId)}`
     if (window.location.hash === target) {
       const chart = chartRef.current
-      if (chart && peopleByIdRef.current.has(personId)) {
-        chart.updateMainId(personId)
-        chart.updateTree()
+      const cont = containerRef.current
+      if (chart && cont && peopleByIdRef.current.has(personId)) {
+        panCameraTo(chart, cont, personId)
       }
     } else {
       window.location.hash = target
@@ -397,6 +483,34 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
             backgroundSize: '24px 24px',
           }}
         />
+        {/*
+         * #181 — pending overlay. Shown while the add-person Server Action is
+         * in-flight. A translucent layer over the canvas signals "something is
+         * happening" without hiding the tree. The mtf-tree-pending-overlay CSS
+         * class fades it in over 50 ms. Dismissed automatically when isPending
+         * flips back to false (revalidatePath has streamed the new node).
+         */}
+        {addPending && !readOnly && (
+          <div
+            aria-busy="true"
+            aria-label="Saving person…"
+            className="mtf-tree-pending-overlay pointer-events-none absolute inset-0 rounded-lg bg-background/40 flex items-center justify-center"
+          >
+            <div className="flex items-center gap-2 rounded-full bg-background/90 border border-border px-4 py-2 text-sm text-foreground shadow-md">
+              <svg
+                className="animate-spin h-4 w-4 text-primary shrink-0"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+              </svg>
+              <span>Saving…</span>
+            </div>
+          </div>
+        )}
         <ZoomControls onZoomIn={zoomIn} onZoomOut={zoomOut} onFit={zoomToFit} />
       </div>
       <PersonDetailSheet

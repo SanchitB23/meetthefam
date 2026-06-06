@@ -17,6 +17,8 @@ export type PersonRow = {
   photo_url: string | null
   bio: string | null
   birth_year: number | null
+  /** ISO date string 'YYYY-MM-DD'. Present when the user entered a full date. */
+  birth_date: string | null
   location: string | null
   occupation: string | null
   deceased: boolean

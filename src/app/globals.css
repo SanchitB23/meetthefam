@@ -197,6 +197,17 @@
   .f3 .mtf-node__add-btn { opacity: 0.85; transform: scale(1); }
 }
 
+/* sonner toast theming — heirloom tokens (see #70 spike) */
+[data-sonner-toast] {
+  --mtf-accent: var(--border);
+  border-left: 3px solid var(--mtf-accent);
+}
+[data-sonner-toast][data-type="success"] { --mtf-accent: var(--primary); }
+[data-sonner-toast][data-type="info"]    { --mtf-accent: var(--muted-foreground); }
+[data-sonner-toast][data-type="warning"] { --mtf-accent: var(--accent); }
+[data-sonner-toast][data-type="error"]   { --mtf-accent: var(--destructive); }
+[data-sonner-toast] [data-icon] { color: var(--mtf-accent); }
+
 /*
  * 8b polish FIX 2 — Deceased card chrome, strengthened.
  * The mtf-node--deceased class is emitted by personNodeHtml when data.deceased
@@ -256,6 +267,48 @@
 }
 
 /*
+ * #69 — hide the synthetic `__super_root__` layout-anchor card.
+ *
+ * `transformToFamilyChartShapeShowAll` injects an invisible node as the
+ * universal parent of every otherwise-rootless person, so family-chart's
+ * single-root walk reaches every subtree regardless of main_id. The card
+ * itself is a zero-size sentinel `<div data-person-id="__super_root__">`
+ * returned by `setCardInnerHtmlCreator` (see FamilyTree.tsx). This rule
+ * targets the family-chart `<foreignObject>` wrapper via `:has()` and
+ * makes it fully invisible + non-interactive. Connector lines targeting
+ * the super-root are zeroed by super-root-link-suppressor.ts.
+ *
+ * Browser support: `:has()` requires Safari ≥ 15.4 and Chrome ≥ 105 —
+ * aligned with our target matrix.
+ */
+.f3 foreignObject:has([data-person-id="__super_root__"]) {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/*
+ * #69 — absorb the reserved layout slot the super-root card occupies.
+ *
+ * Even though the foreignObject is `visibility: hidden`, family-chart
+ * still allocates one card-row (158×110 px) of vertical space for it at
+ * the top of the SVG. Without compensation the canvas sits ~130 px lower
+ * than expected and the topmost real generation looks orphaned.
+ *
+ * The try-first fix: scope a negative `margin-top` to canvases that
+ * actually contain a super-root, so single-root trees (where the
+ * super-root is not injected) are unaffected. Value = card height (110)
+ * + half the configured vertical spacing (130 / 2 = 65) ≈ 175 px, which
+ * matches family-chart's vertical-orientation layout math.
+ *
+ * Fallback strategy: if this throws off `chart.fit()` or `zoomToFit`
+ * math in QA, remove the rule and file a follow-up for the blank-row UX.
+ * See spec §"Decisions locked" D3 + §"Risks 2".
+ */
+.f3:has(foreignObject [data-person-id="__super_root__"]) svg.main_svg {
+  margin-top: -175px;
+}
+
+/*
  * 8c-4 — LinkProgress top-edge accent bar keyframe.
  * Animates from 0 → 1 scaleX while a next/link navigation is pending
  * (useLinkStatus). The bar is position:fixed so it always appears at the
@@ -296,5 +349,88 @@
   .mtf-skeleton {
     animation: none;
     background-image: none;
+  }
+}
+
+/* ============================================================
+ * #187 — View Transitions API: cross-fade for route changes,
+ * sign-out, and the add-person new-node entry.
+ *
+ * The default browser view transition is an instant swap. We
+ * override it with a soft cross-fade (~175 ms). The transitions
+ * are gated at the call-site too (document.startViewTransition)
+ * but the CSS here is the canonical "what it looks like" layer.
+ *
+ * Reduced-motion: set duration to 0 so the browser still runs
+ * the transition machinery (no flash) but completes instantly.
+ * ============================================================ */
+::view-transition-old(*) {
+  animation-duration: 175ms;
+  animation-timing-function: ease-out;
+}
+
+::view-transition-new(*) {
+  animation-duration: 175ms;
+  animation-timing-function: ease-in;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0ms;
+  }
+}
+
+/*
+ * #187 — New-node D3 entry fade.
+ * family-chart's D3 enter-selection adds .mtf-node--entering to new
+ * cards (injected in FamilyTree.tsx's setAfterUpdate hook). The card
+ * fades from opacity 0 → 1 over 300 ms, coordinated to start AFTER
+ * the pending spinner clears (i.e. after revalidatePath lands and the
+ * server component re-streams the updated people list).
+ *
+ * The animation-delay (40 ms) gives the D3 layout transform a tick to
+ * settle so the card doesn't slide AND fade simultaneously.
+ */
+@keyframes mtf-node-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.f3 .mtf-node--entering {
+  animation: mtf-node-enter 300ms ease-out 40ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .f3 .mtf-node--entering {
+    animation: none;
+  }
+}
+
+/*
+ * #181 — Tree canvas mutation overlay.
+ * Shown while the add-person Server Action is in-flight. A translucent
+ * layer over the family-chart container signals "something is happening"
+ * without hiding the tree. Fades in quickly (50 ms) to hit the ~50 ms
+ * perceived-responsiveness target.
+ */
+@keyframes mtf-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.mtf-tree-pending-overlay {
+  animation: mtf-overlay-in 50ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mtf-tree-pending-overlay {
+    animation: none;
   }
 }

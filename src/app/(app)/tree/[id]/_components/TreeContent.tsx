@@ -1,10 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
-import { ArrowLeft, Share2, Users2 } from 'lucide-react'
+import { ArrowLeft, Settings } from 'lucide-react'
 import { FamilyTree } from './FamilyTree'
 import type { PersonRow } from '../_lib/types'
 import { AddRelativeFab } from './AddRelativeFab'
-import { MembersSheet, type MemberRow, type PendingInviteRow } from './MembersSheet'
-import { ShareLinkSheet } from './ShareLinkSheet'
+import { TreeSettingsSheet, type MemberRow, type PendingInviteRow } from './TreeSettingsSheet'
 import { LinkProgress } from '@/components/ui/LinkProgress'
 
 type TreeRow = {
@@ -129,7 +128,7 @@ export async function TreeContent({
     .from('people')
     .select(
       `id, tree_id, full_name, nickname, gender, photo_url, bio,
-       birth_year, location, occupation, deceased, death_year,
+       birth_year, birth_date, location, occupation, deceased, death_year,
        father_id, mother_id, spouse_id, tone`,
     )
     .eq('tree_id', treeId)
@@ -138,26 +137,13 @@ export async function TreeContent({
 
   const people = peopleRows ?? []
 
-  // The Members trigger button — rendered server-side, wired to MembersSheet
-  // on the client. The button is a plain visual element; MembersSheet wraps
-  // it in a role="button" span that handles click + keyboard.
-  const membersTrigger = (
+  const settingsTrigger = (
     <button
       type="button"
-      aria-label="Manage members"
+      aria-label="Tree settings"
       className="inline-flex items-center justify-center h-10 w-10 rounded-md text-foreground/60 hover:text-foreground hover:bg-foreground/5 transition-colors"
     >
-      <Users2 className="h-5 w-5" />
-    </button>
-  )
-
-  const shareTrigger = (
-    <button
-      type="button"
-      aria-label="Share link"
-      className="inline-flex items-center justify-center h-10 w-10 rounded-md text-foreground/60 hover:text-foreground hover:bg-foreground/5 transition-colors"
-    >
-      <Share2 className="h-5 w-5" />
+      <Settings className="h-5 w-5" />
     </button>
   )
 
@@ -174,22 +160,17 @@ export async function TreeContent({
         <h1 className="font-serif text-3xl text-foreground leading-tight flex-1 min-w-0 truncate">
           {tree.name}
         </h1>
-        {/* Phase 7 sub-task 2 — Share icon button in top bar */}
-        <ShareLinkSheet
+        <TreeSettingsSheet
+          key={tree.id}
           treeId={tree.id}
-          currentUserRole={currentUserRole}
-          shareToken={tree.share_token}
-          baseUrl={baseUrl}
-          trigger={shareTrigger}
-        />
-        {/* Phase 6 sub-task 4 — Members icon button in top bar */}
-        <MembersSheet
-          treeId={tree.id}
+          treeName={tree.name}
           currentUserId={userId}
           currentUserRole={currentUserRole}
           members={members}
           pendingInvites={pendingInvites}
-          trigger={membersTrigger}
+          shareToken={tree.share_token}
+          baseUrl={baseUrl}
+          trigger={settingsTrigger}
         />
       </div>
 

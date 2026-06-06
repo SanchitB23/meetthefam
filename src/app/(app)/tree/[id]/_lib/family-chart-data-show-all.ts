@@ -1,0 +1,239 @@
+// Issue #69 (v1.1) — option (d') synthetic super-root + floating-partner
+// synthesis, always on. Wraps `transformToFamilyChartShape` and adjusts
+// the graph so family-chart's progeny walk from a pinned super-root
+// main_id reaches every person in the tree without exploding the
+// duplicate-card count.
+//
+// PROBLEM
+//   family-chart 0.9.0 (`node_modules/family-chart/dist/family-chart.js:604`
+//   `calculateTree`) lays out the canvas by walking two d3 hierarchies
+//   rooted at `main_id` — ancestors via `rels.parents`, descendants via
+//   `rels.children`. Anything not reachable from `main_id` through one of
+//   those edges is silently absent from the rendered tree.
+//
+//   Pinning `main_id` to a synthetic super-root and giving every
+//   rootless person `parents: [super_root]` works in principle, but in
+//   practice creates a layout pathology at our seed size (#69 v1.1):
+//
+//     * Gen-2 / Gen-3 in-laws (e.g. Olivia, Carlos, Nora, Lily, …) are
+//       rootless in the data (no parents in tree) AND married to deeper-
+//       generation in-tree people (Walter, Daniel, Adam, …). Making them
+//       super-root's children puts them at layout-level-1 while their
+//       spouse is at level-2/3, so each marriage spans multiple layout
+//       levels.
+//     * family-chart's only tool for cross-level marriages is to duplicate
+//       one of the partners so a same-level marriage edge can be drawn.
+//       With 9 such cross-level in-laws in our seed, the duplicate cascade
+//       blows the rendered card count from 55 to ~200 and crushes the
+//       layout into a single horizontal strip.
+//
+// SOLUTION
+//   1. Only the "eldest patriarchs / matriarchs" become super-root's
+//      children: rootless people whose spouse (if any) is ALSO rootless,
+//      AND truly free-floating rootless solo people (no spouse, no
+//      children). Other in-laws stay rootless in `rels.parents` but get
+//      rendered via their spouse's spouse link — a sideways edge with no
+//      level crossing, no duplicates.
+//
+//   2. "Floating co-parents" (rootless, no spouse, has children — e.g.
+//      Carlos, Eve's unmarried partner) are synthesised a one-sided
+//      spouse link to the in-tree other-parent of one of their children,
+//      iff that other-parent has no spouse already. The synthesis is
+//      data-only — it never touches the DB.
+//
+// COUPLING
+//   FamilyTree.tsx pins `main_id` to SUPER_ROOT_ID for the chart's
+//   lifetime; "re-center" pans the d3-zoom camera via panCameraTo.
+//   globals.css hides the super-root foreignObject via the `:has()` rule.
+//   super-root-link-suppressor.ts zeros connector lines that touch the
+//   super-root during d3's transition window.
+//
+// See docs/superpowers/specs/2026-06-01-issue-69-show-all-people-design.md
+// for the canonical decision record.
+
+import { transformToFamilyChartShape, type FamilyChartDatum } from './family-chart-data'
+import type { PersonRow } from './types'
+
+export const SUPER_ROOT_ID = '__super_root__'
+
+/**
+ * Transform our `people` rows into family-chart's `Datum[]` shape and
+ * inject the synthetic super-root + any floating-partner spouse
+ * synthesis needed for everyone to render under `main_id = SUPER_ROOT_ID`.
+ *
+ * 0/1 patriarch-matriarch case (e.g. an empty or single-trunk tree) is
+ * a no-op — the standard single-root walk already covers everyone.
+ */
+export function transformToFamilyChartShapeShowAll(rows: PersonRow[]): FamilyChartDatum[] {
+  // Deep-ish clone of every datum's `rels` so we can mutate parents /
+  // spouses / children freely without leaking back into the caller's
+  // shape. `transformToFamilyChartShape` returns fresh arrays already;
+  // we still recreate them defensively because two of our passes mutate.
+  const base = transformToFamilyChartShape(rows).map((d) => ({
+    ...d,
+    rels: {
+      parents: [...d.rels.parents],
+      spouses: [...d.rels.spouses],
+      children: [...d.rels.children],
+    },
+  }))
+  const byId = new Map(base.map((d) => [d.id, d]))
+
+  const isRootless = (d: FamilyChartDatum) => d.rels.parents.length === 0
+
+  // Pass 1 — synthesise spouse links for "floating co-parents": rootless
+  // people with no spouse but at least one child, whose child's other
+  // parent has no spouse. Concrete case: Carlos Vargas (Eve Smith's
+  // unmarried partner in the local seed). Without this, Carlos is
+  // unreachable from any walk because his only graph edges point DOWN
+  // to his kids and family-chart doesn't backtrack up to render the
+  // other parent of a rendered child.
+  for (const partner of base) {
+    if (!isRootless(partner)) continue
+    if (partner.rels.spouses.length > 0) continue
+    if (partner.rels.children.length === 0) continue
+    for (const childId of partner.rels.children) {
+      const child = byId.get(childId)
+      if (!child) continue
+      const otherParentId = child.rels.parents.find((p) => p !== partner.id)
+      if (!otherParentId) continue
+      const otherParent = byId.get(otherParentId)
+      if (!otherParent) continue
+      if (otherParent.rels.spouses.length > 0) continue // don't clobber a real marriage
+      // Synthesise bidirectional spouse link (in-memory only — never
+      // written back to the DB).
+      partner.rels.spouses.push(otherParent.id)
+      otherParent.rels.spouses.push(partner.id)
+      break // one synthesis per floating partner is enough
+    }
+  }
+
+  // Pass 1.5 — dedupe `rels.children` across spouse couples, choosing
+  // the parent reachable from super-root.
+  //
+  // The base transform lists every child under BOTH their father and
+  // their mother. That's fine when main_id is at a leaf, but with our
+  // pinned main_id = super-root the *progeny* walk runs in two parallel
+  // branches: super_root → George → his kids, AND super_root → Margaret
+  // → her kids. Same kids, both walks, two layout positions, a duplicate
+  // card cascade across every Gen-2+ person.
+  //
+  // Fix: keep each two-parent child under exactly one parent. Pick the
+  // parent reachable from super-root (the parent who themselves has
+  // parents, OR who is rootless-with-rootless-spouse and will become a
+  // super-root child in Pass 3). If only one parent is reachable, that's
+  // the keeper (Sophia + Diego case — their father Carlos is rootless
+  // with a non-rootless spouse, so he won't be a super-root child; they
+  // must be kept under Eve). If both are reachable, default to parents[0].
+  // Single-parent kids are untouched.
+  function isReachableFromSuperRoot(d: FamilyChartDatum): boolean {
+    if (d.rels.parents.length > 0) return true // has parents — walked via them
+    if (d.rels.spouses.length === 0) return true // floating rootless solo — becomes super-root child
+    // Rootless with spouses — reachable only if every spouse is also rootless
+    // (i.e. this is a Gen-1 patriarch/matriarch couple, both become super-root
+    // children).
+    return d.rels.spouses.every((sid) => {
+      const sp = byId.get(sid)
+      return sp ? sp.rels.parents.length === 0 : false
+    })
+  }
+  for (const d of base) {
+    if (d.rels.parents.length < 2) continue
+    const [pidA, pidB] = d.rels.parents
+    const a = byId.get(pidA)
+    const b = byId.get(pidB)
+    if (!a || !b) continue
+    const aReachable = isReachableFromSuperRoot(a)
+    const bReachable = isReachableFromSuperRoot(b)
+    // Pick keeper: prefer parents[0] when both reachable, else the
+    // reachable one, else fall back to parents[0] (kid would be hidden
+    // anyway — at least keep the link semantically with the father).
+    const keeper = aReachable ? a : bReachable ? b : a
+    const dropFrom = keeper === a ? b : a
+    dropFrom.rels.children = dropFrom.rels.children.filter((cid) => cid !== d.id)
+  }
+
+  // Pass 2 — identify "true root patriarchs/matriarchs": rootless and
+  // (no spouse OR every spouse also rootless). Cross-level in-laws (a
+  // rootless person whose spouse has parents) are deliberately EXCLUDED
+  // — they get rendered via their spouse's spouse link instead.
+  function isTrueRoot(d: FamilyChartDatum): boolean {
+    if (!isRootless(d)) return false
+    if (d.rels.spouses.length === 0) return true
+    return d.rels.spouses.every((spouseId) => {
+      const spouse = byId.get(spouseId)
+      return spouse ? isRootless(spouse) : false
+    })
+  }
+
+  const trueRoots = base.filter(isTrueRoot)
+
+  // Pass 2.5 — for true-root couples, only the FIRST partner becomes
+  // super-root's child; the SECOND is reached via the first's spouse-
+  // link only. Without this, both partners of every Gen-1 couple show
+  // up twice — once in the progeny walk (as super-root's child) and
+  // once via `setupSpouses` (as the partner's spouse) — emitting two
+  // duplicate cards per partner that contribute nothing to readability.
+  //
+  // Iteration order = base declaration order = seed insertion order, so
+  // husbands typically precede wives. Either ordering is correct; we
+  // just need a consistent tiebreak.
+  const primaryRoots: typeof trueRoots = []
+  const skippedAsSecondaryPartner = new Set<string>()
+  for (const d of trueRoots) {
+    if (skippedAsSecondaryPartner.has(d.id)) continue
+    primaryRoots.push(d)
+    for (const sid of d.rels.spouses) skippedAsSecondaryPartner.add(sid)
+  }
+
+  // 0 or 1 primary root: single-trunk tree (or empty). No super-root
+  // injection needed; the standard walk from `main_id = data[0]` (which
+  // FamilyTree.tsx already overrides to SUPER_ROOT_ID then falls back
+  // to the lone root) covers everyone reachable.
+  if (primaryRoots.length <= 1) return base
+
+  // Pass 3 — rewire each PRIMARY root's parents to [SUPER_ROOT_ID].
+  // Secondary partners stay with `rels.parents = []` so they're reached
+  // only via spouse-link rendering.
+  const primaryRootIds = new Set(primaryRoots.map((d) => d.id))
+  for (const d of base) {
+    if (primaryRootIds.has(d.id)) {
+      d.rels.parents = [SUPER_ROOT_ID]
+    }
+  }
+
+  // Synthetic layout-anchor node — invisible, just provides connectivity.
+  // `gender: 'M'` and `tone: 'sage'` are arbitrary valid values; the node
+  // never renders. `personNodeHtml` returns a zero-size sentinel for
+  // this id; CSS hides the foreignObject via `:has()`.
+  const superRoot: FamilyChartDatum = {
+    id: SUPER_ROOT_ID,
+    data: {
+      gender: 'M',
+      full_name: '',
+      first_name: '',
+      last_name: '',
+      nickname: null,
+      photo_url: null,
+      birth_year: null,
+      death_year: null,
+      deceased: false,
+      location: null,
+      occupation: null,
+      bio: null,
+      tone: 'sage',
+      gender_raw: 'unknown',
+    },
+    rels: {
+      parents: [],
+      spouses: [],
+      children: primaryRoots.map((d) => d.id),
+    },
+  }
+
+  // Super-root prepended so it sits at family-chart's data[0] — the
+  // "above-the-tree" layout slot. FamilyTree.tsx always pins
+  // chart.updateMainId(SUPER_ROOT_ID) before the first updateTree, so
+  // the data[0] default would have been super-root either way.
+  return [superRoot, ...base]
+}

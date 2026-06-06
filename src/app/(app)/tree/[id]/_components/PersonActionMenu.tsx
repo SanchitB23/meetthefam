@@ -32,6 +32,7 @@ import {
 import { clearSpouse, setSpouse } from '../actions'
 import { ErrorAlert } from '@/components/ui/error-alert'
 import { mapErrorCode } from '@/lib/errors'
+import { notify } from '@/lib/toast/notify'
 import {
   collectAncestors,
   collectDescendants,
@@ -74,7 +75,12 @@ export function PersonActionMenu({
   const [spousePickerForId, setSpousePickerForId] = useState<string | null>(null)
   const [parentsDialogForId, setParentsDialogForId] = useState<string | null>(null)
   const [addRelativeForId, setAddRelativeForId] = useState<string | null>(null)
-  const [editForId, setEditForId] = useState<string | null>(null)
+  // #185 — editPerson is captured as a stable PersonRow snapshot when the
+  // menu item is clicked, NOT re-derived from `peopleById` on every render.
+  // Re-deriving caused `PersonForm`'s `formDefaults` to recompute on every
+  // `refresh()` (new row reference despite same values), which triggered the
+  // reset-on-open effect mid-session and wiped in-progress field edits.
+  const [editPerson, setEditPerson] = useState<PersonRow | null>(null)
   const [deleteForId, setDeleteForId] = useState<string | null>(null)
 
   const [spouseError, setSpouseError] = useState<string | null>(null)
@@ -90,7 +96,6 @@ export function PersonActionMenu({
   const addRelativePerson = addRelativeForId
     ? peopleById.get(addRelativeForId) ?? null
     : null
-  const editPerson = editForId ? peopleById.get(editForId) ?? null : null
   const deletePerson = deleteForId ? peopleById.get(deleteForId) ?? null : null
 
   // #71 — alphabetised people list for PersonForm's always-on Link-to picker.
@@ -119,14 +124,20 @@ export function PersonActionMenu({
         return
       }
       setSpousePickerForId(null)
+      notify.success('Spouse linked')
     })
   }
 
   const handleClearSpouse = () => {
     if (!person) return
     const id = person.id
-    startTransition(() => {
-      void clearSpouse(id, treeId)
+    startTransition(async () => {
+      const result = await clearSpouse(id, treeId)
+      if (!result.ok) {
+        notify.error(mapErrorCode(result.error, 'Could not remove the spouse link.'))
+        return
+      }
+      notify.success('Spouse link removed')
     })
   }
 
@@ -197,7 +208,7 @@ export function PersonActionMenu({
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setEditForId(person.id)}>
+              <DropdownMenuItem onClick={() => setEditPerson(person)}>
                 Edit
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -265,9 +276,9 @@ export function PersonActionMenu({
       {editPerson && (
         <PersonForm
           mode="edit"
-          open={editForId != null}
+          open={editPerson != null}
           onOpenChange={(v) => {
-            if (!v) setEditForId(null)
+            if (!v) setEditPerson(null)
           }}
           treeId={treeId}
           person={editPerson}

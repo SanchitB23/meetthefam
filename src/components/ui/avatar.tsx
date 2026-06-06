@@ -10,6 +10,68 @@
 // deceased prop: desaturates the avatar + adds a † badge (top-right corner)
 // at sizes >= 36px.
 
+/**
+ * Soft octagon (~5% corner softening via Bezier-sampled polygon) — the shape
+ * for `other`. Coordinates are percentages so the same string scales to any
+ * avatar size. Visually indistinguishable from a true SVG <path> at every
+ * avatar size in use (max 80px).
+ *
+ * Spec: docs/superpowers/specs/2026-06-02-gender-shape-system-remap-design.md
+ */
+export const SOFT_OCTAGON_CLIP_PATH = `polygon(
+  35% 0%, 65% 0%,
+  67.41% 0.22%, 69.64% 0.89%, 71.68% 1.99%, 73.54% 3.54%,
+  96.46% 26.46%,
+  98.01% 28.32%, 99.12% 30.36%, 99.78% 32.59%, 100% 35%,
+  100% 65%,
+  99.78% 67.41%, 99.12% 69.64%, 98.01% 71.68%, 96.46% 73.54%,
+  73.54% 96.46%,
+  71.68% 98.01%, 69.64% 99.12%, 67.41% 99.78%, 65% 100%,
+  35% 100%,
+  32.59% 99.78%, 30.36% 99.12%, 28.32% 98.01%, 26.46% 96.46%,
+  3.54% 73.54%,
+  1.99% 71.68%, 0.89% 69.64%, 0.22% 67.41%, 0% 65%,
+  0% 35%,
+  0.22% 32.59%, 0.89% 30.36%, 1.99% 28.32%, 3.54% 26.46%,
+  26.46% 3.54%,
+  28.32% 1.99%, 30.36% 0.89%, 32.59% 0.22%
+)`
+
+/**
+ * Gender → shape mapping. Discriminated union so callers can branch between a
+ * plain border-radius CSS value (m / unknown / f) and a clip-path string
+ * (other). The shape spectrum encodes how committed the gender info is:
+ *
+ *   m       → rounded-square (~18%)   — known, sharp-ish corners
+ *   unknown → squircle      (~34%)   — geometric midpoint, signals "unset"
+ *   f       → circle         (50%)   — known, fully rounded
+ *   other   → soft octagon          — off-axis, distinctive identity
+ *
+ * Spec: docs/superpowers/specs/2026-06-02-gender-shape-system-remap-design.md
+ */
+export type GenderShape =
+  | { kind: 'radius'; borderRadius: string }
+  | { kind: 'clip-path'; clipPath: string }
+
+export function shapeCssForGender(
+  gender: 'm' | 'f' | 'other' | 'unknown' | undefined,
+  px: number,
+): GenderShape {
+  switch (gender) {
+    case 'm':
+      return { kind: 'radius', borderRadius: `${Math.round(px * 0.18)}px` }
+    case 'unknown':
+      return { kind: 'radius', borderRadius: `${Math.round(px * 0.34)}px` }
+    case 'f':
+      return { kind: 'radius', borderRadius: '50%' }
+    case 'other':
+      return { kind: 'clip-path', clipPath: SOFT_OCTAGON_CLIP_PATH }
+    case undefined:
+    default:
+      return { kind: 'radius', borderRadius: '50%' }
+  }
+}
+
 export type Tone = 'sage' | 'rose' | 'indigo' | 'amber' | 'green'
 
 type Size = 'sm' | 'md' | 'lg' | number
@@ -47,32 +109,6 @@ export function computeInitials(fullName: string): string {
   return (first + last).toUpperCase() || '?'
 }
 
-/**
- * Maps a gender value to a CSS border-radius string.
- * 'm'       → rounded-square (~18% of px)
- * 'other'   → squircle (~34% of px)
- * 'f'       → circle (50%)
- * 'unknown' → circle (50%)
- * undefined → circle (50%)
- */
-export function borderRadiusForGender(
-  gender: 'm' | 'f' | 'other' | 'unknown' | undefined,
-  px: number,
-): string {
-  switch (gender) {
-    case 'm':
-      return `${Math.round(px * 0.18)}px`
-    case 'other':
-      return `${Math.round(px * 0.34)}px`
-    case 'f':
-      return '50%'
-    case 'unknown':
-      return '50%'
-    default:
-      return '50%'
-  }
-}
-
 export function Avatar({
   fullName,
   initials,
@@ -89,7 +125,7 @@ export function Avatar({
 
   // Initials sit at ~34% of the avatar diameter (matches the Kintree prototype).
   const fontSize = Math.round(px * 0.34)
-  const borderRadius = borderRadiusForGender(gender, px)
+  const shape = shapeCssForGender(gender, px)
 
   // The inner container clips the photo / background to the correct border-radius.
   // It must NOT be position:relative — that role is taken by the outer wrapper so
@@ -97,8 +133,13 @@ export function Avatar({
   const innerStyle: React.CSSProperties = {
     width: px,
     height: px,
-    borderRadius,
+    ...(shape.kind === 'radius'
+      ? { borderRadius: shape.borderRadius }
+      : { clipPath: shape.clipPath, borderRadius: 0 }),
     // Ring is drawn as an outline so it doesn't change layout dimensions.
+    // Note: outline follows border-radius but NOT clip-path, so for `other`
+    // a ring will currently draw a square outline around the octagon. The
+    // ring prop has no callers today; tracked in the spec for a follow-up.
     outline: ring ? `2px solid var(--tone-${tone}-ring)` : undefined,
     outlineOffset: ring ? 2 : undefined,
     // Deceased: aggressive desaturation + small grayscale so the effect
