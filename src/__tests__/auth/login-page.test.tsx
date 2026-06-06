@@ -10,7 +10,14 @@ import { render, screen } from '@testing-library/react'
 import { mockSupabaseClient } from '@/__tests__/helpers/supabaseClientMock'
 mockSupabaseClient()
 
-vi.mock('next/navigation', () => ({ redirect: vi.fn() }))
+// next/navigation mock: include useSearchParams / useRouter / usePathname so
+// <ToastFromSearchParams> (which LoginPage now embeds) can mount in jsdom.
+vi.mock('next/navigation', () => ({
+  redirect: vi.fn(),
+  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  usePathname: () => '/login',
+}))
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: async () => ({
@@ -27,33 +34,23 @@ async function renderPage(params: Record<string, string> = {}) {
 }
 
 describe('LoginPage error rendering', () => {
-  it('renders <ErrorAlert> with mapped copy for auth_callback_failed', async () => {
+  // Errors are now surfaced via <ToastFromSearchParams> (client toast), not an
+  // inline <ErrorAlert>. These tests verify that the inline alert element is
+  // NOT rendered — the toast path is covered by the bridge's own test suite.
+
+  it('does not render an inline alert for auth_callback_failed (toast path)', async () => {
     await renderPage({ error: 'auth_callback_failed' })
-    expect(screen.getByRole('alert')).toBeTruthy()
-    expect(
-      screen.getByText('Authentication could not be completed. Try signing in again.'),
-    ).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
-  it('renders <ErrorAlert> with mapped copy for email_rate_limit', async () => {
+  it('does not render an inline alert for email_rate_limit (toast path)', async () => {
     await renderPage({ error: 'email_rate_limit' })
-    expect(screen.getByRole('alert')).toBeTruthy()
-    expect(
-      screen.getByText('Too many sign-in attempts. Wait a few minutes and try again.'),
-    ).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
-  it('renders <ErrorAlert> with mapped copy for email_required', async () => {
+  it('does not render an inline alert for email_required (toast path)', async () => {
     await renderPage({ error: 'email_required' })
-    expect(screen.getByRole('alert')).toBeTruthy()
-    expect(screen.getByText('Please enter your email address.')).toBeTruthy()
-  })
-
-  it('has role="alert" and aria-live="polite" on the error element', async () => {
-    const { container } = await renderPage({ error: 'auth_callback_failed' })
-    const el = container.querySelector('[role="alert"]')
-    expect(el).not.toBeNull()
-    expect(el?.getAttribute('aria-live')).toBe('polite')
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
   it('renders no alert when no error param is present', async () => {

@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { ErrorAlert } from '@/components/ui/error-alert'
 import { mapErrorCode } from '@/lib/errors'
+import { notify } from '@/lib/toast/notify'
 
 type Props = {
   treeId: string
@@ -44,7 +45,10 @@ export function TreeSettingsGeneralPanel({
     formData: FormData,
   ): Promise<DeleteTreeState> {
     const result = await deleteTree(prev, formData)
-    if (result?.success) onAfterDelete?.()
+    if (result?.success) {
+      notify.success(`Deleted "${treeName}"`)
+      onAfterDelete?.()
+    }
     return result
   }
   const [deleteState, deleteFormAction, deletePending] = useActionState(

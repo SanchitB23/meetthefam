@@ -7,6 +7,8 @@ import {
   getMembersAndInvites,
   type GetMembersAndInvitesResult,
 } from '@/app/(app)/tree/[id]/members/actions'
+import { notify } from '@/lib/toast/notify'
+import { mapErrorCode } from '@/lib/errors'
 import {
   TreeSettingsSheet,
   type MemberRow,
@@ -43,6 +45,7 @@ export function TreeCardMenu({ tree, baseUrl }: Props) {
           pendingInvites: res.pendingInvites,
         })
       } else {
+        notify.error(mapErrorCode(res.error, 'Could not load members.'))
         setOpenState(false)
       }
     })

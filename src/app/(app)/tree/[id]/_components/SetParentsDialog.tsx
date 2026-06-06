@@ -22,6 +22,7 @@ import { ErrorAlert } from '@/components/ui/error-alert'
 import { mapErrorCode } from '@/lib/errors'
 import { useIsDesktop } from '@/components/ui/use-is-desktop'
 
+import { notify } from '@/lib/toast/notify'
 import { setParents } from '../actions'
 import { collectDescendants } from '../_lib/relations'
 import { PersonPicker } from './PersonPicker'
@@ -141,6 +142,7 @@ export function SetParentsDialog({
         return
       }
       onOpenChange(false)
+      notify.success(`Parents updated for ${person.full_name}`)
     })
   }
 
