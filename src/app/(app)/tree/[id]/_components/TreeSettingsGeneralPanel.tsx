@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { ErrorAlert } from '@/components/ui/error-alert'
 import { mapErrorCode } from '@/lib/errors'
 import { notify } from '@/lib/toast/notify'
-import { useToastOnResult } from '@/lib/toast/useToastOnResult'
+import { useToastOnResult, type ActionResult } from '@/lib/toast/useToastOnResult'
 
 type Props = {
   treeId: string
@@ -40,10 +40,9 @@ export function TreeSettingsGeneralPanel({
 
   const renameMessages = useMemo(
     () => ({
-      // ActionResult doesn't carry `name`; cast to pick it out safely.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      success: (s: any) =>
-        `Renamed to "${(s as { name?: string })?.name ?? 'tree'}"`,
+      // ActionResult's union doesn't carry `name`; cast to pick it out.
+      success: (s: NonNullable<ActionResult>) =>
+        `Renamed to "${(s as { name?: string }).name ?? 'tree'}"`,
     }),
     [],
   )
