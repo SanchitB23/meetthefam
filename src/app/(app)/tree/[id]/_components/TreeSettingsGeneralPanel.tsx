@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useActionState, useMemo } from 'react'
+import { useState, useActionState } from 'react'
 import { Check, X } from 'lucide-react'
 
 import {
@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button'
 import { ErrorAlert } from '@/components/ui/error-alert'
 import { mapErrorCode } from '@/lib/errors'
 import { notify } from '@/lib/toast/notify'
-import { useToastOnResult, type ActionResult } from '@/lib/toast/useToastOnResult'
 
 type Props = {
   treeId: string
@@ -37,16 +36,6 @@ export function TreeSettingsGeneralPanel({
     renameAction,
     null,
   )
-
-  const renameMessages = useMemo(
-    () => ({
-      // ActionResult's union doesn't carry `name`; cast to pick it out.
-      success: (s: NonNullable<ActionResult>) =>
-        `Renamed to "${(s as { name?: string }).name ?? 'tree'}"`,
-    }),
-    [],
-  )
-  useToastOnResult(renameState, renameMessages)
 
   // -- Delete (two-step confirm mirrors MemberListRow.handleRevoke) ---------
   const [confirmDelete, setConfirmDelete] = useState(false)
