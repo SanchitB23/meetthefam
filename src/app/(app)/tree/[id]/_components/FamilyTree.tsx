@@ -520,7 +520,7 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
         )}
         <ZoomControls onZoomIn={zoomIn} onZoomOut={zoomOut} onFit={zoomToFit} />
       </div>
-      <ExportProgressDialog open={exporting} />
+      {!readOnly && <ExportProgressDialog open={exporting} />}
       <PersonDetailSheet
         person={detailPerson}
         peopleById={peopleById}

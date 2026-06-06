@@ -7,9 +7,13 @@
 import type { ExportFormat } from './export-events'
 
 export async function captureTree(
-  _container: HTMLElement,
-  _format: ExportFormat,
+  container: HTMLElement,
+  format: ExportFormat,
 ): Promise<void> {
-  // #218: replace with real html-to-image capture + download.
+  // #218: replace with real html-to-image capture + download. The params are
+  // the capture interface #218 builds against; referenced here so the stub
+  // declares the contract without an unused-vars warning.
+  void container
+  void format
   await Promise.resolve()
 }
