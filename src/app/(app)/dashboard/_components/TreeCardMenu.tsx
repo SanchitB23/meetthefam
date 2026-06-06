@@ -2,12 +2,6 @@
 
 import { useState, useTransition } from 'react'
 import { Ellipsis } from 'lucide-react'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import {
   getMembersAndInvites,
@@ -58,23 +52,22 @@ export function TreeCardMenu({ tree, baseUrl }: Props) {
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              aria-label="Tree actions"
-            >
-              <Ellipsis className="h-4 w-4" />
-            </Button>
-          }
-        />
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={handleOpen}>Tree settings</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {/*
+        The 3-dots Button opens the sheet directly — no intermediate
+        DropdownMenu. With only one menu item ("Tree settings") after the
+        unified-sheet refactor (#119), the dropdown adds a click without
+        adding choice. Keeping the Ellipsis icon means the dashboard card
+        chrome stays visually unchanged.
+      */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-7 w-7"
+        aria-label="Tree settings"
+        onClick={handleOpen}
+      >
+        <Ellipsis className="h-4 w-4" />
+      </Button>
 
       {/*
         key={tree.id} is REQUIRED on the component boundary so all internal
