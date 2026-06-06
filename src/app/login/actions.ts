@@ -1,13 +1,8 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
-
-async function getOrigin() {
-  const headersList = await headers()
-  return headersList.get('origin') ?? 'http://localhost:3000'
-}
+import { getBaseUrl } from '@/lib/baseUrl'
 
 // Sanitize the `next` param so we only allow same-origin relative paths
 // starting with `/` (and not protocol-relative `//evil.com`).
@@ -30,7 +25,7 @@ export async function signInWithMagicLink(formData: FormData) {
 
   const next = safeNextPath(formData.get('next'))
   const supabase = await createClient()
-  const origin = await getOrigin()
+  const origin = await getBaseUrl()
 
   const { error } = await supabase.auth.signInWithOtp({
     email,
@@ -59,7 +54,7 @@ export async function signInWithMagicLink(formData: FormData) {
 export async function signInWithGoogle(formData: FormData) {
   const next = safeNextPath(formData.get('next'))
   const supabase = await createClient()
-  const origin = await getOrigin()
+  const origin = await getBaseUrl()
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
