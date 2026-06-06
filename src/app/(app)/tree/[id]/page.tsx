@@ -4,6 +4,7 @@ import { notFound, redirect } from 'next/navigation'
 import { getBaseUrl } from '@/lib/baseUrl'
 import { TreeContent } from './_components/TreeContent'
 import TreeLoading from './loading'
+import { AccessLostBanner } from '@/components/ui/AccessLostBanner'
 
 type TreeRow = {
   id: string
@@ -66,15 +67,18 @@ export default async function TreePage(props: PageProps<'/tree/[id]'>) {
   const currentUserRole = myMembership.role
 
   return (
-    <Suspense fallback={<TreeLoading />}>
-      <TreeContent
-        treeId={id}
-        userId={user.id}
-        tree={tree}
-        currentUserRole={currentUserRole}
-        initialFocusId={initialFocusId}
-        baseUrl={baseUrl}
-      />
-    </Suspense>
+    <>
+      <AccessLostBanner />
+      <Suspense fallback={<TreeLoading />}>
+        <TreeContent
+          treeId={id}
+          userId={user.id}
+          tree={tree}
+          currentUserRole={currentUserRole}
+          initialFocusId={initialFocusId}
+          baseUrl={baseUrl}
+        />
+      </Suspense>
+    </>
   )
 }

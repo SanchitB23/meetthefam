@@ -12,6 +12,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { ErrorAlert } from '@/components/ui/error-alert'
 import { mapErrorCode } from '@/lib/errors'
+import { notify } from '@/lib/toast/notify'
+import { copyWithToast } from '@/lib/toast/copyWithToast'
 
 import {
   enableShareLink,
@@ -58,7 +60,7 @@ export function TreeSettingsVisitorsPanel({
   const [confirmDisable, setConfirmDisable] = useState(false)
 
   const copyToClipboard = (url: string) => {
-    navigator.clipboard.writeText(url).then(() => {
+    copyWithToast(url).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
@@ -70,6 +72,9 @@ export function TreeSettingsVisitorsPanel({
       const res = await enableShareLink(treeId)
       if (res.ok) {
         setLocalToken(res.shareToken)
+        notify.success('Share link enabled')
+      } else if (res.error === 'forbidden') {
+        window.dispatchEvent(new CustomEvent('mtf-access-lost'))
       } else {
         setError('Could not enable sharing. Please try again.')
       }
@@ -87,6 +92,9 @@ export function TreeSettingsVisitorsPanel({
       if (res.ok) {
         setLocalToken(res.shareToken)
         setConfirmRegen(false)
+        notify.warning('New link created — the old link no longer works')
+      } else if (res.error === 'forbidden') {
+        window.dispatchEvent(new CustomEvent('mtf-access-lost'))
       } else {
         setError('Could not regenerate token. Please try again.')
         setConfirmRegen(false)
@@ -105,6 +113,9 @@ export function TreeSettingsVisitorsPanel({
       if (res.ok) {
         setLocalToken(null)
         setConfirmDisable(false)
+        notify.success('Share link disabled')
+      } else if (res.error === 'forbidden') {
+        window.dispatchEvent(new CustomEvent('mtf-access-lost'))
       } else {
         setError('Could not disable sharing. Please try again.')
         setConfirmDisable(false)

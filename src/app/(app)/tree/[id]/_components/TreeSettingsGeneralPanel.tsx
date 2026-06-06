@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useActionState } from 'react'
+import { useState, useActionState, useMemo } from 'react'
 import { Check, X } from 'lucide-react'
 
 import {
@@ -12,6 +12,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { ErrorAlert } from '@/components/ui/error-alert'
 import { mapErrorCode } from '@/lib/errors'
+import { notify } from '@/lib/toast/notify'
+import { useToastOnResult } from '@/lib/toast/useToastOnResult'
 
 type Props = {
   treeId: string
@@ -36,6 +38,17 @@ export function TreeSettingsGeneralPanel({
     null,
   )
 
+  const renameMessages = useMemo(
+    () => ({
+      // ActionResult doesn't carry `name`; cast to pick it out safely.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      success: (s: any) =>
+        `Renamed to "${(s as { name?: string })?.name ?? 'tree'}"`,
+    }),
+    [],
+  )
+  useToastOnResult(renameState, renameMessages)
+
   // -- Delete (two-step confirm mirrors MemberListRow.handleRevoke) ---------
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -44,7 +57,10 @@ export function TreeSettingsGeneralPanel({
     formData: FormData,
   ): Promise<DeleteTreeState> {
     const result = await deleteTree(prev, formData)
-    if (result?.success) onAfterDelete?.()
+    if (result?.success) {
+      notify.success(`Deleted "${treeName}"`)
+      onAfterDelete?.()
+    }
     return result
   }
   const [deleteState, deleteFormAction, deletePending] = useActionState(
