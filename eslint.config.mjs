@@ -20,6 +20,9 @@ const eslintConfig = defineConfig([
     // gitignored, so CI never sees them). Ignore all .claude/ content, nested too.
     ".claude/**",
     "**/.claude/**",
+    // Throwaway spike #214 harness — runs under `tsx`, not the app build; uses
+    // `.ts` import extensions the repo tsc/eslint config rejects. Branch-local.
+    "scripts/spike-214/**",
   ]),
 ]);
 
