@@ -10,8 +10,13 @@ import {
 } from '@/components/ui/dialog'
 
 export function ExportProgressDialog({ open }: { open: boolean }) {
+  // Controlled dialog: Base UI requests close via onOpenChange; silently
+  // ignoring the request keeps the modal open during capture (Escape/overlay
+  // can't dismiss it). #218: when real capture has duration, add an
+  // aria-live/aria-busy progress affordance + a cancel path, and cover the
+  // no-close behavior with a test (the #217 stub closes within a tick).
   return (
-    <Dialog open={open} onOpenChange={() => { /* locked while exporting */ }}>
+    <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-xs" showCloseButton={false}>
         <DialogHeader>
           <DialogTitle className="font-serif text-xl">Preparing export…</DialogTitle>
