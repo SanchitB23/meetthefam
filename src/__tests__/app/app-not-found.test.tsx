@@ -8,6 +8,15 @@ vi.mock('@/lib/supabase/server', () => ({
   }),
 }))
 
+// The (app) layout mounts <AccessLostBanner />, a client component that calls
+// useRouter() — stub next/navigation so rendering the layout in jsdom (the
+// composition test) doesn't hit "invariant expected app router to be mounted".
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+}))
+
 // SiteFooter embeds <AuthFooterLink />, which calls the browser client +
 // the `signOut` server action (also reached via SignOutButton in the (app)
 // layout for the composition test). Centralised mock keeps jsdom inert.
