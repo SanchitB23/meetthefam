@@ -136,11 +136,18 @@ function avatarHtml(data: FamilyChartDatum['data']): string {
     : ''
 
   if (data.photo_url) {
+    // crossorigin="anonymous" is REQUIRED for tree export (#60 / #218): the
+    // export rasterises this DOM onto a <canvas>, and a cross-origin avatar
+    // loaded without CORS taints the canvas (toBlob/toDataURL then throws).
+    // The Supabase `photos` bucket serves access-control-allow-origin:* on
+    // every response (validated 2026-06-06, see #216 design spec), so this is
+    // safe and sufficient. Do not remove without re-validating the export.
     return `
       <span style="${outerStyle}">
         <span class="mtf-node__avatar" style="${innerStyle}">
           <img
             src="${escapeHtml(data.photo_url)}"
+            crossorigin="anonymous"
             alt=""
             width="${sizePx}"
             height="${sizePx}"
