@@ -33,6 +33,8 @@ export function useExportTrigger(
         setExporting(false)
       }
     })
+    // containerRef identity is stable (useRef); listed so exhaustive-deps
+    // doesn't flag it. readOnly is the real re-run guard.
   }, [containerRef, readOnly])
 
   return { exporting }

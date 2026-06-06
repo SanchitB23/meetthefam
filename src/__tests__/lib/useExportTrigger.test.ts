@@ -22,13 +22,14 @@ describe('useExportTrigger', () => {
     const pending: boolean[] = []
     const off = onExportPending((d: ExportPendingDetail) => pending.push(d.pending))
 
-    renderHook(() => useExportTrigger(ref, { readOnly: false }))
+    const { unmount } = renderHook(() => useExportTrigger(ref, { readOnly: false }))
     dispatchExportTree({ format: 'png' })
 
     await waitFor(() => expect(pending).toContain(false))
     expect(pending[0]).toBe(true)
     expect(pending[pending.length - 1]).toBe(false)
     expect(el.style.overflow).toBe('hidden') // restored after capture
+    unmount()
     off()
   })
 
@@ -37,12 +38,13 @@ describe('useExportTrigger', () => {
     const pending: boolean[] = []
     const off = onExportPending((d: ExportPendingDetail) => pending.push(d.pending))
 
-    renderHook(() => useExportTrigger(ref, { readOnly: true }))
+    const { unmount } = renderHook(() => useExportTrigger(ref, { readOnly: true }))
     dispatchExportTree({ format: 'png' })
 
     // Give any (incorrect) async handler a chance to run.
     await new Promise((r) => setTimeout(r, 20))
     expect(pending).toEqual([])
+    unmount()
     off()
   })
 })

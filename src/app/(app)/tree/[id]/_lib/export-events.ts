@@ -1,3 +1,4 @@
+'use client'
 // src/app/(app)/tree/[id]/_lib/export-events.ts
 // Trigger-seam event contract for tree export (#217). Mirrors the existing
 // `mtf-add-pending` / `mtf-add-relative` CustomEvent patterns in this folder.

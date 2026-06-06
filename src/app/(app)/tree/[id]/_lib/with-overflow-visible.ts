@@ -9,6 +9,9 @@ export async function withOverflowVisible<T>(
   el: HTMLElement,
   fn: () => T | Promise<T>,
 ): Promise<T> {
+  // Saves/restores the *inline* overflow value. CSS-class overflow (e.g.
+  // Tailwind's overflow-hidden on the .f3 container) re-asserts itself
+  // naturally when the inline value is cleared back to "".
   const prev = el.style.overflow
   el.style.overflow = 'visible'
   try {
