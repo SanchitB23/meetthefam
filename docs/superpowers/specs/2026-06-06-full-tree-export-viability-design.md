@@ -152,4 +152,16 @@ Export Stress **25** (single founding couple, no super-root) renders fully, but 
 - **Exact memory/canvas ceiling deferred** — measure it inside the B full-layout-renderer spike, where the full tree actually renders at full size.
 
 ### Spike disposable-code note
-The probe (`src/app/spike/**`), `playwright.config.ts`, `scripts/spike-215/capture-runner.spec.ts`, and the `next.config.ts` / `public-routes.ts` spike hacks are **throwaway** — remove before #218 builds the real feature (see the plan's cleanup contract). `scripts/spike-215/tree-shape.ts` + `synth-photo.ts` + `seed-export-stress.ts` may be reused for #218 testing **if** the generator is first fixed to a multi-root topology (current version triggers 9.4).
+The probe (`src/app/spike/**`), `playwright.config.ts`, `scripts/spike-215/capture-runner.spec.ts`, and the `next.config.ts` / `public-routes.ts` spike hacks are **throwaway** — remove before #218 builds the real feature (see the plan's cleanup contract). `scripts/spike-215/tree-shape.ts` + `synth-photo.ts` + `seed-export-stress.ts` may be reused for #218 testing (the single-trunk topology is fine on real browsers — see §11).
+
+## 11. Correction (2026-06-07) — the "collapse" was a headless artifact
+
+§9.4 / §9.5 reported that large single-trunk trees "render only 2 nodes." A **live QA check on real Chrome disproved this**: a seeded 60-person single-trunk tree on the QA `/share/<token>` route renders the **full tree — 60 cards + 59 links**, laid out across ~4600px × multiple generations. Same code (`de3cc24`, identical to qa).
+
+So the collapse-to-2 reproduced **only under headless Chromium** (Playwright + the local prod build), not on real browsers. Likely the headless layout/measurement path (family-chart sizes cards off hidden "fake" cards via `getBoundingClientRect`, unreliable headless). It is **not a user-facing bug** (#224 re-scoped from "prod blocker" to "headless-only, affects automated export testing").
+
+**Impact on the verdict (still A-now / B-later):**
+- The capture-target finding (§9.1 — capture the wrapper div, not `svg.main_svg`) **stands**; it's DOM structure, independent of headless.
+- On real browsers **all cards render into the DOM at once** (✓ confirmed at 60) — so full-tree DOM capture is *more* feasible than §9.4 implied; the tree is all there.
+- BUT large trees auto-fit-zoom to a tiny scale, so a current-view capture is unreadable at 200, and a readable full capture needs full-layout-size rendering (canvas ceiling) — the **B-path rationale is unchanged**.
+- **New constraint for #225:** measure the ceiling in a **headed/real browser**, not headless Playwright, or the measurement itself collapses.
