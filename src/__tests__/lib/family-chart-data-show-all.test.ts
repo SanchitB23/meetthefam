@@ -42,16 +42,29 @@ describe('transformToFamilyChartShapeShowAll', () => {
     expect(transformToFamilyChartShapeShowAll([])).toEqual([])
   })
 
-  test('single-trunk tree (one rootless patriarch) → no super-root injected', () => {
+  // #224 — a SINGLE primary root (one founding patriarch / couple, the
+  // common case) MUST still get a super-root. FamilyTree pins
+  // `main_id = SUPER_ROOT_ID` for the chart's lifetime; without injection
+  // that id is absent and family-chart falls back to `data_stash[0]`. The
+  // `people` query has no ORDER BY, so data[0] is an arbitrary row — a
+  // leaf data[0] collapses the render to ~2 nodes. (Previously this case
+  // asserted "no super-root injected" — that encoded the bug.)
+  test('single-trunk tree (one rootless patriarch) → super-root IS injected (#224)', () => {
     const rows: PersonRow[] = [
       row({ id: 'patriarch', gender: 'm' }),
       row({ id: 'kid', father_id: 'patriarch' }),
     ]
     const out = transformToFamilyChartShapeShowAll(rows)
-    expect(out.map((d) => d.id)).toEqual(['patriarch', 'kid'])
-    expect(out.find((d) => d.id === SUPER_ROOT_ID)).toBeUndefined()
-    // The single real root keeps its empty parents array — not rewired.
-    expect(out.find((d) => d.id === 'patriarch')!.rels.parents).toEqual([])
+    // Super-root sits at index 0 so the pinned main_id resolves to it.
+    expect(out[0].id).toBe(SUPER_ROOT_ID)
+    // It anchors the lone real root.
+    expect(out.find((d) => d.id === SUPER_ROOT_ID)!.rels.children).toEqual(['patriarch'])
+    expect(out.find((d) => d.id === 'patriarch')!.rels.parents).toEqual([SUPER_ROOT_ID])
+    // No real person is dropped.
+    expect(out.filter((d) => d.id !== SUPER_ROOT_ID).map((d) => d.id).sort()).toEqual([
+      'kid',
+      'patriarch',
+    ])
   })
 
   test('multiple Gen-1 couples → only the primary partner of each couple is a super-root child', () => {
