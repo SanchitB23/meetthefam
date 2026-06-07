@@ -108,9 +108,48 @@ The verdict feeds directly back into #60's sub-issues:
 
 ## 8. Definition of done
 
-- [ ] Seed script committed; creates the five trees deterministically against local Supabase with photos.
-- [ ] Probe harness committed (marked disposable); runs both capture paths and emits the metrics table.
-- [ ] Metrics table filled across size × browser × path for at least the floor browsers.
-- [ ] Verdict computed against §6 and written into this doc.
-- [ ] Product note + epic-rescope recommendations written.
+- [x] Seed script committed; creates the five trees deterministically against local Supabase with photos.
+- [x] Probe harness committed (marked disposable).
+- [ ] ~~Metrics table filled across size × browser × path~~ — **deferred** (see §9; blocked then descoped by decision, the qualitative findings answered the product call).
+- [x] Verdict computed and written into this doc (§10).
+- [x] Product note + epic-rescope recommendations written (§10).
 - [ ] Decision-summary comment posted on #215 linking here.
+
+---
+
+## 9. Results (investigation findings, 2026-06-07)
+
+Run controlled, one browser at a time, against the local stack (Docker + Supabase) with a prod `next build` + `next start` (leaner than dev). The exact size × browser ceiling table was **not** completed — the investigation surfaced architecture facts that answered the product call before a ceiling number was needed, and the original large fixtures didn't render (see 9.4). What we proved:
+
+### 9.1 The capture target in the plan was wrong
+Person cards + photos are **HTML `div.card_cont` nodes that are siblings of `svg.main_svg`**, not `<foreignObject>` inside it. `svg.main_svg` contains **only the connector-line `<path>`s**. The probe (and the plan's technical sketch) captured `svg.main_svg` → it serialised the lines only, which is why captured dimensions were a constant 2512×1152 and PNG bytes *shrank* as the tree grew. **Any real export must capture the wrapper `div` that holds BOTH the SVG and the cards layer** (`svg.main_svg.parentElement`), not the SVG.
+
+### 9.2 family-chart is NOT viewport-virtualized
+When a tree renders correctly, **all reachable nodes mount into the DOM simultaneously** — the hand-authored 56-person "Smith Family Demo" renders 65 `card_cont` + 64 link paths at once. So a full-tree DOM capture *is* feasible in principle; the cards are all present, laid out via a single d3 `<g>` transform inside an `overflow:hidden` viewport. (An earlier hypothesis that cards were viewport-culled was disproved: zoom-out and "fit to screen" did not change the count.)
+
+### 9.3 The capture pipeline mechanically works at small scale
+`html-to-image` → blob → `jspdf` ran cleanly for the 25-person tree; PNG produced in ~30–65 ms. No CORS taint surfaced on the synthetic photos in chromium. (Cross-browser correctness — Safari/Firefox foreignObject-vs-HTML, web-font embedding — was not measured.)
+
+### 9.4 The large synthetic fixtures didn't render — root cause found
+Export Stress 50/100/200 rendered only **2 nodes** despite well-connected data (e.g. the 200-tree DB has 118 fathers, 162 spouses). Cause: the **#69 show-all transform** (`family-chart-data-show-all.ts`) only injects the synthetic `__super_root__` when there are **≥2 "primary root" couples**; with ≤1 it returns the data unchanged. The generator produced a **single founding couple → 1 primary root → no super-root**, while `FamilyTree` pins `main_id` to the (now non-existent) `__super_root__`, so family-chart's walk reaches almost nothing. Smith Demo renders because it has 6 root families → super-root injected. **This is a fixture artefact, not an app bug for multi-root trees.**
+
+### 9.5 Flagged: possible real single-trunk render bug (independent of export)
+Export Stress **25** (single founding couple, no super-root) renders fully, but Export Stress **50** (identical single-trunk structure) renders only 2. Same code path, different outcome by size/shape → the single-ancestral-couple fallback in the #69 path looks **non-deterministic at scale**. A real user building a one-couple-origin tree (very common) could hit a blank/2-node tree. **Recommend a separate investigation issue against #69** — this is a product-rendering risk, not an export concern.
+
+## 10. Verdict
+
+**A-now / B-later.**
+
+- **A (current-view / small-tree export) — viable client-side now.** Cards all render; the `html-to-image` → `jspdf` pipeline works; the only required correction is capturing the **wrapper div** (SVG + cards), not `svg.main_svg`. Trees that fit the viewport (or a "fit to screen" then capture) export fine.
+- **B (full-tree, archival-quality export) — needs a dedicated path, not live-chart scraping.** Capturing the live interactive chart is **fragile and tightly coupled** to (a) the d3 zoom/pan transform, (b) the `overflow:hidden` viewport clipping the full layout, and (c) the #69 `__super_root__` rendering. Producing a readable, complete 200-person artefact means either zoom-to-fit (cards become unreadably small at scale) or rendering at full layout size (re-introduces the canvas-dimension/memory ceiling we set out to measure). The robust answer is a **dedicated full-layout renderer** — compute the layout once and render all cards at full size to an offscreen surface, or generate server-side — rather than scraping the on-screen chart.
+
+### Product note (rescope for the epic)
+- The #60 "current-view vs full-tree" split is **real and should stay** — they are different efforts, not the same code. Do **not** collapse them.
+- **#218 (PNG)** can ship the cheap win first: capture the wrapper div for the visible/fit view. Update its spec to capture `svg.main_svg.parentElement`, not the SVG, and to add a "Fit to screen" step before capture.
+- **#219 (PDF)** layers on #218 unchanged in principle.
+- **Full-tree archival export is a larger B item** — likely a new issue under #60 for a dedicated/headless full-layout renderer. This **revisits #60's "no server" assumption**: a readable 200-person export may justify a server-side render after all.
+- **#216 (crossOrigin/CORS)** is still worth doing but lower urgency — no taint surfaced on synthetic photos in chromium; re-validate with real Supabase URLs cross-browser when #218 builds.
+- **Exact memory/canvas ceiling deferred** — measure it inside the B full-layout-renderer spike, where the full tree actually renders at full size.
+
+### Spike disposable-code note
+The probe (`src/app/spike/**`), `playwright.config.ts`, `scripts/spike-215/capture-runner.spec.ts`, and the `next.config.ts` / `public-routes.ts` spike hacks are **throwaway** — remove before #218 builds the real feature (see the plan's cleanup contract). `scripts/spike-215/tree-shape.ts` + `synth-photo.ts` + `seed-export-stress.ts` may be reused for #218 testing **if** the generator is first fixed to a multi-root topology (current version triggers 9.4).
