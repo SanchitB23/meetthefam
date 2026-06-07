@@ -2,7 +2,7 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-type CaptureOpts = { filter: (n: HTMLElement) => boolean }
+type CaptureOpts = { filter: (n: HTMLElement) => boolean; pixelRatio: number }
 
 // Mock html-to-image: capture the (node, options) it's called with.
 const { toBlob } = vi.hoisted(() => ({
@@ -64,6 +64,12 @@ describe('captureTree (png)', () => {
     const opts = toBlob.mock.calls[0][1]
     expect(opts.filter(excluded)).toBe(false)
     expect(opts.filter(card)).toBe(true)
+  })
+
+  it('rasterises at pixelRatio 3 for crisper zoomed output', async () => {
+    const { container } = buildTree()
+    await captureTree(container, 'png', 'Smith Family')
+    expect(toBlob.mock.calls[0][1].pixelRatio).toBe(3)
   })
 
   it('downloads with the export filename', async () => {

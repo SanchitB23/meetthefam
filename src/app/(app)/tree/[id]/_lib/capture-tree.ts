@@ -63,7 +63,11 @@ export async function captureTree(
 
   const { toBlob } = await import('html-to-image')
   const blob = await toBlob(target, {
-    pixelRatio: 2,
+    // 3× (not the usual 2×) so the exported PNG stays legible when zoomed into
+    // on a large tree — the whole tree is fit-to-screen before capture, so the
+    // per-card pixel budget is small; the extra ratio buys readable zoom. Still
+    // well under the browser canvas-size cap for our 50–200 person trees.
+    pixelRatio: 3,
     backgroundColor: resolveBackground(target),
     cacheBust: true,
     filter: (node: HTMLElement) =>
