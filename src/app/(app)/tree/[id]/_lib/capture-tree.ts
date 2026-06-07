@@ -5,8 +5,21 @@
 // nodes that are SIBLINGS of `svg.main_svg` (the SVG holds only connector lines).
 // Capturing the SVG alone yields lines with no people, so we capture
 // `svg.main_svg.parentElement` — the wrapper div holding both SVG and cards.
+//
+// Safari fixes (#218):
+//   1. inlineImages — converts cross-origin <img> srcs to base64 data URLs so
+//      WebKit never taints the canvas (photos would otherwise be dropped).
+//   2. inlineLinkStrokes — writes getComputedStyle stroke values as inline
+//      styles on path.link elements so html-to-image's Safari clone carries
+//      the concrete color (family-chart hard-codes stroke="#fff" as an attribute
+//      which wins over CSS in the clone → invisible connectors on cream bg).
+//   3. 2-pass toBlob — Safari's first toBlob call often returns a blank/
+//      incomplete canvas while fonts and composited layers finish their first
+//      paint. We discard the first result and use the second.
 import type { ExportFormat } from './export-events'
 import { exportFilename } from './export-filename'
+import { inlineImages } from './inline-images'
+import { inlineLinkStrokes } from './inline-link-strokes'
 
 const FALLBACK_BG = '#fdfbf3' // heirloom cream; used if the live bg is transparent
 
@@ -66,18 +79,40 @@ export async function captureTree(
   // Check cancellation before starting the potentially-slow raster step.
   if (signal?.aborted) return
 
-  const { toBlob } = await import('html-to-image')
-  const blob = await toBlob(target, {
-    // pixelRatio is supplied by the caller (useExportTrigger via prepareForCapture).
-    // For the native-scale approach (#218): the container is enlarged to the tree's
-    // native extent before capture so the chart renders at ≈1×, and pixelRatio is
-    // chosen by planExportRaster to keep the output within browser canvas caps.
-    pixelRatio,
-    backgroundColor: resolveBackground(target),
-    cacheBust: true,
-    filter: (node: HTMLElement) =>
-      !(node instanceof HTMLElement && node.hasAttribute('data-export-exclude')),
-  })
+  // --- Safari pre-capture DOM prep ---
+  // These two steps mutate the live DOM temporarily; both return restore fns
+  // that MUST be called in the finally block below.
+  const restoreImgs = await inlineImages(target)
+  const restoreStrokes = inlineLinkStrokes(target)
+
+  let blob: Blob | null = null
+  try {
+    const { toBlob } = await import('html-to-image')
+
+    const opts = {
+      // pixelRatio is supplied by the caller (useExportTrigger via prepareForCapture).
+      // For the native-scale approach (#218): the container is enlarged to the tree's
+      // native extent before capture so the chart renders at ≈1×, and pixelRatio is
+      // chosen by planExportRaster to keep the output within browser canvas caps.
+      pixelRatio,
+      backgroundColor: resolveBackground(target),
+      cacheBust: true,
+      filter: (node: HTMLElement) =>
+        !(node instanceof HTMLElement && node.hasAttribute('data-export-exclude')),
+    }
+
+    // 2-pass capture for Safari: WebKit's first toBlob() often returns a blank
+    // or incomplete canvas while composited layers and fonts settle into the
+    // clone. We discard the first result and use the second. On Chrome the two
+    // passes are equally good and the extra pass costs < 100 ms.
+    await toBlob(target, opts) // first pass — discard (Safari warm-up)
+    blob = await toBlob(target, opts) // second pass — use this
+  } finally {
+    // Always restore the DOM, even if toBlob throws or the signal is aborted.
+    restoreStrokes()
+    restoreImgs()
+  }
+
   if (!blob) throw new Error('Tree export failed: empty image')
 
   // Check again after the async raster in case the user cancelled mid-flight.

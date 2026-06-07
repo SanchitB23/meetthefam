@@ -12,6 +12,22 @@ const { toBlob } = vi.hoisted(() => ({
 }))
 vi.mock('html-to-image', () => ({ toBlob }))
 
+// Mock inlineImages and inlineLinkStrokes so the capture tests stay focused on
+// orchestration logic and don't require real fetch / getComputedStyle wiring.
+// The Safari helpers are tested in their own suites.
+const { inlineImages } = vi.hoisted(() => ({
+  inlineImages: vi.fn<(target: HTMLElement) => Promise<() => void>>(
+    async () => () => undefined,
+  ),
+}))
+const { inlineLinkStrokes } = vi.hoisted(() => ({
+  inlineLinkStrokes: vi.fn<(target: HTMLElement) => () => void>(
+    () => () => undefined,
+  ),
+}))
+vi.mock('@/app/(app)/tree/[id]/_lib/inline-images', () => ({ inlineImages }))
+vi.mock('@/app/(app)/tree/[id]/_lib/inline-link-strokes', () => ({ inlineLinkStrokes }))
+
 import { captureTree } from '@/app/(app)/tree/[id]/_lib/capture-tree'
 
 /** Build the f3 DOM shape: .f3 container > inner wrapper > svg.main_svg + sibling cards. */
@@ -36,6 +52,11 @@ describe('captureTree (png)', () => {
 
   beforeEach(() => {
     toBlob.mockClear()
+    inlineImages.mockClear()
+    inlineLinkStrokes.mockClear()
+    // Reset to default passing implementations.
+    inlineImages.mockResolvedValue(() => undefined)
+    inlineLinkStrokes.mockReturnValue(() => undefined)
     clickSpy = vi.fn<() => void>()
     // jsdom lacks object-URL plumbing.
     vi.stubGlobal('URL', {
@@ -54,14 +75,17 @@ describe('captureTree (png)', () => {
   it('captures svg.main_svg.parentElement, not the container or the svg', async () => {
     const { container, wrapper } = buildTree()
     await captureTree(container, 'png', 'Smith Family')
-    expect(toBlob).toHaveBeenCalledTimes(1)
+    // 2-pass: toBlob is called twice — first pass discarded, second used.
+    expect(toBlob).toHaveBeenCalledTimes(2)
     expect(toBlob.mock.calls[0][0]).toBe(wrapper)
+    expect(toBlob.mock.calls[1][0]).toBe(wrapper)
   })
 
   it('filters out [data-export-exclude] nodes', async () => {
     const { container, card, excluded } = buildTree()
     await captureTree(container, 'png', 'Smith Family')
-    const opts = toBlob.mock.calls[0][1]
+    // Use the second-pass call options (the one whose result is used).
+    const opts = toBlob.mock.calls[1][1]
     expect(opts.filter(excluded)).toBe(false)
     expect(opts.filter(card)).toBe(true)
   })
@@ -69,13 +93,13 @@ describe('captureTree (png)', () => {
   it('rasterises at pixelRatio 3 by default (backward compat)', async () => {
     const { container } = buildTree()
     await captureTree(container, 'png', 'Smith Family')
-    expect(toBlob.mock.calls[0][1].pixelRatio).toBe(3)
+    expect(toBlob.mock.calls[1][1].pixelRatio).toBe(3)
   })
 
   it('forwards an explicit pixelRatio to html-to-image (native-scale export #218)', async () => {
     const { container } = buildTree()
     await captureTree(container, 'png', 'Smith Family', undefined, 2.73)
-    expect(toBlob.mock.calls[0][1].pixelRatio).toBe(2.73)
+    expect(toBlob.mock.calls[1][1].pixelRatio).toBe(2.73)
   })
 
   it('downloads with the export filename', async () => {
@@ -103,14 +127,53 @@ describe('captureTree (png)', () => {
   it('skips the download when signal.aborted becomes true mid-flight', async () => {
     const { container } = buildTree()
     const signal = { aborted: false }
-    // Make toBlob flip the signal before resolving (simulates cancel mid-raster).
+    // Make the second toBlob flip the signal before resolving (simulates cancel mid-raster).
+    let callCount = 0
     toBlob.mockImplementation(async () => {
-      signal.aborted = true
+      callCount++
+      if (callCount === 2) signal.aborted = true
       return new Blob(['x'], { type: 'image/png' })
     })
     await captureTree(container, 'png', 'Smith Family', signal)
-    // toBlob ran but the download should have been skipped.
-    expect(toBlob).toHaveBeenCalledTimes(1)
+    // Both toBlob passes ran but the download should have been skipped.
+    expect(toBlob).toHaveBeenCalledTimes(2)
     expect(clickSpy).not.toHaveBeenCalled()
+  })
+
+  it('calls inlineImages and inlineLinkStrokes before toBlob', async () => {
+    const callOrder: string[] = []
+    inlineImages.mockImplementation(async () => {
+      callOrder.push('inlineImages')
+      return () => undefined
+    })
+    inlineLinkStrokes.mockImplementation(() => {
+      callOrder.push('inlineLinkStrokes')
+      return () => undefined
+    })
+    toBlob.mockImplementation(async () => {
+      callOrder.push('toBlob')
+      return new Blob(['x'], { type: 'image/png' })
+    })
+
+    const { container } = buildTree()
+    await captureTree(container, 'png', 'Smith Family')
+
+    expect(callOrder[0]).toBe('inlineImages')
+    expect(callOrder[1]).toBe('inlineLinkStrokes')
+    expect(callOrder).toContain('toBlob')
+  })
+
+  it('calls restore functions even when toBlob throws', async () => {
+    const restoreImgs = vi.fn()
+    const restoreStrokes = vi.fn()
+    inlineImages.mockResolvedValue(restoreImgs)
+    inlineLinkStrokes.mockReturnValue(restoreStrokes)
+    toBlob.mockRejectedValue(new Error('raster fail'))
+
+    const { container } = buildTree()
+    await expect(captureTree(container, 'png', 'Smith Family')).rejects.toThrow('raster fail')
+
+    expect(restoreImgs).toHaveBeenCalled()
+    expect(restoreStrokes).toHaveBeenCalled()
   })
 })
