@@ -3,6 +3,7 @@ import { ArrowLeft, Settings } from 'lucide-react'
 import { FamilyTree } from './FamilyTree'
 import type { PersonRow } from '../_lib/types'
 import { AddRelativeFab } from './AddRelativeFab'
+import { ExportTreeButton } from './ExportTreeButton'
 import { TreeSettingsSheet, type MemberRow, type PendingInviteRow } from './TreeSettingsSheet'
 import { LinkProgress } from '@/components/ui/LinkProgress'
 
@@ -160,6 +161,7 @@ export async function TreeContent({
         <h1 className="font-serif text-3xl text-foreground leading-tight flex-1 min-w-0 truncate">
           {tree.name}
         </h1>
+        {people.length > 0 && <ExportTreeButton />}
         <TreeSettingsSheet
           key={tree.id}
           treeId={tree.id}

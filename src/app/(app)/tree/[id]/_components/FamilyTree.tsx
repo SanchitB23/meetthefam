@@ -62,9 +62,11 @@ import { personNodeHtml } from '../_lib/person-node-html'
 import { usePressActions } from '../_lib/usePressActions'
 import type { PersonRow } from '../_lib/types'
 import { AddRelativeFab } from './AddRelativeFab'
+import { ExportProgressDialog } from './ExportProgressDialog'
 import { PersonActionMenu, type ActionAnchor } from './PersonActionMenu'
 import { PersonDetailSheet } from './PersonDetailSheet'
 import { ZoomControls } from './ZoomControls'
+import { useExportTrigger } from '../_lib/useExportTrigger'
 // PersonHoverPlus and PersonForm removed in 8b polish FIX 1:
 // "+" is now an in-card button child of .mtf-node; form is owned by AddRelativeFab
 // via CustomEvent('mtf-add-relative') dispatched from setOnCardClick.
@@ -159,6 +161,11 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
     getServerHashSnapshot,
   )
   const currentFocusId = hashFocus ?? initialFocusId ?? null
+
+  // #217 — export trigger seam. Listens for the top-bar Export button's
+  // `mtf-export-tree` event, drives the progress dialog, and (in #218) runs
+  // the real capture. Gated behind readOnly so the share-page instance is inert.
+  const { exporting } = useExportTrigger(containerRef, { readOnly })
 
   const { shouldSuppressNextClickRef } = usePressActions(containerRef, {
     onLongPress: readOnly
@@ -513,6 +520,7 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
         )}
         <ZoomControls onZoomIn={zoomIn} onZoomOut={zoomOut} onFit={zoomToFit} />
       </div>
+      {!readOnly && <ExportProgressDialog open={exporting} />}
       <PersonDetailSheet
         person={detailPerson}
         peopleById={peopleById}
