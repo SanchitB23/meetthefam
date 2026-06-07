@@ -23,6 +23,7 @@ export const PUBLIC_PATHS = [
   '/childrens-privacy',
   '/dmca',
   '/faq',
+  '/spike', // SPIKE #215 — remove with the probe
 ] as const
 
 /**
