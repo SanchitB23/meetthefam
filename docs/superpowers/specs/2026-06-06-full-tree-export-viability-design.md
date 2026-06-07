@@ -165,3 +165,20 @@ So the collapse-to-2 reproduced **only under headless Chromium** (Playwright + t
 - On real browsers **all cards render into the DOM at once** (✓ confirmed at 60) — so full-tree DOM capture is *more* feasible than §9.4 implied; the tree is all there.
 - BUT large trees auto-fit-zoom to a tiny scale, so a current-view capture is unreadable at 200, and a readable full capture needs full-layout-size rendering (canvas ceiling) — the **B-path rationale is unchanged**.
 - **New constraint for #225:** measure the ceiling in a **headed/real browser**, not headless Playwright, or the measurement itself collapses.
+
+## 12. Correction-of-the-correction (2026-06-07) — §11 was WRONG; the collapse is real on real browsers
+
+§11 attributed the collapse to headless Chromium. That was disproved by loading the **exact local trees in real Chrome** (personal profile, via the extension, against the same local prod build of `de3cc24`):
+
+| tree-shape(n) | real Chrome `.card_cont` | result |
+|---|---|---|
+| 25 | 25 | renders ✓ |
+| 50 | 2 | **collapses** ✗ |
+| 60 (the QA tree) | 60 | renders ✓ |
+| 100 | 3 | **collapses** ✗ |
+| 150 | 3 | **collapses** ✗ |
+| 200 | 2 | **collapses** ✗ |
+
+The earlier "QA renders fully" result was **survivorship bias**: the QA fixture happened to be `tree-shape(60)`, one of the topologies that renders. The transform is **identical for all counts** (no `__super_root__` injected, `data[0]` = founding patriarch) — so the difference is purely **family-chart's layout when `main_id` is pinned to a non-existent `__super_root__`** (FamilyTree.tsx:328) and the transform skipped the super-root (single primary root → `family-chart-data-show-all.ts:193`). The fallback walk is **fragile and topology-dependent** — it renders some single-trunk trees fully and collapses others to ~2.
+
+**Net:** #224 is a **REAL, real-browser, user-facing bug** (this code shipped in v1.1 → it's on prod), structure-dependent, hitting many single-ancestral-couple trees — especially larger ones (50/100/150/200 all collapsed in my sample; only 25 and 60 rendered). It **does** affect export (a collapsed tree exports nothing useful), so #224 effectively gates full-value export for affected trees. §11's "headless-only / not a user bug" conclusion is retracted.
