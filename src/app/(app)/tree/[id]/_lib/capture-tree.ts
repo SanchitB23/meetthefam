@@ -44,13 +44,22 @@ function triggerDownload(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url)
 }
 
+export interface CaptureSignal {
+  /** True when the user cancelled — the blob is discarded and no download fires. */
+  aborted: boolean
+}
+
 export async function captureTree(
   container: HTMLElement,
   format: ExportFormat,
   treeName: string,
+  signal?: CaptureSignal,
 ): Promise<void> {
   const target = captureTargetOf(container)
   await awaitPhotoDecode(target)
+
+  // Check cancellation before starting the potentially-slow raster step.
+  if (signal?.aborted) return
 
   const { toBlob } = await import('html-to-image')
   const blob = await toBlob(target, {
@@ -61,6 +70,9 @@ export async function captureTree(
       !(node instanceof HTMLElement && node.hasAttribute('data-export-exclude')),
   })
   if (!blob) throw new Error('Tree export failed: empty image')
+
+  // Check again after the async raster in case the user cancelled mid-flight.
+  if (signal?.aborted) return
 
   triggerDownload(blob, exportFilename(treeName, format))
 }

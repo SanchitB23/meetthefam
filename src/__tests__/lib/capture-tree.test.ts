@@ -78,4 +78,27 @@ describe('captureTree (png)', () => {
     expect(clickSpy).toHaveBeenCalled()
     vi.useRealTimers()
   })
+
+  it('skips the download when signal.aborted is true before raster', async () => {
+    const { container } = buildTree()
+    const signal = { aborted: true }
+    await captureTree(container, 'png', 'Smith Family', signal)
+    // toBlob should not be called — aborted before raster step.
+    expect(toBlob).not.toHaveBeenCalled()
+    expect(clickSpy).not.toHaveBeenCalled()
+  })
+
+  it('skips the download when signal.aborted becomes true mid-flight', async () => {
+    const { container } = buildTree()
+    const signal = { aborted: false }
+    // Make toBlob flip the signal before resolving (simulates cancel mid-raster).
+    toBlob.mockImplementation(async () => {
+      signal.aborted = true
+      return new Blob(['x'], { type: 'image/png' })
+    })
+    await captureTree(container, 'png', 'Smith Family', signal)
+    // toBlob ran but the download should have been skipped.
+    expect(toBlob).toHaveBeenCalledTimes(1)
+    expect(clickSpy).not.toHaveBeenCalled()
+  })
 })

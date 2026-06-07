@@ -162,10 +162,21 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
   )
   const currentFocusId = hashFocus ?? initialFocusId ?? null
 
+  // #218 — fit the tree to frame before export. Same as zoomToFit but without
+  // clearing the URL hash: export is transient, we don't want to stomp the
+  // user's navigation state. chartRef.current may be null during SSR / before
+  // the chart mounts; the fitFn is a no-op in those cases.
+  const exportFitFn = useCallback(() => {
+    chartRef.current?.updateTree({ initial: true })
+  }, [])
+
   // #217 — export trigger seam. Listens for the top-bar Export button's
-  // `mtf-export-tree` event, drives the progress dialog, and (in #218) runs
+  // `mtf-export-tree` event, drives the progress dialog, and (#218) runs
   // the real capture. Gated behind readOnly so the share-page instance is inert.
-  const { exporting } = useExportTrigger(containerRef, { readOnly })
+  const { exporting, cancel: cancelExport } = useExportTrigger(containerRef, {
+    readOnly,
+    fitFn: exportFitFn,
+  })
 
   const { shouldSuppressNextClickRef } = usePressActions(containerRef, {
     onLongPress: readOnly
@@ -520,7 +531,7 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
         )}
         <ZoomControls onZoomIn={zoomIn} onZoomOut={zoomOut} onFit={zoomToFit} />
       </div>
-      {!readOnly && <ExportProgressDialog open={exporting} />}
+      {!readOnly && <ExportProgressDialog open={exporting} onCancel={cancelExport} />}
       <PersonDetailSheet
         person={detailPerson}
         peopleById={peopleById}

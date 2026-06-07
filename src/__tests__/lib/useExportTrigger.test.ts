@@ -48,7 +48,7 @@ describe('useExportTrigger', () => {
     dispatchExportTree({ format: 'png', treeName: 'Smith Family' })
 
     await waitFor(() => expect(captureTreeMock).toHaveBeenCalled())
-    expect(captureTreeMock).toHaveBeenCalledWith(el, 'png', 'Smith Family')
+    expect(captureTreeMock).toHaveBeenCalledWith(el, 'png', 'Smith Family', expect.anything())
     unmount()
   })
 
@@ -63,6 +63,69 @@ describe('useExportTrigger', () => {
     // Give any (incorrect) async handler a chance to run.
     await new Promise((r) => setTimeout(r, 20))
     expect(pending).toEqual([])
+    unmount()
+    off()
+  })
+
+  it('calls fitFn before captureTree', async () => {
+    // Verify call order: fitFn is invoked, then captureTree follows.
+    const callOrder: string[] = []
+    const fitFn = vi.fn(() => { callOrder.push('fit') })
+
+    // Make captureTree record its invocation order.
+    captureTreeMock.mockImplementation(async () => { callOrder.push('capture') })
+
+    const { ref } = makeContainer()
+    const { unmount } = renderHook(() =>
+      useExportTrigger(ref, { readOnly: false, fitFn }),
+    )
+
+    dispatchExportTree({ format: 'png', treeName: 'Test' })
+
+    // Wait for the full export cycle to complete (fitFn → delay → captureTree).
+    await waitFor(() => expect(callOrder).toContain('capture'), { timeout: 2000 })
+    // fitFn must have been called BEFORE captureTree.
+    expect(callOrder.indexOf('fit')).toBeLessThan(callOrder.indexOf('capture'))
+
+    unmount()
+  })
+
+  it('cancel resets pending and exporting; signal passed to captureTree reflects aborted state', async () => {
+    // Make captureTree record the signal object it receives.
+    const receivedSignals: Array<{ aborted: boolean } | undefined> = []
+    captureTreeMock.mockImplementation(async (_el, _fmt, _name, signal) => {
+      receivedSignals.push(signal as { aborted: boolean } | undefined)
+      // Yield so the cancel call has a chance to flip signal.aborted
+      // before captureTree's post-raster abort check would run.
+      await new Promise((r) => setTimeout(r, 0))
+    })
+
+    const { ref } = makeContainer()
+    const pending: boolean[] = []
+    const off = onExportPending((d: ExportPendingDetail) => pending.push(d.pending))
+
+    const { result, unmount } = renderHook(() =>
+      useExportTrigger(ref, { readOnly: false }),
+    )
+
+    dispatchExportTree({ format: 'png', treeName: 'Smith Family' })
+
+    // Wait for captureTree to be invoked (export is in progress).
+    await waitFor(() => expect(captureTreeMock).toHaveBeenCalled())
+
+    // Cancel while capture is running.
+    result.current.cancel()
+
+    // The signal object shared with captureTree should now report aborted.
+    await waitFor(() => {
+      const sig = receivedSignals[0]
+      expect(sig?.aborted).toBe(true)
+    })
+
+    // pending reset to false by cancel().
+    expect(pending).toContain(false)
+    expect(pending[pending.length - 1]).toBe(false)
+
     unmount()
     off()
   })
