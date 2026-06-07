@@ -21,13 +21,13 @@ export function useExportTrigger(
 
   useEffect(() => {
     if (readOnly) return
-    return onExportTree(async ({ format }) => {
+    return onExportTree(async ({ format, treeName }) => {
       const el = containerRef.current
       if (!el) return
       setExporting(true)
       emitExportPending({ pending: true })
       try {
-        await withOverflowVisible(el, () => captureTree(el, format))
+        await withOverflowVisible(el, () => captureTree(el, format, treeName))
       } finally {
         emitExportPending({ pending: false })
         setExporting(false)

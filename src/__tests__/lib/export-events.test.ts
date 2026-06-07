@@ -9,13 +9,13 @@ import {
 } from '@/app/(app)/tree/[id]/_lib/export-events'
 
 describe('export-events', () => {
-  it('round-trips an export-tree event with its format payload', () => {
+  it('round-trips an export-tree event with its format + treeName payload', () => {
     const cb = vi.fn()
     const off = onExportTree(cb)
-    dispatchExportTree({ format: 'png' })
-    expect(cb).toHaveBeenCalledWith({ format: 'png' })
+    dispatchExportTree({ format: 'png', treeName: 'Smith Family' })
+    expect(cb).toHaveBeenCalledWith({ format: 'png', treeName: 'Smith Family' })
     off()
-    dispatchExportTree({ format: 'pdf' })
+    dispatchExportTree({ format: 'pdf', treeName: 'Smith Family' })
     expect(cb).toHaveBeenCalledTimes(1) // unsubscribed → no second call
   })
 

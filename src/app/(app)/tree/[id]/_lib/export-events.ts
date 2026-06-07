@@ -10,7 +10,9 @@ export const EXPORT_TREE_EVENT = 'mtf-export-tree' as const
 export const EXPORT_PENDING_EVENT = 'mtf-export-pending' as const
 
 export type ExportFormat = 'png' | 'pdf'
-export type ExportTreeDetail = { format: ExportFormat }
+// treeName rides the contract so the capture step can build the download
+// filename (`<TreeName>-tree-YYYY-MM-DD.<ext>`) without re-reading the DOM/page.
+export type ExportTreeDetail = { format: ExportFormat; treeName: string }
 export type ExportPendingDetail = { pending: boolean }
 
 export function dispatchExportTree(detail: ExportTreeDetail): void {

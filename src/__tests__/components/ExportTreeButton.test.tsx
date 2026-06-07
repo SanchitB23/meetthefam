@@ -16,15 +16,15 @@ describe('ExportTreeButton', () => {
     const handler = (e: Event) => seen.push((e as CustomEvent<ExportTreeDetail>).detail)
     window.addEventListener(EXPORT_TREE_EVENT, handler)
 
-    render(<ExportTreeButton />)
+    render(<ExportTreeButton treeName="Smith Family" />)
     fireEvent.click(screen.getByRole('button', { name: /export tree/i }))
 
-    expect(seen).toEqual([{ format: 'png' }])
+    expect(seen).toEqual([{ format: 'png', treeName: 'Smith Family' }])
     window.removeEventListener(EXPORT_TREE_EVENT, handler)
   })
 
   it('disables while a capture is pending and re-enables after', async () => {
-    render(<ExportTreeButton />)
+    render(<ExportTreeButton treeName="Smith Family" />)
     const btn = screen.getByRole('button', { name: /export tree/i })
     expect(btn).toBeEnabled()
 
