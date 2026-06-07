@@ -54,6 +54,11 @@ export async function captureTree(
   format: ExportFormat,
   treeName: string,
   signal?: CaptureSignal,
+  /** Pixel ratio for the raster. Defaults to 3 (crisp Retina output).
+   *  #218 native-scale export: planExportRaster computes the appropriate ratio
+   *  based on the tree's native extent and browser canvas caps — it will be ≤ 3
+   *  for trees whose native size would exceed those caps. */
+  pixelRatio = 3,
 ): Promise<void> {
   const target = captureTargetOf(container)
   await awaitPhotoDecode(target)
@@ -63,11 +68,11 @@ export async function captureTree(
 
   const { toBlob } = await import('html-to-image')
   const blob = await toBlob(target, {
-    // 3× (not the usual 2×) so the exported PNG stays legible when zoomed into
-    // on a large tree — the whole tree is fit-to-screen before capture, so the
-    // per-card pixel budget is small; the extra ratio buys readable zoom. Still
-    // well under the browser canvas-size cap for our 50–200 person trees.
-    pixelRatio: 3,
+    // pixelRatio is supplied by the caller (useExportTrigger via prepareForCapture).
+    // For the native-scale approach (#218): the container is enlarged to the tree's
+    // native extent before capture so the chart renders at ≈1×, and pixelRatio is
+    // chosen by planExportRaster to keep the output within browser canvas caps.
+    pixelRatio,
     backgroundColor: resolveBackground(target),
     cacheBust: true,
     filter: (node: HTMLElement) =>

@@ -66,10 +66,16 @@ describe('captureTree (png)', () => {
     expect(opts.filter(card)).toBe(true)
   })
 
-  it('rasterises at pixelRatio 3 for crisper zoomed output', async () => {
+  it('rasterises at pixelRatio 3 by default (backward compat)', async () => {
     const { container } = buildTree()
     await captureTree(container, 'png', 'Smith Family')
     expect(toBlob.mock.calls[0][1].pixelRatio).toBe(3)
+  })
+
+  it('forwards an explicit pixelRatio to html-to-image (native-scale export #218)', async () => {
+    const { container } = buildTree()
+    await captureTree(container, 'png', 'Smith Family', undefined, 2.73)
+    expect(toBlob.mock.calls[0][1].pixelRatio).toBe(2.73)
   })
 
   it('downloads with the export filename', async () => {

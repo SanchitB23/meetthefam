@@ -48,7 +48,8 @@ describe('useExportTrigger', () => {
     dispatchExportTree({ format: 'png', treeName: 'Smith Family' })
 
     await waitFor(() => expect(captureTreeMock).toHaveBeenCalled())
-    expect(captureTreeMock).toHaveBeenCalledWith(el, 'png', 'Smith Family', expect.anything())
+    // Fifth arg is pixelRatio (defaults to 3 when no prepareForCapture).
+    expect(captureTreeMock).toHaveBeenCalledWith(el, 'png', 'Smith Family', expect.anything(), 3)
     unmount()
   })
 
@@ -86,6 +87,63 @@ describe('useExportTrigger', () => {
     await waitFor(() => expect(callOrder).toContain('capture'), { timeout: 2000 })
     // fitFn must have been called BEFORE captureTree.
     expect(callOrder.indexOf('fit')).toBeLessThan(callOrder.indexOf('capture'))
+
+    unmount()
+  })
+
+  it('prepareForCapture is called before captureTree and restore() is called in finally', async () => {
+    const callOrder: string[] = []
+    const restore = vi.fn(() => { callOrder.push('restore') })
+    const prepareForCapture = vi.fn(() => {
+      callOrder.push('prepare')
+      return { pixelRatio: 2.5, restore }
+    })
+    captureTreeMock.mockImplementation(async () => { callOrder.push('capture') })
+
+    const { ref } = makeContainer()
+    const { unmount } = renderHook(() =>
+      useExportTrigger(ref, { readOnly: false, prepareForCapture }),
+    )
+
+    dispatchExportTree({ format: 'png', treeName: 'NativeScale' })
+    await waitFor(() => expect(callOrder).toContain('restore'), { timeout: 2000 })
+
+    // Order must be: prepare → capture → restore
+    expect(callOrder.indexOf('prepare')).toBeLessThan(callOrder.indexOf('capture'))
+    expect(callOrder.indexOf('capture')).toBeLessThan(callOrder.indexOf('restore'))
+    unmount()
+  })
+
+  it('prepareForCapture pixelRatio is forwarded to captureTree', async () => {
+    const restore = vi.fn()
+    const prepareForCapture = vi.fn(() => ({ pixelRatio: 1.72, restore }))
+
+    const { el, ref } = makeContainer()
+    const { unmount } = renderHook(() =>
+      useExportTrigger(ref, { readOnly: false, prepareForCapture }),
+    )
+
+    dispatchExportTree({ format: 'png', treeName: 'NativeScale' })
+    await waitFor(() => expect(captureTreeMock).toHaveBeenCalled(), { timeout: 2000 })
+
+    // Fifth arg is the pixelRatio from prepareForCapture
+    expect(captureTreeMock).toHaveBeenCalledWith(el, 'png', 'NativeScale', expect.anything(), 1.72)
+    await waitFor(() => expect(restore).toHaveBeenCalled())
+    unmount()
+  })
+
+  it('restore() is called even when captureTree throws', async () => {
+    const restore = vi.fn()
+    const prepareForCapture = vi.fn(() => ({ pixelRatio: 3, restore }))
+    captureTreeMock.mockRejectedValueOnce(new Error('raster failed'))
+
+    const { ref } = makeContainer()
+    const { unmount } = renderHook(() =>
+      useExportTrigger(ref, { readOnly: false, prepareForCapture }),
+    )
+
+    dispatchExportTree({ format: 'png', treeName: 'ErrorCase' })
+    await waitFor(() => expect(restore).toHaveBeenCalled(), { timeout: 2000 })
 
     unmount()
   })
