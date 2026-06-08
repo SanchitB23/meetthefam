@@ -161,7 +161,7 @@ export async function TreeContent({
         <h1 className="font-serif text-3xl text-foreground leading-tight flex-1 min-w-0 truncate">
           {tree.name}
         </h1>
-        {people.length > 0 && <ExportTreeButton />}
+        {people.length > 0 && <ExportTreeButton treeName={tree.name} />}
         <TreeSettingsSheet
           key={tree.id}
           treeId={tree.id}

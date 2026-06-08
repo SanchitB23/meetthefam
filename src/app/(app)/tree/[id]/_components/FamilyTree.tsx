@@ -66,7 +66,8 @@ import { ExportProgressDialog } from './ExportProgressDialog'
 import { PersonActionMenu, type ActionAnchor } from './PersonActionMenu'
 import { PersonDetailSheet } from './PersonDetailSheet'
 import { ZoomControls } from './ZoomControls'
-import { useExportTrigger } from '../_lib/useExportTrigger'
+import { useExportTrigger, type CapturePreparation } from '../_lib/useExportTrigger'
+import { measureNativeExtent, planExportRaster } from '../_lib/export-raster-plan'
 // PersonHoverPlus and PersonForm removed in 8b polish FIX 1:
 // "+" is now an in-card button child of .mtf-node; form is owned by AddRelativeFab
 // via CustomEvent('mtf-add-relative') dispatched from setOnCardClick.
@@ -162,10 +163,66 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
   )
   const currentFocusId = hashFocus ?? initialFocusId ?? null
 
+  // #218 — native-scale export: temporarily resize the container to the tree's
+  // native pixel extent so family-chart fits it at ≈1× scale, yielding a crisp
+  // raster instead of a blurry fit-to-screen capture.
+  //
+  // Steps:
+  //   1. Measure native extent via measureNativeExtent (SVG path bbox / zoom k).
+  //      Falls back to a safe default if measurement fails.
+  //   2. planExportRaster computes boxW×boxH and pixelRatio within browser caps.
+  //   3. Resize the .f3 container to boxW×boxH (inline style, overrides Tailwind
+  //      h-[calc(100vh-9rem)]). overflow is handled by withOverflowVisible in the
+  //      trigger — we don't need to set it here.
+  //   4. updateTree({ initial: true }) so family-chart fits into the big box.
+  //   5. Return { pixelRatio, restore } — restore puts the inline size back and
+  //      re-fits the chart to the viewport. Called in finally by useExportTrigger.
+  const prepareForCapture = useCallback((): CapturePreparation => {
+    const chart = chartRef.current
+    const cont = containerRef.current
+
+    // Save current inline dimensions (may be empty strings if Tailwind class is in charge).
+    const prevWidth = cont?.style.width ?? ''
+    const prevHeight = cont?.style.height ?? ''
+
+    // Measure native extent.
+    const nativeExtent = cont ? measureNativeExtent(cont) : null
+
+    // Fall back to a reasonable large box if measurement fails so the chart at
+    // least renders at a larger-than-viewport scale. 2400×1600 is a common
+    // "full-screen" size that gives decent output with the default pixelRatio=3.
+    const { nativeW, nativeH } = nativeExtent ?? { nativeW: 2400, nativeH: 1600 }
+
+    const plan = planExportRaster({ nativeW, nativeH })
+
+    // Resize the container.
+    if (cont) {
+      cont.style.width = `${plan.boxW}px`
+      cont.style.height = `${plan.boxH}px`
+    }
+
+    // Fit the chart into the enlarged box.
+    chart?.updateTree({ initial: true })
+
+    const restore = () => {
+      if (cont) {
+        cont.style.width = prevWidth
+        cont.style.height = prevHeight
+      }
+      // Re-fit into the normal viewport after restoring container size.
+      chart?.updateTree({ initial: true })
+    }
+
+    return { pixelRatio: plan.pixelRatio, restore }
+  }, [containerRef])
+
   // #217 — export trigger seam. Listens for the top-bar Export button's
-  // `mtf-export-tree` event, drives the progress dialog, and (in #218) runs
+  // `mtf-export-tree` event, drives the progress dialog, and (#218) runs
   // the real capture. Gated behind readOnly so the share-page instance is inert.
-  const { exporting } = useExportTrigger(containerRef, { readOnly })
+  const { exporting, cancel: cancelExport } = useExportTrigger(containerRef, {
+    readOnly,
+    prepareForCapture,
+  })
 
   const { shouldSuppressNextClickRef } = usePressActions(containerRef, {
     onLongPress: readOnly
@@ -520,7 +577,7 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
         )}
         <ZoomControls onZoomIn={zoomIn} onZoomOut={zoomOut} onFit={zoomToFit} />
       </div>
-      {!readOnly && <ExportProgressDialog open={exporting} />}
+      {!readOnly && <ExportProgressDialog open={exporting} onCancel={cancelExport} />}
       <PersonDetailSheet
         person={detailPerson}
         peopleById={peopleById}

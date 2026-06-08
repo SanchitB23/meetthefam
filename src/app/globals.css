@@ -167,13 +167,16 @@
  *
  * `--border` (L≈0.88) sits a hair below `--background`/`--card` (cream)
  * and is essentially invisible at typical zoom levels — the v0.0.5 QA
- * caught this. Use color-mix to render the foreground charcoal at 35%
- * for a subtle-but-visible heirloom line. `currentColor` doesn't work
+ * caught this. Use color-mix to render the foreground charcoal at 55%
+ * for a clearly-visible heirloom line. `currentColor` doesn't work
  * here because the library doesn't set color on the SVG container.
+ * (#218 review: 35% read as barely-visible in exported PNGs and at
+ * low zoom — bumped to 55% + 1.75px so connectors hold up on-screen
+ * and in the captured image.)
  */
 .f3 .link {
-  stroke: color-mix(in oklch, var(--foreground) 35%, transparent);
-  stroke-width: 1.5px;
+  stroke: color-mix(in oklch, var(--foreground) 55%, transparent);
+  stroke-width: 1.75px;
 }
 
 /*

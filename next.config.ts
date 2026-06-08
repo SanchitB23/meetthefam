@@ -1,11 +1,6 @@
 import type { NextConfig } from "next";
-import path from "path";
 
-// SPIKE #215 — turbopack.root is a valid runtime config but not yet typed in
-// NextConfig; intersect it to silence tsc. Remove with the probe.
-type SpikeConfig = NextConfig & { turbopack?: { root?: string } };
-
-const nextConfig: SpikeConfig = {
+const nextConfig: NextConfig = {
   // Phase 5 photo-upload: people avatars live in the public Supabase
   // `photos` bucket. The Avatar component is plain <img> for v0.1
   // (locked decision 4 — coordinated swap to next/image is Phase 8
@@ -25,12 +20,6 @@ const nextConfig: SpikeConfig = {
     ],
     qualities: [75],
     minimumCacheTTL: 14400, // 4 h, matches the v16 default
-  },
-  // SPIKE #215 — fix Turbopack workspace-root confusion in git worktrees.
-  // Without this, Next.js infers the root from the parent pnpm-workspace.yaml
-  // and won't find routes that exist only in this worktree. Remove with the probe.
-  turbopack: {
-    root: path.resolve(__dirname),
   },
 };
 

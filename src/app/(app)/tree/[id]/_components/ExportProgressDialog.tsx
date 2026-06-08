@@ -1,20 +1,28 @@
 'use client'
-// Minimal progress shell for the export seam (#217). Modal, no close affordance
-// while a capture runs. #218 may extend it with progress detail / cancel.
+// Progress dialog for tree export (#217/#218). Modal while a capture runs.
+// #218: adds Cancel (soft-cancel — the raster may finish in the background
+// but the result is discarded and no download fires).
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 
-export function ExportProgressDialog({ open }: { open: boolean }) {
-  // Controlled dialog: Base UI requests close via onOpenChange; silently
-  // ignoring the request keeps the modal open during capture (Escape/overlay
-  // can't dismiss it). #218: when real capture has duration, add an
-  // aria-live/aria-busy progress affordance + a cancel path, and cover the
-  // no-close behavior with a test (the #217 stub closes within a tick).
+type Props = {
+  open: boolean
+  /** Called when the user clicks Cancel. Soft-cancel: skips the download. */
+  onCancel?: () => void
+}
+
+export function ExportProgressDialog({ open, onCancel }: Props) {
+  // Controlled dialog: onOpenChange silently ignores close requests so
+  // Escape / overlay-click can't dismiss it. The only dismissal path is
+  // the Cancel button (which lets the raster finish in the background
+  // and just skips the download).
   return (
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-xs" showCloseButton={false}>
@@ -24,6 +32,17 @@ export function ExportProgressDialog({ open }: { open: boolean }) {
             Capturing your family tree. This can take a few seconds.
           </DialogDescription>
         </DialogHeader>
+        {onCancel && (
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   )

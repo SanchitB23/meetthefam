@@ -8,7 +8,7 @@ import { Download } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { dispatchExportTree, onExportPending } from '../_lib/export-events'
 
-export function ExportTreeButton() {
+export function ExportTreeButton({ treeName }: { treeName: string }) {
   const [pending, setPending] = useState(false)
 
   useEffect(() => onExportPending(({ pending }) => setPending(pending)), [])
@@ -19,7 +19,7 @@ export function ExportTreeButton() {
       aria-label={pending ? 'Exporting tree…' : 'Export tree'}
       title={pending ? 'Exporting tree…' : 'Export tree'}
       disabled={pending}
-      onClick={() => dispatchExportTree({ format: 'png' })}
+      onClick={() => dispatchExportTree({ format: 'png', treeName })}
       className="inline-flex items-center justify-center h-10 w-10 rounded-md text-foreground/60 hover:text-foreground hover:bg-foreground/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {pending ? (
