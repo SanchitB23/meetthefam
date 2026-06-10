@@ -38,6 +38,15 @@ For focused work, prefer these subagents over a generic agent:
 
 Definitions live in [`.claude/agents/`](.claude/agents/).
 
+## Project skills
+
+User-invoked slash commands for this repo's repeated multi-step rituals (definitions in [`.claude/skills/`](.claude/skills/)):
+
+- **`/release`** — cut & ship a release (version selection, `release/vX.Y.Z` branch, merge-to-main, GitHub tag, prod redeploy, QA↔prod migration parity, ff-push to qa). Mirrors [`docs/dev/releases.md`](docs/dev/releases.md).
+- **`/migration`** — author & promote a Supabase migration through local → QA → prod (file conventions, local apply, QA MCP apply + cross-check, per-env policy). Mirrors [`docs/dev/migrations.md`](docs/dev/migrations.md).
+
+Both are user-invoked only (`disable-model-invocation`) — they have side effects. The canonical recipes stay in `docs/dev/`; the skills are the operational checklist + gotchas.
+
 ## Conventions
 
 ### Git / commits
