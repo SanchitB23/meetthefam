@@ -146,22 +146,22 @@ describe('planExportRaster — exact boundary at the cap', () => {
 describe('planExportRaster — degenerate inputs', () => {
   it('returns fallback for zero width', () => {
     const plan = planExportRaster({ nativeW: 0, nativeH: 600 })
-    expect(plan).toEqual({ boxW: 800, boxH: 600, pixelRatio: 1 })
+    expect(plan).toEqual({ boxW: 800, boxH: 600, pixelRatio: 1, degraded: true })
   })
 
   it('returns fallback for zero height', () => {
     const plan = planExportRaster({ nativeW: 800, nativeH: 0 })
-    expect(plan).toEqual({ boxW: 800, boxH: 600, pixelRatio: 1 })
+    expect(plan).toEqual({ boxW: 800, boxH: 600, pixelRatio: 1, degraded: true })
   })
 
   it('returns fallback for negative dimensions', () => {
     const plan = planExportRaster({ nativeW: -100, nativeH: 600 })
-    expect(plan).toEqual({ boxW: 800, boxH: 600, pixelRatio: 1 })
+    expect(plan).toEqual({ boxW: 800, boxH: 600, pixelRatio: 1, degraded: true })
   })
 
   it('returns fallback for both dimensions zero', () => {
     const plan = planExportRaster({ nativeW: 0, nativeH: 0 })
-    expect(plan).toEqual({ boxW: 800, boxH: 600, pixelRatio: 1 })
+    expect(plan).toEqual({ boxW: 800, boxH: 600, pixelRatio: 1, degraded: true })
   })
 })
 
@@ -191,5 +191,29 @@ describe('planExportRaster — output always integer box dimensions', () => {
     const plan = planExportRaster({ nativeW: 1234.7, nativeH: 567.3 })
     expect(Number.isInteger(plan.boxW)).toBe(true)
     expect(Number.isInteger(plan.boxH)).toBe(true)
+  })
+})
+
+describe('planExportRaster — degraded flag (#225)', () => {
+  it('is false when the box stays at native size and pixelRatio is untouched', () => {
+    expect(planExportRaster({ nativeW: 800, nativeH: 600 }).degraded).toBe(false)
+  })
+
+  it('is false when only pixelRatio is reduced (box still native size)', () => {
+    // 6000×1000 at PR 3 exceeds the side cap → PR drops, box stays native.
+    const plan = planExportRaster({ nativeW: 6000, nativeH: 1000 })
+    expect(plan.boxW).toBe(6000)
+    expect(plan.degraded).toBe(false)
+  })
+
+  it('is true when the box must shrink below the native extent', () => {
+    // 40000×30000 cannot fit even at pixelRatio 1 → box shrinks.
+    const plan = planExportRaster({ nativeW: 40_000, nativeH: 30_000 })
+    expect(plan.boxW).toBeLessThan(40_000)
+    expect(plan.degraded).toBe(true)
+  })
+
+  it('is true for the defensive fallback (invalid native dimensions)', () => {
+    expect(planExportRaster({ nativeW: 0, nativeH: 600 }).degraded).toBe(true)
   })
 })

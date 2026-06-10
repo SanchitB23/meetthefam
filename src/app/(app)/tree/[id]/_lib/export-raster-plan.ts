@@ -62,6 +62,14 @@ export interface RasterPlan {
    * boxW*pixelRatio × boxH*pixelRatio — guaranteed within the caps.
    */
   pixelRatio: number
+  /**
+   * True when the export can no longer render cards at native size — the box
+   * was shrunk below the native extent (or the inputs were invalid). The
+   * preflight gate (#225) uses this to show the degrade warning. Note the
+   * returned pixelRatio is always ≥ 1 by construction, so box-shrink is the
+   * only in-plan degradation signal.
+   */
+  degraded: boolean
 }
 
 /**
@@ -95,12 +103,13 @@ export function planExportRaster(
 ): RasterPlan {
   // Defensive minimum.
   if (nativeW <= 0 || nativeH <= 0) {
-    return { boxW: 800, boxH: 600, pixelRatio: 1 }
+    return { boxW: 800, boxH: 600, pixelRatio: 1, degraded: true }
   }
 
   let boxW = nativeW
   let boxH = nativeH
   let pixelRatio = targetPixelRatio
+  let degraded = false
 
   // Step 2: reduce pixelRatio so neither canvas axis exceeds maxCanvasSide.
   // canvasW = boxW * pixelRatio ≤ maxCanvasSide  →  pixelRatio ≤ maxCanvasSide / boxW
@@ -130,6 +139,7 @@ export function planExportRaster(
     if (scale < 1.0) {
       boxW = boxW * scale
       boxH = boxH * scale
+      degraded = true
     }
   }
 
@@ -138,6 +148,7 @@ export function planExportRaster(
     boxW: Math.floor(boxW),
     boxH: Math.floor(boxH),
     pixelRatio: Math.floor(pixelRatio * 100) / 100,
+    degraded,
   }
 }
 
