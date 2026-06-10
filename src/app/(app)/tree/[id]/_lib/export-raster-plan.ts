@@ -223,58 +223,49 @@ function parseTransformScale(transform: string): number | null {
 }
 
 /**
- * Measure the bounding box of the rendered content within a family-chart
- * container, then compute the native (k=1) extent.
+ * Measure the tree's native (k=1) extent.
  *
- * Strategy: read the rendered dimensions of the svg.main_svg.parentElement
- * (the same element captureTree targets), which encompasses all cards + lines.
- * Divide by the current zoom k to get the native extent.
+ * #225 rewrite: the previous getBBox()-based version measured only the SVG
+ * connector paths — person cards are HTML `div.card_cont` SIBLINGS of
+ * `svg.main_svg`, so card overhang was systematically missed (spec §6).
+ * We now union getBoundingClientRect over BOTH the connector paths and the
+ * cards — a single uniform screen-px space — and divide the union size by
+ * the current zoom k. Translation offsets cancel in (max − min).
  *
- * Returns `null` when measurement fails — callers fall back to viewport size.
+ * Returns `null` when measurement fails — callers treat that as degraded.
  */
 export function measureNativeExtent(container: HTMLElement): NativeExtent | null {
   try {
     const svg = container.querySelector<SVGSVGElement>('svg.main_svg')
-    const target = svg?.parentElement
-    if (!target) return null
+    const wrapper = svg?.parentElement
+    if (!svg || !wrapper) return null
 
     const k = readCurrentZoomK(container)
     if (k === null || k <= 0) return null
 
-    // The SVG itself is sized to the viewport — it doesn't tell us the content
-    // extent. We need the bounding box of the content inside the SVG.
-    // family-chart draws all connector paths inside the SVG; the union of all
-    // path bounding boxes gives us the content extent.
-    const allPaths = svg.querySelectorAll<SVGElement>('path, line, circle, rect, foreignObject')
-    if (allPaths.length === 0) return null
+    const els: Element[] = [
+      ...Array.from(svg.querySelectorAll('path')),
+      ...Array.from(wrapper.querySelectorAll('.card_cont')),
+    ]
+    if (els.length === 0) return null
 
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-    allPaths.forEach((el) => {
-      try {
-        const bbox = (el as SVGGraphicsElement).getBBox?.()
-        if (bbox && bbox.width > 0 && bbox.height > 0) {
-          minX = Math.min(minX, bbox.x)
-          minY = Math.min(minY, bbox.y)
-          maxX = Math.max(maxX, bbox.x + bbox.width)
-          maxY = Math.max(maxY, bbox.y + bbox.height)
-        }
-      } catch {
-        // getBBox throws for hidden/detached elements; tolerate.
-      }
-    })
+    for (const el of els) {
+      const r = el.getBoundingClientRect()
+      if (r.width <= 0 || r.height <= 0) continue
+      minX = Math.min(minX, r.left)
+      minY = Math.min(minY, r.top)
+      maxX = Math.max(maxX, r.right)
+      maxY = Math.max(maxY, r.bottom)
+    }
 
     if (!isFinite(minX) || !isFinite(maxX) || !isFinite(minY) || !isFinite(maxY)) {
       return null
     }
 
-    // The bbox is in SVG coordinate space (before the d3 transform).
-    // Multiply by k to get screen pixels, divide by k² / k = 1... actually:
-    // content native extent = (maxX - minX) + padding, same for Y.
-    // But since the SVG content coords are already "chart space" (the family-chart
-    // native layout), the native extent is just the bbox size + a small margin.
     const MARGIN = 80 // px at native scale
-    const nativeW = (maxX - minX) + MARGIN * 2
-    const nativeH = (maxY - minY) + MARGIN * 2
+    const nativeW = (maxX - minX) / k + MARGIN * 2
+    const nativeH = (maxY - minY) / k + MARGIN * 2
 
     return {
       nativeW: Math.max(nativeW, 400),
