@@ -12,8 +12,13 @@ async function loadFlag() {
 describe('EXPORT_PNG_VIA_CANVAS', () => {
   afterEach(() => vi.unstubAllEnvs())
 
-  it('defaults to true when the env var is unset', async () => {
+  it('defaults to true when the env var is empty', async () => {
     vi.stubEnv('NEXT_PUBLIC_EXPORT_PNG_VIA_CANVAS', '')
+    expect(await loadFlag()).toBe(true)
+  })
+
+  it('defaults to true when the env var is absent', async () => {
+    delete process.env.NEXT_PUBLIC_EXPORT_PNG_VIA_CANVAS
     expect(await loadFlag()).toBe(true)
   })
 
