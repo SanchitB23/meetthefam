@@ -2,7 +2,7 @@
 // Dispatches tree export to the appropriate path based on format and feature flag (#219).
 //
 // Paths:
-//   - format === 'pdf'         → canvas rasteriser → PNG data URL → jsPDF → .pdf download
+//   - format === 'pdf'         → canvas rasteriser → smart single/tiled A4 builder → .pdf download
 //   - format === 'png' + flag ON → canvas rasteriser → toBlob → .png download
 //   - format === 'png' + flag OFF → legacy html-to-image 2-pass toBlob pipeline (below)
 //
@@ -156,7 +156,7 @@ async function captureTreePdf(
   // (spec §5), so divide back down. The builder receives the canvas itself —
   // the tiled path slices it; the single-page path derives its own data URL.
   const native = { width: canvas.width / pixelRatio, height: canvas.height / pixelRatio }
-  const blob = await treeToPdf(canvas, native, treeName)
+  const blob = await treeToPdf(canvas, native, treeName, undefined, pixelRatio)
   if (signal?.aborted) return
   triggerDownload(blob, exportFilename(treeName, 'pdf'))
 }

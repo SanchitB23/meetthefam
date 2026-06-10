@@ -94,6 +94,8 @@ describe('captureTree — PDF path', () => {
       fakeCanvas,
       { width: 1234 / 2.5, height: 567 / 2.5 },
       'Smith Family',
+      undefined,
+      2.5,
     )
     expect(fakeCanvas.toDataURL).not.toHaveBeenCalled() // builder derives its own
     expect(canvasToBlob).not.toHaveBeenCalled()

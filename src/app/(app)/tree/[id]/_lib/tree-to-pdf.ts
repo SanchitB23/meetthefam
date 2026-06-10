@@ -43,10 +43,12 @@ export async function treeToPdf(
   native: PdfImageDims,
   treeName: string,
   date: Date = new Date(),
+  /** Canvas px per native px. Falls back to deriving from canvas/native width. */
+  pixelRatio: number = canvas.width / native.width,
 ): Promise<Blob> {
   return fitsSingleA4(native)
     ? singlePagePdf(canvas, native, date)
-    : tiledPdf(canvas, native, treeName, date)
+    : tiledPdf(canvas, native, treeName, date, pixelRatio)
 }
 
 /** Shipped #219 path: one A4 page, image scale-to-fit, footer. */
@@ -74,9 +76,9 @@ async function tiledPdf(
   native: PdfImageDims,
   treeName: string,
   date: Date,
+  pixelRatio: number,
 ): Promise<Blob> {
   const { jsPDF } = await import('jspdf')
-  const pixelRatio = canvas.width / native.width
   const plan = planTiles({ nativeW: native.width, nativeH: native.height, pixelRatio })
 
   const doc = new jsPDF({ orientation: plan.orientation, unit: 'mm', format: 'a4' }) as unknown as JsPdfDoc
@@ -88,22 +90,31 @@ async function tiledPdf(
   for (const tile of plan.tiles) {
     if (tile.pageIndex > 0) doc.addPage('a4', plan.orientation)
 
-    scratch.width = Math.ceil(tile.sw)
-    scratch.height = Math.ceil(tile.sh)
+    // Snap to integer canvas px EDGE-TO-EDGE (round the far edge, subtract the
+    // rounded near edge) so adjacent tiles never leave a sub-pixel seam —
+    // drawImage snaps float destinations unpredictably. The 48px overlap
+    // absorbs the ≤1px size wobble.
+    const sx = Math.round(tile.sx)
+    const sy = Math.round(tile.sy)
+    const sw = Math.round(tile.sx + tile.sw) - sx
+    const sh = Math.round(tile.sy + tile.sh) - sy
+
+    scratch.width = sw
+    scratch.height = sh
     const ctx = scratch.getContext('2d')
     if (!ctx) throw new Error('Tree export failed: no 2d context for tile slicing')
-    ctx.clearRect(0, 0, scratch.width, scratch.height)
-    ctx.drawImage(canvas, tile.sx, tile.sy, tile.sw, tile.sh, 0, 0, tile.sw, tile.sh)
+    ctx.clearRect(0, 0, sw, sh)
+    ctx.drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh)
 
-    // Size from the TILE, not the content box — last tiles are partial and
-    // would stretch if placed at contentWmm × contentHmm.
+    // Size from the SNAPPED TILE, not the content box — last tiles are partial
+    // and would stretch if placed at contentWmm × contentHmm.
     doc.addImage(
       scratch.toDataURL('image/png'),
       'PNG',
       PDF_MARGIN_MM,
       PDF_MARGIN_MM,
-      pxToMm(tile.sw / pixelRatio),
-      pxToMm(tile.sh / pixelRatio),
+      pxToMm(sw / pixelRatio),
+      pxToMm(sh / pixelRatio),
     )
 
     drawRegistrationTicks(doc, plan)

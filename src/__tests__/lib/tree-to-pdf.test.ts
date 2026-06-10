@@ -47,6 +47,13 @@ function stubScratchCanvas() {
   return { scratch, ctx }
 }
 
+/** Mirror of tiledPdf's edge-to-edge integer snapping of a tile source rect. */
+function snapped(t: { sx: number; sy: number; sw: number; sh: number }) {
+  const sx = Math.round(t.sx)
+  const sy = Math.round(t.sy)
+  return { sx, sy, sw: Math.round(t.sx + t.sw) - sx, sh: Math.round(t.sy + t.sh) - sy }
+}
+
 function clearDoc() {
   jsPDFMock.mockClear()
   for (const fn of Object.values(doc)) (fn as ReturnType<typeof vi.fn>).mockClear()
@@ -81,6 +88,12 @@ describe('treeToPdf — single A4 page (tree fits at print scale)', () => {
       'Generated from meetthefam · 2026-06-10', plan.footer.x, plan.footer.y,
     )
   })
+
+  it('returns the pdf blob from output("blob")', async () => {
+    const blob = await treeToPdf(fakeTreeCanvas(3200, 2000), NATIVE, 'X')
+    expect(doc.output).toHaveBeenCalledWith('blob')
+    expect(blob).toBeInstanceOf(Blob)
+  })
 })
 
 describe('treeToPdf — tiled multi-page (tree exceeds single A4)', () => {
@@ -106,18 +119,18 @@ describe('treeToPdf — tiled multi-page (tree exceeds single A4)', () => {
     const plan = planTiles({ nativeW: NATIVE.width, nativeH: NATIVE.height, pixelRatio: PR })
     const canvas = fakeTreeCanvas(8000, 1800)
     await treeToPdf(canvas, NATIVE, 'Smith Family', new Date('2026-06-10T00:00:00Z'))
-    const t0 = plan.tiles[0]
-    expect(ctx.drawImage).toHaveBeenNthCalledWith(1, canvas, t0.sx, t0.sy, t0.sw, t0.sh, 0, 0, t0.sw, t0.sh)
+    const s = snapped(plan.tiles[0])
+    expect(ctx.drawImage).toHaveBeenNthCalledWith(1, canvas, s.sx, s.sy, s.sw, s.sh, 0, 0, s.sw, s.sh)
   })
 
   it('places every tile image at the page margin, sized in mm at print DPI', async () => {
     stubScratchCanvas()
     const plan = planTiles({ nativeW: NATIVE.width, nativeH: NATIVE.height, pixelRatio: PR })
     await treeToPdf(fakeTreeCanvas(8000, 1800), NATIVE, 'Smith Family', new Date('2026-06-10T00:00:00Z'))
-    const t0 = plan.tiles[0]
+    const s = snapped(plan.tiles[0])
     expect(doc.addImage).toHaveBeenNthCalledWith(
       1, TILE_URL, 'PNG', PDF_MARGIN_MM, PDF_MARGIN_MM,
-      pxToMm(t0.sw / PR), pxToMm(t0.sh / PR),
+      pxToMm(s.sw / PR), pxToMm(s.sh / PR),
     )
   })
 
