@@ -20,7 +20,10 @@ export function ExportTreeButton({ treeName }: { treeName: string }) {
 
   return (
     <DropdownMenu>
+      {/* disabled here gates Base UI's open handlers (click/keyboard); the inner
+          button's disabled is the visual/native state — both are needed. */}
       <DropdownMenuTrigger
+        disabled={pending}
         render={
           <button
             type="button"

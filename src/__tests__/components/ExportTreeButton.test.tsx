@@ -1,4 +1,5 @@
 /** @vitest-environment jsdom */
+import type * as React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -10,6 +11,8 @@ import { ExportTreeButton } from '@/app/(app)/tree/[id]/_components/ExportTreeBu
 
 // Render the Base UI dropdown inline (no portal / open state) so both the
 // trigger button and the menu items are always present and clickable.
+// NOTE: the mocked Trigger ignores the `disabled` prop — Base UI-level disable
+// (keyboard gate) is covered by manual testing, not this suite.
 vi.mock('@/components/ui/dropdown-menu', () => ({
   DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   DropdownMenuTrigger: ({ render }: { render: React.ReactElement }) => render,
