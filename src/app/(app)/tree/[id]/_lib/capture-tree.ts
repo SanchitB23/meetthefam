@@ -152,7 +152,11 @@ async function captureTreePdf(
   const canvas = await rasterizeTreeCanvas(container, pixelRatio, signal)
   if (!canvas || signal?.aborted) return
   const dataUrl = canvas.toDataURL('image/png')
-  const blob = await treeToPdf(dataUrl, { width: canvas.width, height: canvas.height }, treeName)
+  // canvas.width/height are pixelRatio-scaled; planPdfPage keys the A4→A3
+  // threshold on the tree's NATIVE extent (spec §6), so divide back down.
+  // Aspect ratio is scale-invariant so layout is unchanged.
+  const nativeDims = { width: canvas.width / pixelRatio, height: canvas.height / pixelRatio }
+  const blob = await treeToPdf(dataUrl, nativeDims, treeName)
   if (signal?.aborted) return
   triggerDownload(blob, exportFilename(treeName, 'pdf'))
 }

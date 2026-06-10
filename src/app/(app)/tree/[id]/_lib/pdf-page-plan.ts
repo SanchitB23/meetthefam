@@ -18,9 +18,9 @@ const PAGE_MM = {
 } as const
 
 export interface PdfImageDims {
-  /** Embedded image width in pixels. */
+  /** Embedded image width in NATIVE pixels (pre-pixelRatio scaling). */
   width: number
-  /** Embedded image height in pixels. */
+  /** Embedded image height in NATIVE pixels (pre-pixelRatio scaling). */
   height: number
 }
 

@@ -91,7 +91,10 @@ describe('captureTree — PDF path', () => {
     expect(fakeCanvas.toDataURL).toHaveBeenCalledWith('image/png')
     expect(treeToPdf).toHaveBeenCalledWith(
       'data:image/png;base64,ZZZ',
-      { width: 1234, height: 567 },
+      // canvas.width/height are pixelRatio-scaled; captureTreePdf divides back to
+      // native dims so planPdfPage keys the A4→A3 threshold on the tree's native
+      // extent (spec §6), not the enlarged canvas. 1234/2.5=493.6, 567/2.5=226.8.
+      { width: 1234 / 2.5, height: 567 / 2.5 },
       'Smith Family',
     )
     expect(canvasToBlob).not.toHaveBeenCalled()
