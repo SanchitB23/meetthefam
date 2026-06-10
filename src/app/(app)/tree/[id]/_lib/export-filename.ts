@@ -14,7 +14,7 @@ function sanitiseTreeName(name: string): string {
   return cleaned || 'family'
 }
 
-function isoDate(date: Date): string {
+export function isoDate(date: Date): string {
   return date.toISOString().slice(0, 10) // YYYY-MM-DD (UTC)
 }
 
