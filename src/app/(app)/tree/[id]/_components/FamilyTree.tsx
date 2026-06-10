@@ -66,7 +66,8 @@ import { ExportProgressDialog } from './ExportProgressDialog'
 import { PersonActionMenu, type ActionAnchor } from './PersonActionMenu'
 import { PersonDetailSheet } from './PersonDetailSheet'
 import { ZoomControls } from './ZoomControls'
-import { useExportTrigger, type CapturePreparation } from '../_lib/useExportTrigger'
+import { useExportTrigger, type CapturePreparation, type ExportPreflight } from '../_lib/useExportTrigger'
+import { ExportDegradeDialog } from './ExportDegradeDialog'
 import { measureNativeExtent, planExportRaster } from '../_lib/export-raster-plan'
 // PersonHoverPlus and PersonForm removed in 8b polish FIX 1:
 // "+" is now an in-card button child of .mtf-node; form is owned by AddRelativeFab
@@ -216,12 +217,50 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
     return { pixelRatio: plan.pixelRatio, restore }
   }, [containerRef])
 
+  // #225 preflight: measure + plan WITHOUT touching the DOM. Measurement
+  // failure counts as degraded (spec §7 case 2) — a tree we can't measure
+  // must not silently export into an undersized box.
+  const [degradeOpen, setDegradeOpen] = useState(false)
+  const degradeResolverRef = useRef<((ok: boolean) => void) | null>(null)
+
+  const preflight = useCallback((): ExportPreflight => {
+    const cont = containerRef.current
+    const nativeExtent = cont ? measureNativeExtent(cont) : null
+    if (!nativeExtent) return { degraded: true }
+    const plan = planExportRaster(nativeExtent)
+    if (process.env.NODE_ENV === 'development') {
+      // #225 §6 ceiling-validation instrumentation (dev-only by design).
+      console.info('[export:preflight]', { ...nativeExtent, ...plan })
+    }
+    return { degraded: plan.degraded }
+  }, [containerRef])
+
+  const confirmDegrade = useCallback(
+    () =>
+      new Promise<boolean>((resolve) => {
+        degradeResolverRef.current = resolve
+        setDegradeOpen(true)
+      }),
+    [],
+  )
+
+  // Resolves the pending confirmDegrade promise EXACTLY once — the ref is
+  // nulled after first use, so duplicate dialog callbacks (button click +
+  // Escape/overlay onOpenChange) are harmless no-ops.
+  const resolveDegrade = useCallback((ok: boolean) => {
+    setDegradeOpen(false)
+    degradeResolverRef.current?.(ok)
+    degradeResolverRef.current = null
+  }, [])
+
   // #217 — export trigger seam. Listens for the top-bar Export button's
   // `mtf-export-tree` event, drives the progress dialog, and (#218) runs
   // the real capture. Gated behind readOnly so the share-page instance is inert.
   const { exporting, cancel: cancelExport } = useExportTrigger(containerRef, {
     readOnly,
     prepareForCapture,
+    preflight,
+    confirmDegrade,
   })
 
   const { shouldSuppressNextClickRef } = usePressActions(containerRef, {
@@ -578,6 +617,13 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
         <ZoomControls onZoomIn={zoomIn} onZoomOut={zoomOut} onFit={zoomToFit} />
       </div>
       {!readOnly && <ExportProgressDialog open={exporting} onCancel={cancelExport} />}
+      {!readOnly && (
+        <ExportDegradeDialog
+          open={degradeOpen}
+          onContinue={() => resolveDegrade(true)}
+          onCancel={() => resolveDegrade(false)}
+        />
+      )}
       <PersonDetailSheet
         person={detailPerson}
         peopleById={peopleById}

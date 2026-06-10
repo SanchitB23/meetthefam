@@ -2,7 +2,7 @@
 // Dispatches tree export to the appropriate path based on format and feature flag (#219).
 //
 // Paths:
-//   - format === 'pdf'         → canvas rasteriser → PNG data URL → jsPDF → .pdf download
+//   - format === 'pdf'         → canvas rasteriser → smart single/tiled A4 builder → .pdf download
 //   - format === 'png' + flag ON → canvas rasteriser → toBlob → .png download
 //   - format === 'png' + flag OFF → legacy html-to-image 2-pass toBlob pipeline (below)
 //
@@ -142,7 +142,7 @@ async function captureTreePngViaCanvas(
   triggerDownload(blob, exportFilename(treeName, 'png'))
 }
 
-/** PDF path (#219): shared rasteriser → PNG data URL → jspdf → download. */
+/** PDF path (#225): shared rasteriser → canvas → smart single/tiled builder → download. */
 async function captureTreePdf(
   container: HTMLElement,
   treeName: string,
@@ -151,12 +151,12 @@ async function captureTreePdf(
 ): Promise<void> {
   const canvas = await rasterizeTreeCanvas(container, pixelRatio, signal)
   if (!canvas || signal?.aborted) return
-  const dataUrl = canvas.toDataURL('image/png')
-  // canvas.width/height are pixelRatio-scaled; planPdfPage keys the A4→A3
-  // threshold on the tree's NATIVE extent (spec §6), so divide back down.
-  // Aspect ratio is scale-invariant so layout is unchanged.
-  const nativeDims = { width: canvas.width / pixelRatio, height: canvas.height / pixelRatio }
-  const blob = await treeToPdf(dataUrl, nativeDims, treeName)
+  // canvas.width/height are pixelRatio-scaled; the smart builder keys both the
+  // single-vs-tiled decision and print sizing on the tree's NATIVE extent
+  // (spec §5), so divide back down. The builder receives the canvas itself —
+  // the tiled path slices it; the single-page path derives its own data URL.
+  const native = { width: canvas.width / pixelRatio, height: canvas.height / pixelRatio }
+  const blob = await treeToPdf(canvas, native, treeName, undefined, pixelRatio)
   if (signal?.aborted) return
   triggerDownload(blob, exportFilename(treeName, 'pdf'))
 }

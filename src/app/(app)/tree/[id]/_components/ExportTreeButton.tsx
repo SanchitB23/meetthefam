@@ -54,7 +54,7 @@ export function ExportTreeButton({ treeName }: { treeName: string }) {
           Download as PNG
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => dispatchExportTree({ format: 'pdf', treeName })}>
-          Download as PDF
+          Download as PDF (print)
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

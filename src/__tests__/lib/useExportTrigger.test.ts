@@ -10,12 +10,18 @@ import {
 } from '@/app/(app)/tree/[id]/_lib/export-events'
 import { useExportTrigger } from '@/app/(app)/tree/[id]/_lib/useExportTrigger'
 import { captureTree } from '@/app/(app)/tree/[id]/_lib/capture-tree'
+import { isMobileLike } from '@/app/(app)/tree/[id]/_lib/isMobileLike'
 
 // Stub the real rasteriser — jsdom has no canvas; we only assert orchestration.
 vi.mock('@/app/(app)/tree/[id]/_lib/capture-tree', () => ({
   captureTree: vi.fn(async () => undefined),
 }))
 const captureTreeMock = vi.mocked(captureTree)
+
+vi.mock('@/app/(app)/tree/[id]/_lib/isMobileLike', () => ({
+  isMobileLike: vi.fn(() => false),
+}))
+const isMobileLikeMock = vi.mocked(isMobileLike)
 
 function makeContainer(): { el: HTMLDivElement; ref: RefObject<HTMLElement | null> } {
   const el = document.createElement('div')
@@ -186,5 +192,87 @@ describe('useExportTrigger', () => {
 
     unmount()
     off()
+  })
+})
+
+describe('useExportTrigger — preflight degrade gate (#225)', () => {
+  beforeEach(() => {
+    captureTreeMock.mockClear()
+    isMobileLikeMock.mockReturnValue(false)
+  })
+
+  it('skips the gate and captures when preflight is clean and not mobile', async () => {
+    const { ref } = makeContainer()
+    const confirmDegrade = vi.fn(async () => true)
+    const { unmount } = renderHook(() =>
+      useExportTrigger(ref, {
+        readOnly: false,
+        preflight: () => ({ degraded: false }),
+        confirmDegrade,
+      }),
+    )
+    dispatchExportTree({ format: 'pdf', treeName: 'Smith Family' })
+    await waitFor(() => expect(captureTreeMock).toHaveBeenCalled())
+    expect(confirmDegrade).not.toHaveBeenCalled()
+    unmount()
+  })
+
+  it('asks for confirmation when preflight reports degraded; declining aborts with no pending events', async () => {
+    const { ref } = makeContainer()
+    const pending: boolean[] = []
+    const off = onExportPending((d: ExportPendingDetail) => pending.push(d.pending))
+    const confirmDegrade = vi.fn(async () => false)
+    const { unmount } = renderHook(() =>
+      useExportTrigger(ref, {
+        readOnly: false,
+        preflight: () => ({ degraded: true }),
+        confirmDegrade,
+      }),
+    )
+    dispatchExportTree({ format: 'pdf', treeName: 'Smith Family' })
+    await waitFor(() => expect(confirmDegrade).toHaveBeenCalled())
+    await new Promise((r) => setTimeout(r, 20))
+    expect(captureTreeMock).not.toHaveBeenCalled()
+    expect(pending).toEqual([]) // gate runs BEFORE pending — no dialog flash
+    unmount()
+    off()
+  })
+
+  it('proceeds with capture when the user confirms a degraded export', async () => {
+    const { ref } = makeContainer()
+    const confirmDegrade = vi.fn(async () => true)
+    const { unmount } = renderHook(() =>
+      useExportTrigger(ref, {
+        readOnly: false,
+        preflight: () => ({ degraded: true }),
+        confirmDegrade,
+      }),
+    )
+    dispatchExportTree({ format: 'pdf', treeName: 'Smith Family' })
+    await waitFor(() => expect(captureTreeMock).toHaveBeenCalled())
+    expect(confirmDegrade).toHaveBeenCalledTimes(1)
+    unmount()
+  })
+
+  it('gates on mobile even when preflight is clean', async () => {
+    isMobileLikeMock.mockReturnValue(true)
+    const { ref } = makeContainer()
+    const pending: boolean[] = []
+    const off = onExportPending((d: ExportPendingDetail) => pending.push(d.pending))
+    const confirmDegrade = vi.fn(async () => false)
+    const { unmount } = renderHook(() =>
+      useExportTrigger(ref, {
+        readOnly: false,
+        preflight: () => ({ degraded: false }),
+        confirmDegrade,
+      }),
+    )
+    dispatchExportTree({ format: 'pdf', treeName: 'Smith Family' })
+    await waitFor(() => expect(confirmDegrade).toHaveBeenCalled())
+    await new Promise((r) => setTimeout(r, 20))
+    expect(captureTreeMock).not.toHaveBeenCalled()
+    expect(pending).toEqual([])
+    off()
+    unmount()
   })
 })

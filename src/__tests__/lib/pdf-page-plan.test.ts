@@ -1,14 +1,17 @@
 // src/__tests__/lib/pdf-page-plan.test.ts
-// Pure geometry for single-page PDF layout (#219). No DOM; node env is fine.
+// Pure geometry for single-page PDF layout (#219, A4-only since #225). No DOM; node env is fine.
 import { describe, expect, it } from 'vitest'
 import {
   planPdfPage,
-  PDF_A3_LONG_EDGE_PX,
+  fitsSingleA4,
+  pxToMm,
+  PDF_PRINT_DPI,
   PDF_MARGIN_MM,
   PDF_FOOTER_STRIP_MM,
+  SINGLE_PAGE_MIN_SCALE,
 } from '@/app/(app)/tree/[id]/_lib/pdf-page-plan'
 
-// A4 = 210x297, A3 = 297x420 (mm).
+// A4 = 210x297 (mm).
 describe('planPdfPage — orientation', () => {
   it('chooses landscape when the image is wider than tall', () => {
     const plan = planPdfPage({ width: 4000, height: 2000 })
@@ -25,33 +28,22 @@ describe('planPdfPage — orientation', () => {
   })
 })
 
-describe('planPdfPage — page size threshold', () => {
-  it('uses A4 when the long edge is at or below the A3 threshold', () => {
-    expect(planPdfPage({ width: PDF_A3_LONG_EDGE_PX, height: 1000 }).pageFormat).toBe('a4')
-  })
-
-  it('uses A3 when the long edge exceeds the threshold', () => {
-    expect(planPdfPage({ width: PDF_A3_LONG_EDGE_PX + 1, height: 1000 }).pageFormat).toBe('a3')
-  })
-})
-
 describe('planPdfPage — scale-to-fit within margins + footer strip', () => {
-  it('width-bounds a very wide image to the printable width', () => {
-    // A4 landscape: pageW=297, availW = 297 - 2*10 = 277.
-    const plan = planPdfPage({ width: 10000, height: 1000 }) // long edge 10000 > 8000 → A3
-    // A3 landscape: pageW=420, availW = 420 - 20 = 400.
+  it('width-bounds a very wide image to the A4 printable width (A4-only, no A3 step-up)', () => {
+    // 10000×1000 → landscape. A4 landscape: pageW=297, availW = 297 - 2*10 = 277.
+    const plan = planPdfPage({ width: 10_000, height: 1000 })
     expect(plan.orientation).toBe('l')
-    expect(plan.pageFormat).toBe('a3')
-    expect(plan.imgW).toBeCloseTo(400, 5)
-    // height preserves aspect: 400 * (1000/10000) = 40.
-    expect(plan.imgH).toBeCloseTo(40, 5)
-    // centered horizontally: (420 - 400)/2 = 10.
+    expect(plan.pageFormat).toBe('a4')
+    expect(plan.imgW).toBeCloseTo(277, 5)
+    // height preserves aspect: 277 * (1000/10000) = 27.7.
+    expect(plan.imgH).toBeCloseTo(27.7, 5)
+    // centered horizontally: (297 - 277)/2 = 10.
     expect(plan.imgX).toBeCloseTo(10, 5)
     expect(plan.imgY).toBeCloseTo(PDF_MARGIN_MM, 5)
   })
 
   it('height-bounds a tall image to the printable height (minus footer strip)', () => {
-    // 1000x4000 → portrait, long edge 4000 ≤ 8000 → A4 (210x297).
+    // 1000x4000 → portrait, A4 (210x297).
     const plan = planPdfPage({ width: 1000, height: 4000 })
     expect(plan.orientation).toBe('p')
     expect(plan.pageFormat).toBe('a4')
@@ -76,5 +68,37 @@ describe('planPdfPage — footer position', () => {
     const plan = planPdfPage({ width: 3000, height: 2000 }) // landscape A4 (297x210)
     expect(plan.footer.x).toBeCloseTo(PDF_MARGIN_MM, 5)
     expect(plan.footer.y).toBeCloseTo(210 - PDF_MARGIN_MM, 5)
+  })
+})
+
+describe('pxToMm (#225)', () => {
+  it('converts px to mm at the declared print DPI', () => {
+    // 150 px at 150 DPI = 1 inch = 25.4 mm.
+    expect(pxToMm(PDF_PRINT_DPI)).toBeCloseTo(25.4, 5)
+  })
+})
+
+describe('fitsSingleA4 (#225)', () => {
+  // A4 landscape content box: availW = 277mm, availH = 210 - 20 - 8 = 182mm.
+  // At 150 DPI: availW = 1635.8px, availH = 1074.8px.
+  it('fits a small landscape tree (no downscale needed)', () => {
+    expect(fitsSingleA4({ width: 1600, height: 1000 })).toBe(true)
+  })
+
+  it('rejects a tree wider than the A4 landscape content box', () => {
+    expect(fitsSingleA4({ width: 1700, height: 1000 })).toBe(false)
+  })
+
+  // A4 portrait content box: availW = 190mm (1122px), availH = 269mm (1588.6px).
+  it('fits a small portrait tree', () => {
+    expect(fitsSingleA4({ width: 1000, height: 1500 })).toBe(true)
+  })
+
+  it('rejects a portrait tree taller than the content box', () => {
+    expect(fitsSingleA4({ width: 1000, height: 1700 })).toBe(false)
+  })
+
+  it('SINGLE_PAGE_MIN_SCALE is the no-downscale bar', () => {
+    expect(SINGLE_PAGE_MIN_SCALE).toBe(1.0)
   })
 })

@@ -1,9 +1,11 @@
+/** @vitest-environment jsdom */
 // src/__tests__/lib/export-raster-plan.test.ts
 // TDD for the pure planExportRaster geometry (#218 native-scale PNG export).
 // This function is pure math — no DOM, no mocks needed, node environment is fine.
 import { describe, expect, it } from 'vitest'
 import {
   planExportRaster,
+  measureNativeExtent,
   MAX_CANVAS_SIDE,
   MAX_CANVAS_AREA,
   type RasterPlanOptions,
@@ -146,22 +148,22 @@ describe('planExportRaster — exact boundary at the cap', () => {
 describe('planExportRaster — degenerate inputs', () => {
   it('returns fallback for zero width', () => {
     const plan = planExportRaster({ nativeW: 0, nativeH: 600 })
-    expect(plan).toEqual({ boxW: 800, boxH: 600, pixelRatio: 1 })
+    expect(plan).toEqual({ boxW: 800, boxH: 600, pixelRatio: 1, degraded: true })
   })
 
   it('returns fallback for zero height', () => {
     const plan = planExportRaster({ nativeW: 800, nativeH: 0 })
-    expect(plan).toEqual({ boxW: 800, boxH: 600, pixelRatio: 1 })
+    expect(plan).toEqual({ boxW: 800, boxH: 600, pixelRatio: 1, degraded: true })
   })
 
   it('returns fallback for negative dimensions', () => {
     const plan = planExportRaster({ nativeW: -100, nativeH: 600 })
-    expect(plan).toEqual({ boxW: 800, boxH: 600, pixelRatio: 1 })
+    expect(plan).toEqual({ boxW: 800, boxH: 600, pixelRatio: 1, degraded: true })
   })
 
   it('returns fallback for both dimensions zero', () => {
     const plan = planExportRaster({ nativeW: 0, nativeH: 0 })
-    expect(plan).toEqual({ boxW: 800, boxH: 600, pixelRatio: 1 })
+    expect(plan).toEqual({ boxW: 800, boxH: 600, pixelRatio: 1, degraded: true })
   })
 })
 
@@ -191,5 +193,93 @@ describe('planExportRaster — output always integer box dimensions', () => {
     const plan = planExportRaster({ nativeW: 1234.7, nativeH: 567.3 })
     expect(Number.isInteger(plan.boxW)).toBe(true)
     expect(Number.isInteger(plan.boxH)).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// measureNativeExtent — card-aware DOM tests (#225)
+// ---------------------------------------------------------------------------
+
+function stubRect(el: Element, r: { left: number; top: number; right: number; bottom: number }) {
+  el.getBoundingClientRect = () =>
+    ({ ...r, width: r.right - r.left, height: r.bottom - r.top, x: r.left, y: r.top, toJSON: () => ({}) }) as DOMRect
+}
+
+/** Chart DOM skeleton: wrapper > (svg.main_svg > g.view > path) + div.card_cont siblings. */
+function buildChartDom(k: number) {
+  const container = document.createElement('div')
+  const wrapper = document.createElement('div')
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+  svg.classList.add('main_svg')
+  const view = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+  view.classList.add('view')
+  view.setAttribute('transform', `translate(10, 20) scale(${k})`)
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+  view.append(path)
+  svg.append(view)
+  const card1 = document.createElement('div')
+  card1.classList.add('card_cont')
+  const card2 = document.createElement('div')
+  card2.classList.add('card_cont')
+  wrapper.append(svg, card1, card2)
+  container.append(wrapper)
+  document.body.append(container)
+  return { container, path, card1, card2 }
+}
+
+describe('measureNativeExtent — unions cards AND connector paths (#225)', () => {
+  it('includes card overhang the SVG paths alone would miss', () => {
+    const k = 0.5
+    const { container, path, card1, card2 } = buildChartDom(k)
+    // Screen-space rects: paths span 100..300; cards extend the union to 50..600.
+    stubRect(path, { left: 100, top: 100, right: 300, bottom: 200 })
+    stubRect(card1, { left: 50, top: 80, right: 250, bottom: 220 })
+    stubRect(card2, { left: 400, top: 100, right: 600, bottom: 240 })
+
+    const extent = measureNativeExtent(container)
+    expect(extent).not.toBeNull()
+    // Union: 50..600 wide (550 screen px), 80..240 tall (160 screen px).
+    // Native = screen / k + 2*80 margin: 550/0.5+160=1260, 160/0.5+160=480.
+    expect(extent!.nativeW).toBeCloseTo(1260, 3)
+    expect(extent!.nativeH).toBeCloseTo(480, 3)
+    container.remove()
+  })
+
+  it('returns null when the zoom transform is unreadable', () => {
+    const { container } = buildChartDom(1)
+    container.querySelector('g.view')!.removeAttribute('transform')
+    expect(measureNativeExtent(container)).toBeNull()
+    container.remove()
+  })
+
+  it('returns null when nothing measurable is rendered', () => {
+    const container = document.createElement('div')
+    document.body.append(container)
+    expect(measureNativeExtent(container)).toBeNull()
+    container.remove()
+  })
+})
+
+describe('planExportRaster — degraded flag (#225)', () => {
+  it('is false when the box stays at native size and pixelRatio is untouched', () => {
+    expect(planExportRaster({ nativeW: 800, nativeH: 600 }).degraded).toBe(false)
+  })
+
+  it('is false when only pixelRatio is reduced (box still native size)', () => {
+    // 6000×1000 at PR 3 exceeds the side cap → PR drops, box stays native.
+    const plan = planExportRaster({ nativeW: 6000, nativeH: 1000 })
+    expect(plan.boxW).toBe(6000)
+    expect(plan.degraded).toBe(false)
+  })
+
+  it('is true when the box must shrink below the native extent', () => {
+    // 40000×30000 cannot fit even at pixelRatio 1 → box shrinks.
+    const plan = planExportRaster({ nativeW: 40_000, nativeH: 30_000 })
+    expect(plan.boxW).toBeLessThan(40_000)
+    expect(plan.degraded).toBe(true)
+  })
+
+  it('is true for the defensive fallback (invalid native dimensions)', () => {
+    expect(planExportRaster({ nativeW: 0, nativeH: 600 }).degraded).toBe(true)
   })
 })

@@ -79,7 +79,7 @@ describe('captureTree — PDF path', () => {
   })
   afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); document.body.innerHTML = '' })
 
-  it('rasterises, hands the data URL + canvas dims to treeToPdf, downloads .pdf', async () => {
+  it('rasterises, hands the canvas + native dims to treeToPdf, downloads .pdf', async () => {
     vi.setSystemTime(new Date('2026-06-09T10:00:00Z'))
     const container = buildContainer() // build before mocking createElement
     const anchor = document.createElement('a')
@@ -88,15 +88,16 @@ describe('captureTree — PDF path', () => {
     )
     await captureTree(container, 'pdf', 'Smith Family', undefined, 2.5)
     expect(rasterizeTreeCanvas).toHaveBeenCalledWith(expect.any(HTMLElement), 2.5, undefined)
-    expect(fakeCanvas.toDataURL).toHaveBeenCalledWith('image/png')
+    // #225: the smart builder receives the CANVAS (the tiled path slices it);
+    // native dims = canvas px / pixelRatio. 1234/2.5=493.6, 567/2.5=226.8.
     expect(treeToPdf).toHaveBeenCalledWith(
-      'data:image/png;base64,ZZZ',
-      // canvas.width/height are pixelRatio-scaled; captureTreePdf divides back to
-      // native dims so planPdfPage keys the A4→A3 threshold on the tree's native
-      // extent (spec §6), not the enlarged canvas. 1234/2.5=493.6, 567/2.5=226.8.
+      fakeCanvas,
       { width: 1234 / 2.5, height: 567 / 2.5 },
       'Smith Family',
+      undefined,
+      2.5,
     )
+    expect(fakeCanvas.toDataURL).not.toHaveBeenCalled() // builder derives its own
     expect(canvasToBlob).not.toHaveBeenCalled()
     expect(anchor.download).toBe('Smith Family-tree-2026-06-09.pdf')
     expect(clickSpy).toHaveBeenCalled()
