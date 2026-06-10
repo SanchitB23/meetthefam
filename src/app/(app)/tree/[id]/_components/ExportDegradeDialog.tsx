@@ -3,6 +3,8 @@
 // preflight gate when the tree exceeds the canvas ceiling, measurement failed,
 // or the device is mobile-like. Continue proceeds with a best-effort export;
 // Cancel aborts with nothing mutated. Escape / overlay-click count as Cancel.
+// Callers must make onContinue/onCancel idempotent — a button click can be
+// followed by an onOpenChange(false) close event for the same dismissal.
 import {
   Dialog,
   DialogContent,
