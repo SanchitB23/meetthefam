@@ -16,8 +16,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "emails:build": "tsx scripts/build-emails.ts",
-    "spike:seed": "tsx scripts/spike-215/seed-export-stress.ts",
-    "spike:capture": "playwright test scripts/spike-215/capture-runner.spec.ts"
+    "seed:export-stress": "tsx scripts/export-stress/seed-export-stress.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
