@@ -25,7 +25,9 @@ export interface TilePlanInput {
   nativeH: number
   /** canvas px = native px × pixelRatio (from planExportRaster). */
   pixelRatio: number
+  /** Bleed between adjacent tiles (native px). Must be < the page content box. */
   overlapPx?: number
+  /** Print resolution for mm ↔ px conversion. Keep in sync with pdf-page-plan. */
   dpi?: number
 }
 
@@ -45,7 +47,12 @@ export interface TilePlan {
   cols: number
   rows: number
   pageCount: number
-  /** Printable content box of each page (mm) — image placement target. */
+  /**
+   * Printable content box of each page (mm). NOTE: the LAST tile in a row /
+   * column usually covers less than this box — consumers must size each
+   * placed image from the tile itself (pxToMm(sw / pixelRatio)), never from
+   * this box, or partial tiles will stretch.
+   */
   contentWmm: number
   contentHmm: number
   tiles: Tile[]
@@ -67,6 +74,11 @@ function gridFor(
   return { cols, rows }
 }
 
+/**
+ * Plan a row-major grid of canvas-px source rects for slicing one rendered
+ * canvas into A4 pages. Evaluates both orientations; fewest pages wins,
+ * tie → landscape.
+ */
 export function planTiles({
   nativeW,
   nativeH,
@@ -86,6 +98,15 @@ export function planTiles({
     return { orientation, contentWmm, contentHmm, contentWpx, contentHpx, cols, rows }
   })
   const best = candidates.reduce((a, b) => (b.cols * b.rows < a.cols * a.rows ? b : a))
+
+  // A bleed as large as the content box would make the grid step ≤ 0 —
+  // Infinity columns (browser hang) or negative counts. Fail loudly instead.
+  if (overlapPx >= best.contentWpx || overlapPx >= best.contentHpx) {
+    throw new RangeError(
+      `overlapPx (${overlapPx}) must be smaller than the page content box ` +
+        `(${best.contentWpx.toFixed(0)}×${best.contentHpx.toFixed(0)} px at ${dpi} DPI)`,
+    )
+  }
 
   const stepX = best.contentWpx - overlapPx
   const stepY = best.contentHpx - overlapPx

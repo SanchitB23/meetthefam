@@ -47,7 +47,7 @@ describe('planTiles — grid + orientation choice', () => {
     const pr = 2
     const plan = planTiles({ nativeW: 4000, nativeH: 900, pixelRatio: pr })
     const [t0, t1] = plan.tiles
-    // t1 starts overlap px (native) before t0 ends.
+    // Overlap is TILE_OVERLAP_PX in native px = TILE_OVERLAP_PX × pixelRatio in canvas px.
     expect(t0.sx + t0.sw - t1.sx).toBeCloseTo(TILE_OVERLAP_PX * pr, 3)
   })
 
@@ -57,6 +57,10 @@ describe('planTiles — grid + orientation choice', () => {
     const last = plan.tiles[plan.tiles.length - 1]
     expect(last.sx + last.sw).toBeCloseTo(4000, 3)
     expect(last.sw).toBeLessThanOrEqual(w + 0.01)
+    // Same clamp at pixelRatio 2: canvas edge = nativeW × 2.
+    const plan2 = planTiles({ nativeW: 4000, nativeH: 900, pixelRatio: 2 })
+    const last2 = plan2.tiles[plan2.tiles.length - 1]
+    expect(last2.sx + last2.sw).toBeCloseTo(8000, 3)
   })
 
   it('emits row-major pageIndex over a 2-D grid', () => {
@@ -70,5 +74,11 @@ describe('planTiles — grid + orientation choice', () => {
     expect(plan.pageCount).toBe(8)
     expect(plan.tiles.map((t) => t.pageIndex)).toEqual([0, 1, 2, 3, 4, 5, 6, 7])
     expect(plan.tiles[4]).toMatchObject({ row: 1, col: 0 })
+  })
+
+  it('throws RangeError when overlapPx is as large as the content box', () => {
+    expect(() =>
+      planTiles({ nativeW: 4000, nativeH: 900, pixelRatio: 1, overlapPx: 5000 }),
+    ).toThrow(RangeError)
   })
 })
