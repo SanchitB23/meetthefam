@@ -135,3 +135,40 @@ The measurement the spike punted to this issue, and the proof the §1 "validate-
 - **#219 — merged** (PR #233). It landed the produce/download split (`rasterize-tree.ts`), the scale-to-fit PDF (`tree-to-pdf.ts` + `pdf-page-plan.ts`), footer, dropdown, and the env-flag rollback pattern. #225 extends those files and **changes one shipped behaviour**: the A4→A3 step-up is removed (A4-only). The earlier file-collision concern is moot (#219 left `useExportTrigger.ts` / `FamilyTree.tsx` untouched).
 - **#60** "current-view vs full-tree" split: in practice #218 went straight to full-tree (there is no separate current-view mode in the UI), so #225 makes the PDF the readable archival artefact rather than adding a new capture mode.
 - **Possible follow-up:** server/headless full-layout export — filed only if §6 validation shows the client path cannot reach a readable ~200.
+
+## 10. Ceiling validation results (2026-06-11)
+
+Method: local stack + `pnpm seed:export-stress` + `pnpm dev`, driven in a **headed** real-Chrome 149 (clean profile, Playwright-driven; headless explicitly avoided per §6). Export triggered via the real `mtf-export-tree` event; preflight numbers read from the dev-gated `[export:preflight]` instrumentation; PDFs inspected for page count / page size / content.
+
+### Chrome 149 (macOS, desktop) — gating row, DONE
+
+| tree | cards rendered | nativeW×H (px) | boxW×H | pixelRatio | degraded | PDF pages (orient.) | PDF size | wall-time |
+|---|---|---|---|---|---|---|---|---|
+| Export Stress 25 | 26/26 | 3728×525 | 3727×524 | 3.00 | false | 3 (landscape) | 54 MB | 4.0 s |
+| Export Stress 50 | 51/51 | 5318×790 | 5317×790 | 3.00 | false | 4 (landscape) | 116 MB | 4.4 s |
+| Export Stress 60 single-trunk | 61/61 | 6203×920 | 6202×919 | 2.64 | false | 4 (landscape) | 122 MB | 5.1 s |
+| Export Stress 100 | 101/101 | 9008×790 | 9008×789 | 1.81 | false | 6 (landscape) | 72 MB | 5.1 s |
+| Export Stress 150 | 151/151 | 13174×920 | 13174×920 | 1.24 | false | 9 (landscape) | 57 MB | 6.2 s |
+| Export Stress 200 | 201/201 | 13745×1310 | 13744×1309 | 1.19 | false | **13 (portrait)** | 80 MB | 8.4 s |
+
+Additional Chrome checks, all PASS:
+
+- **measureNativeExtent cross-check at 200 (Task 10 fix verified live):** manual card-rect union `13744.87×1310.00` vs preflight `13744.88×1310.00` — agreement within 0.005 px.
+- **PNG regression:** 100 → 16300×1424 px, 4.3 s; 200 → 16335×1529 px, 12.6 s. Both download fine (canvas at the 16384 side cap, as planned).
+- **Orientation optimizer:** 200 correctly picks portrait (13 pages) over landscape (18 pages).
+- **Tile artefact quality (page 1 of 13 rendered + inspected):** names crisply legible at print scale, synthetic photos render (no canvas taint / blank cards), corner registration ticks present, footer label exact: `Export Stress 200 · 2026-06-10 · page 1 of 13 · r1c1 · layout 13×1`.
+- **Mobile degrade gate (CDP touch + 390×844):** dialog fires even with a clean preflight; **Cancel leaves zero residue** (no download, no dialogs, no pending state).
+- **#224 regression spot-check:** the 60-person single-trunk tree renders all 61 cards and exports fully.
+
+### Chrome verdict
+
+**The degrade gate never fired up to 200 people** — every fixture stayed at `pixelRatio ≥ 1` with no box-shrink, i.e. **200 people clears the §2 readability bar in Chrome with headroom**. Extrapolating this topology (~69 native px of width per person), `degraded` first flips when nativeW exceeds 16384 px ≈ **~235 people**. The smart PDF always tiled for these fixtures (every tree is wider than one A4 at 150 DPI), matching the §5 "accepted consequence".
+
+Observations (non-blocking):
+
+- **PDF sizes are large (54–122 MB)** — lossless PNG embeds at high pixelRatio; by design for the archival artefact (the PNG export is the lightweight option at 1.4–1.5 MB). If feedback wants smaller files, a JPEG-embed quality option is a clean follow-up.
+- Wall-times 4–13 s — acceptable for a click-initiated archival export with a cancellable progress dialog.
+
+### Safari / Firefox (gating) + real-device mobile — PENDING (human)
+
+To complete the matrix: repeat the table rows in Safari + Firefox (log in as `export-stress@example.com`, devtools console open, Export → PDF per tree, record `[export:preflight]` + page count + legibility), plus a real-device mobile spot-check of the degrade dialog. Stack + seed remain running locally. Final verdict + the #225 summary comment post once these rows land.
