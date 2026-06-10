@@ -24,6 +24,7 @@ import {
 } from './export-events'
 import { withOverflowVisible } from './with-overflow-visible'
 import { captureTree, type CaptureSignal } from './capture-tree'
+import { isMobileLike } from './isMobileLike'
 
 /** How long (ms) to wait after calling prepareForCapture/fitFn before taking
  *  the screenshot. Matches chart.setTransitionTime(800) + 100ms buffer. */
@@ -45,6 +46,12 @@ export type CapturePreparation = {
   restore: () => void
 }
 
+/** Result of the #225 preflight measurement (no DOM mutation). */
+export type ExportPreflight = {
+  /** True when the export cannot keep cards at native size (or measuring failed). */
+  degraded: boolean
+}
+
 type Options = {
   readOnly: boolean
   /**
@@ -64,11 +71,20 @@ type Options = {
    * @deprecated Use `prepareForCapture` for native-scale export (#218).
    */
   fitFn?: () => void
+  /**
+   * #225 preflight: measure + plan WITHOUT resizing the container. Runs before
+   * any pending state so the degrade dialog isn't stacked behind the progress
+   * dialog. When it reports degraded — or the device is mobile-like — the
+   * export pauses on `confirmDegrade`.
+   */
+  preflight?: () => ExportPreflight
+  /** Ask the user to confirm a degraded/mobile export. Resolve false to abort. */
+  confirmDegrade?: () => Promise<boolean>
 }
 
 export function useExportTrigger(
   containerRef: RefObject<HTMLElement | null>,
-  { readOnly, prepareForCapture, fitFn }: Options,
+  { readOnly, prepareForCapture, fitFn, preflight, confirmDegrade }: Options,
 ): { exporting: boolean; cancel: () => void } {
   const [exporting, setExporting] = useState(false)
   // signalRef holds the CaptureSignal for the current export run.
@@ -90,6 +106,17 @@ export function useExportTrigger(
     return onExportTree(async ({ format, treeName }) => {
       const el = containerRef.current
       if (!el) return
+
+      // #225 degrade gate — before pending/exporting so the warn dialog is
+      // the only thing on screen and a decline leaves no UI residue.
+      if (preflight && confirmDegrade) {
+        const flight = preflight()
+        if (flight.degraded || isMobileLike()) {
+          const proceed = await confirmDegrade()
+          if (!proceed) return
+        }
+      }
+
       // Fresh signal for this export run.
       const signal: CaptureSignal = { aborted: false }
       signalRef.current = signal
@@ -137,10 +164,10 @@ export function useExportTrigger(
     })
     // containerRef identity is stable (useRef); listed so exhaustive-deps
     // doesn't flag it. readOnly is the real re-run guard.
-    // prepareForCapture and fitFn are excluded intentionally: they are
-    // useCallback refs from FamilyTree whose identity is stable for the
-    // life of the chart; re-registering the event listener on every render
-    // would be wasteful and incorrect.
+    // prepareForCapture, fitFn, preflight, and confirmDegrade are excluded
+    // intentionally: they are useCallback refs from FamilyTree whose identity
+    // is stable for the life of the chart; re-registering the event listener
+    // on every render would be wasteful and incorrect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [containerRef, readOnly])
 
