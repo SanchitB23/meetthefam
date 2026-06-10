@@ -1,7 +1,15 @@
 // src/app/(app)/tree/[id]/_lib/capture-tree.ts
-// Rasterises the rendered family tree to a PNG and triggers a download (#218).
+// Dispatches tree export to the appropriate path based on format and feature flag (#219).
 //
-// Capture target (per #215 spike): person cards + photos are HTML `div.card_cont`
+// Paths:
+//   - format === 'pdf'         → canvas rasteriser → PNG data URL → jsPDF → .pdf download
+//   - format === 'png' + flag ON → canvas rasteriser → toBlob → .png download
+//   - format === 'png' + flag OFF → legacy html-to-image 2-pass toBlob pipeline (below)
+//
+// The legacy path is kept VERBATIM as `captureTreePngLegacy` — it is the
+// production-rollback escape hatch. Do not "improve" it.
+//
+// Legacy path capture target (per #215 spike): person cards + photos are HTML `div.card_cont`
 // nodes that are SIBLINGS of `svg.main_svg` (the SVG holds only connector lines).
 // Capturing the SVG alone yields lines with no people, so we capture
 // `svg.main_svg.parentElement` — the wrapper div holding both SVG and cards.
@@ -20,6 +28,9 @@ import type { ExportFormat } from './export-events'
 import { exportFilename } from './export-filename'
 import { inlineImages } from './inline-images'
 import { inlineLinkStrokes } from './inline-link-strokes'
+import { EXPORT_PNG_VIA_CANVAS } from './export-config'
+import { rasterizeTreeCanvas, canvasToBlob } from './rasterize-tree'
+import { treeToPdf } from './tree-to-pdf'
 
 const FALLBACK_BG = '#fdfbf3' // heirloom cream; used if the live bg is transparent
 
@@ -62,16 +73,12 @@ export interface CaptureSignal {
   aborted: boolean
 }
 
-export async function captureTree(
+/** Legacy PNG path (#218): html-to-image 2-pass toBlob. Flag-off fallback. */
+async function captureTreePngLegacy(
   container: HTMLElement,
-  format: ExportFormat,
   treeName: string,
-  signal?: CaptureSignal,
-  /** Pixel ratio for the raster. Defaults to 3 (crisp Retina output).
-   *  #218 native-scale export: planExportRaster computes the appropriate ratio
-   *  based on the tree's native extent and browser canvas caps — it will be ≤ 3
-   *  for trees whose native size would exceed those caps. */
-  pixelRatio = 3,
+  signal: CaptureSignal | undefined,
+  pixelRatio: number,
 ): Promise<void> {
   const target = captureTargetOf(container)
   await awaitPhotoDecode(target)
@@ -118,5 +125,58 @@ export async function captureTree(
   // Check again after the async raster in case the user cancelled mid-flight.
   if (signal?.aborted) return
 
-  triggerDownload(blob, exportFilename(treeName, format))
+  triggerDownload(blob, exportFilename(treeName, 'png'))
+}
+
+/** Canvas PNG path (#219): shared rasteriser → canvas.toBlob → download. */
+async function captureTreePngViaCanvas(
+  container: HTMLElement,
+  treeName: string,
+  signal: CaptureSignal | undefined,
+  pixelRatio: number,
+): Promise<void> {
+  const canvas = await rasterizeTreeCanvas(container, pixelRatio, signal)
+  if (!canvas || signal?.aborted) return
+  const blob = await canvasToBlob(canvas)
+  if (signal?.aborted) return
+  triggerDownload(blob, exportFilename(treeName, 'png'))
+}
+
+/** PDF path (#219): shared rasteriser → PNG data URL → jspdf → download. */
+async function captureTreePdf(
+  container: HTMLElement,
+  treeName: string,
+  signal: CaptureSignal | undefined,
+  pixelRatio: number,
+): Promise<void> {
+  const canvas = await rasterizeTreeCanvas(container, pixelRatio, signal)
+  if (!canvas || signal?.aborted) return
+  const dataUrl = canvas.toDataURL('image/png')
+  // canvas.width/height are pixelRatio-scaled; planPdfPage keys the A4→A3
+  // threshold on the tree's NATIVE extent (spec §6), so divide back down.
+  // Aspect ratio is scale-invariant so layout is unchanged.
+  const nativeDims = { width: canvas.width / pixelRatio, height: canvas.height / pixelRatio }
+  const blob = await treeToPdf(dataUrl, nativeDims, treeName)
+  if (signal?.aborted) return
+  triggerDownload(blob, exportFilename(treeName, 'pdf'))
+}
+
+export async function captureTree(
+  container: HTMLElement,
+  format: ExportFormat,
+  treeName: string,
+  signal?: CaptureSignal,
+  /** Pixel ratio for the raster. Defaults to 3 (crisp Retina output).
+   *  #218 native-scale export: planExportRaster computes the appropriate ratio
+   *  based on the tree's native extent and browser canvas caps — it will be ≤ 3
+   *  for trees whose native size would exceed those caps. */
+  pixelRatio = 3,
+): Promise<void> {
+  if (format === 'pdf') {
+    return captureTreePdf(container, treeName, signal, pixelRatio)
+  }
+  if (EXPORT_PNG_VIA_CANVAS) {
+    return captureTreePngViaCanvas(container, treeName, signal, pixelRatio)
+  }
+  return captureTreePngLegacy(container, treeName, signal, pixelRatio)
 }
