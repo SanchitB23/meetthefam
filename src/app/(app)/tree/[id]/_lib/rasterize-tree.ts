@@ -61,6 +61,7 @@ export async function rasterizeTreeCanvas(
   const restoreStrokes = inlineLinkStrokes(target)
 
   try {
+    if (signal?.aborted) return null // inlineImages awaits network fetches — re-check before rastering
     const { toCanvas } = await import('html-to-image')
     const opts = {
       pixelRatio,
