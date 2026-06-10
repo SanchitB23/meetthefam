@@ -78,7 +78,11 @@ type Options = {
    * export pauses on `confirmDegrade`.
    */
   preflight?: () => ExportPreflight
-  /** Ask the user to confirm a degraded/mobile export. Resolve false to abort. */
+  /**
+   * Ask the user to confirm a degraded/mobile export. Resolve false to abort.
+   * Must be provided together with `preflight` — if either is absent the
+   * gate is skipped entirely. Callers must stabilize both with useCallback.
+   */
   confirmDegrade?: () => Promise<boolean>
 }
 

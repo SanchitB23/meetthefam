@@ -257,6 +257,8 @@ describe('useExportTrigger — preflight degrade gate (#225)', () => {
   it('gates on mobile even when preflight is clean', async () => {
     isMobileLikeMock.mockReturnValue(true)
     const { ref } = makeContainer()
+    const pending: boolean[] = []
+    const off = onExportPending((d: ExportPendingDetail) => pending.push(d.pending))
     const confirmDegrade = vi.fn(async () => false)
     const { unmount } = renderHook(() =>
       useExportTrigger(ref, {
@@ -267,7 +269,10 @@ describe('useExportTrigger — preflight degrade gate (#225)', () => {
     )
     dispatchExportTree({ format: 'pdf', treeName: 'Smith Family' })
     await waitFor(() => expect(confirmDegrade).toHaveBeenCalled())
+    await new Promise((r) => setTimeout(r, 20))
     expect(captureTreeMock).not.toHaveBeenCalled()
+    expect(pending).toEqual([])
+    off()
     unmount()
   })
 })
