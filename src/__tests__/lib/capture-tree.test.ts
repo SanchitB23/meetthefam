@@ -2,6 +2,12 @@
 /** @vitest-environment jsdom */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+// Legacy PNG path is the flag-off fallback; pin the flag so these assertions
+// (which expect the toBlob 2-pass pipeline) keep exercising it.
+vi.mock('@/app/(app)/tree/[id]/_lib/export-config', () => ({
+  EXPORT_PNG_VIA_CANVAS: false,
+}))
+
 type CaptureOpts = { filter: (n: HTMLElement) => boolean; pixelRatio: number }
 
 // Mock html-to-image: capture the (node, options) it's called with.
