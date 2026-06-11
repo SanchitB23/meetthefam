@@ -51,10 +51,8 @@ Alternatives considered:
 The hook keeps a phase state and an active run ref:
 
 ```ts
-type ExportPhase = 'idle' | 'confirming' | 'preparing' | 'capturing'
-
 type ExportStatus =
-  | { phase: 'idle'; error?: string }
+  | { phase: 'idle' }
   | { phase: 'confirming'; runId: number }
   | { phase: 'preparing'; runId: number; bestEffort?: boolean }
   | { phase: 'capturing'; runId: number; bestEffort?: boolean }
@@ -62,22 +60,19 @@ type ExportStatus =
 
 `activeRunRef` stores `{ runId, signal }`. `cancel()` flips only that run's signal and returns UI to idle. `finally` only resets state if the finishing async branch still matches the active run, so an older branch can never close a newer run.
 
-Pending is emitted immediately when a run is accepted, before the degrade dialog opens. That disables `ExportTreeButton` throughout confirmation, preparation, and capture. Duplicate event handling is silent because the visible trigger is already disabled.
+Pending is emitted immediately when a run is accepted, before the degrade dialog opens. That disables `ExportTreeButton` throughout confirmation, preparation, and capture. Duplicate event handling is silent because the visible trigger is already disabled. `exporting` (which drives `ExportProgressDialog`) excludes the `confirming` phase, so the degrade dialog is the only thing on screen during confirmation. `confirmDegrade` defensively settles any orphaned prior resolver with `false` before storing a new one.
 
 ## 5. Degrade gate and measurement fallback
 
-Preflight remains the main warning gate. It runs before DOM mutation and returns a reason when quality may degrade:
+Preflight remains the main warning gate. It runs before DOM mutation and reports whether quality may degrade:
 
 ```ts
-type DegradeReason = 'oversize' | 'measurement-failed' | 'mobile'
-
 type ExportPreflight = {
   degraded: boolean
-  reason?: DegradeReason
 }
 ```
 
-`FamilyTree` maps `measureNativeExtent() === null` to `measurement-failed`, `planExportRaster(...).degraded` to `oversize`, and the hook adds `mobile` when `isMobileLike()` is true.
+`FamilyTree` reports degraded when `measureNativeExtent()` returns `null` or `planExportRaster(...)` plans a degraded raster; the hook additionally gates when `isMobileLike()` is true.
 
 If preflight reports degraded, the hook enters `confirming` and awaits `confirmDegrade`. Because the run is already active and pending, a second export cannot overwrite the resolver.
 
@@ -88,7 +83,6 @@ type CapturePreparation = {
   pixelRatio: number
   restore: () => void
   degraded?: boolean
-  degradeReason?: 'measurement-failed'
 }
 ```
 
@@ -98,8 +92,8 @@ When `prepareForCapture()` returns `degraded: true`, the hook captures normally 
 
 `ExportProgressDialog` should render different copy for normal and best-effort capture:
 
-- Normal: `Preparing export... Capturing your family tree. This can take a few seconds.`
-- Best effort: `Preparing best-effort export... This tree may export at reduced quality.`
+- Normal: `Preparing export… Capturing your family tree. This can take a few seconds.`
+- Best effort: `Preparing best-effort export… This tree may export at reduced quality.`
 
 On capture/PDF failure, the hook should:
 
