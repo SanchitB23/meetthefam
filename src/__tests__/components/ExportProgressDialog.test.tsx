@@ -9,6 +9,12 @@ describe('ExportProgressDialog', () => {
     expect(screen.getByText('Preparing export…')).toBeInTheDocument()
   })
 
+  it('shows reduced-quality copy for best-effort exports', () => {
+    render(<ExportProgressDialog open bestEffort />)
+    expect(screen.getByText('Preparing best-effort export…')).toBeInTheDocument()
+    expect(screen.getByText('This tree may export at reduced quality.')).toBeInTheDocument()
+  })
+
   it('renders nothing visible when closed', () => {
     render(<ExportProgressDialog open={false} />)
     expect(screen.queryByText('Preparing export…')).not.toBeInTheDocument()

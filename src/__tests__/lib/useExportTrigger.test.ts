@@ -1,7 +1,7 @@
 // src/__tests__/lib/useExportTrigger.test.ts
 /** @vitest-environment jsdom */
 import { renderHook, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RefObject } from 'react'
 import {
   dispatchExportTree,
@@ -11,6 +11,13 @@ import {
 import { useExportTrigger } from '@/app/(app)/tree/[id]/_lib/useExportTrigger'
 import { captureTree } from '@/app/(app)/tree/[id]/_lib/capture-tree'
 import { isMobileLike } from '@/app/(app)/tree/[id]/_lib/isMobileLike'
+
+const { toastError } = vi.hoisted(() => ({
+  toastError: vi.fn(),
+}))
+vi.mock('sonner', () => ({
+  toast: { error: toastError },
+}))
 
 // Stub the real rasteriser — jsdom has no canvas; we only assert orchestration.
 vi.mock('@/app/(app)/tree/[id]/_lib/capture-tree', () => ({
@@ -29,9 +36,18 @@ function makeContainer(): { el: HTMLDivElement; ref: RefObject<HTMLElement | nul
   return { el, ref: { current: el } }
 }
 
-describe('useExportTrigger', () => {
-  beforeEach(() => captureTreeMock.mockClear())
+beforeEach(() => {
+  captureTreeMock.mockReset()
+  captureTreeMock.mockResolvedValue(undefined)
+  isMobileLikeMock.mockReturnValue(false)
+  toastError.mockClear()
+})
 
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
+describe('useExportTrigger', () => {
   it('round-trips pending true→false and restores overflow on export', async () => {
     const { el, ref } = makeContainer()
     const pending: boolean[] = []
@@ -57,6 +73,33 @@ describe('useExportTrigger', () => {
     // Fifth arg is pixelRatio (defaults to 3 when no prepareForCapture).
     expect(captureTreeMock).toHaveBeenCalledWith(el, 'png', 'Smith Family', expect.anything(), 3)
     unmount()
+  })
+
+  it('ignores a second export event while a run is active', async () => {
+    let resolveCapture!: () => void
+    captureTreeMock.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveCapture = resolve
+        }),
+    )
+    const { ref } = makeContainer()
+    const pending: boolean[] = []
+    const off = onExportPending((d: ExportPendingDetail) => pending.push(d.pending))
+    const { unmount } = renderHook(() => useExportTrigger(ref, { readOnly: false }))
+
+    dispatchExportTree({ format: 'png', treeName: 'First' })
+    dispatchExportTree({ format: 'pdf', treeName: 'Second' })
+
+    await waitFor(() => expect(captureTreeMock).toHaveBeenCalledTimes(1))
+    expect(captureTreeMock).toHaveBeenCalledWith(
+      expect.any(HTMLElement), 'png', 'First', expect.anything(), 3,
+    )
+    resolveCapture()
+    await waitFor(() => expect(pending).toEqual([true, false]))
+
+    unmount()
+    off()
   })
 
   it('ignores the event when readOnly (share page)', async () => {
@@ -154,14 +197,41 @@ describe('useExportTrigger', () => {
     unmount()
   })
 
+  it('shows a toast and resets pending when captureTree throws', async () => {
+    const restore = vi.fn()
+    const prepareForCapture = vi.fn(() => ({ pixelRatio: 3, restore }))
+    captureTreeMock.mockRejectedValueOnce(new Error('raster failed'))
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const pending: boolean[] = []
+    const off = onExportPending((d: ExportPendingDetail) => pending.push(d.pending))
+
+    const { ref } = makeContainer()
+    const { unmount } = renderHook(() =>
+      useExportTrigger(ref, { readOnly: false, prepareForCapture }),
+    )
+
+    dispatchExportTree({ format: 'png', treeName: 'ErrorCase' })
+
+    await waitFor(() => expect(restore).toHaveBeenCalled(), { timeout: 2000 })
+    expect(consoleSpy).toHaveBeenCalledWith('[export] Tree capture failed:', expect.any(Error))
+    expect(toastError).toHaveBeenCalledWith(
+      'Export failed. Please try again, or use a desktop browser for large trees.',
+    )
+    expect(pending[pending.length - 1]).toBe(false)
+
+    unmount()
+    off()
+  })
+
   it('cancel resets pending and exporting; signal passed to captureTree reflects aborted state', async () => {
     // Make captureTree record the signal object it receives.
     const receivedSignals: Array<{ aborted: boolean } | undefined> = []
+    let resolveCapture!: () => void
     captureTreeMock.mockImplementation(async (_el, _fmt, _name, signal) => {
       receivedSignals.push(signal as { aborted: boolean } | undefined)
-      // Yield so the cancel call has a chance to flip signal.aborted
-      // before captureTree's post-raster abort check would run.
-      await new Promise((r) => setTimeout(r, 0))
+      await new Promise<void>((resolve) => {
+        resolveCapture = resolve
+      })
     })
 
     const { ref } = makeContainer()
@@ -190,17 +260,71 @@ describe('useExportTrigger', () => {
     expect(pending).toContain(false)
     expect(pending[pending.length - 1]).toBe(false)
 
+    resolveCapture()
     unmount()
     off()
+  })
+
+  it('cancel during the settle delay aborts the run and still restores preparation', async () => {
+    const restore = vi.fn()
+    const prepareForCapture = vi.fn(() => ({ pixelRatio: 3, restore }))
+    const { ref } = makeContainer()
+    const pending: boolean[] = []
+    const off = onExportPending((d: ExportPendingDetail) => pending.push(d.pending))
+    const { result, unmount } = renderHook(() =>
+      useExportTrigger(ref, { readOnly: false, prepareForCapture }),
+    )
+
+    dispatchExportTree({ format: 'png', treeName: 'Smith Family' })
+    await waitFor(() => expect(prepareForCapture).toHaveBeenCalled())
+
+    result.current.cancel()
+
+    await waitFor(() => expect(restore).toHaveBeenCalled(), { timeout: 2000 })
+    expect(captureTreeMock).not.toHaveBeenCalled()
+    expect(pending[pending.length - 1]).toBe(false)
+    expect(toastError).not.toHaveBeenCalled()
+
+    unmount()
+    off()
+  })
+
+  it('continues as best-effort when preparation reports a degraded fallback', async () => {
+    let resolveCapture!: () => void
+    captureTreeMock.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveCapture = resolve
+        }),
+    )
+    const restore = vi.fn()
+    const prepareForCapture = vi.fn(() => ({ pixelRatio: 1, restore, degraded: true }))
+    const { ref } = makeContainer()
+    const { result, unmount } = renderHook(() =>
+      useExportTrigger(ref, {
+        readOnly: false,
+        preflight: () => ({ degraded: false }),
+        confirmDegrade: vi.fn(async () => true),
+        prepareForCapture,
+      }),
+    )
+
+    dispatchExportTree({ format: 'png', treeName: 'Fallback' })
+
+    await waitFor(() => expect(captureTreeMock).toHaveBeenCalled(), { timeout: 2000 })
+    expect(result.current.exportingBestEffort).toBe(true)
+    expect(captureTreeMock).toHaveBeenCalledWith(
+      expect.any(HTMLElement), 'png', 'Fallback', expect.anything(), 1,
+    )
+
+    resolveCapture()
+    await waitFor(() => expect(result.current.exporting).toBe(false))
+    expect(restore).toHaveBeenCalled()
+    unmount()
   })
 })
 
 describe('useExportTrigger — preflight degrade gate (#225)', () => {
-  beforeEach(() => {
-    captureTreeMock.mockClear()
-    isMobileLikeMock.mockReturnValue(false)
-  })
-
   it('skips the gate and captures when preflight is clean and not mobile', async () => {
     const { ref } = makeContainer()
     const confirmDegrade = vi.fn(async () => true)
@@ -217,7 +341,7 @@ describe('useExportTrigger — preflight degrade gate (#225)', () => {
     unmount()
   })
 
-  it('asks for confirmation when preflight reports degraded; declining aborts with no pending events', async () => {
+  it('asks for confirmation when preflight reports degraded; declining aborts after one pending cycle', async () => {
     const { ref } = makeContainer()
     const pending: boolean[] = []
     const off = onExportPending((d: ExportPendingDetail) => pending.push(d.pending))
@@ -233,7 +357,7 @@ describe('useExportTrigger — preflight degrade gate (#225)', () => {
     await waitFor(() => expect(confirmDegrade).toHaveBeenCalled())
     await new Promise((r) => setTimeout(r, 20))
     expect(captureTreeMock).not.toHaveBeenCalled()
-    expect(pending).toEqual([]) // gate runs BEFORE pending — no dialog flash
+    expect(pending).toEqual([true, false]) // pending covers the confirm dialog too
     unmount()
     off()
   })
@@ -271,8 +395,94 @@ describe('useExportTrigger — preflight degrade gate (#225)', () => {
     await waitFor(() => expect(confirmDegrade).toHaveBeenCalled())
     await new Promise((r) => setTimeout(r, 20))
     expect(captureTreeMock).not.toHaveBeenCalled()
-    expect(pending).toEqual([])
+    expect(pending).toEqual([true, false])
     off()
+    unmount()
+  })
+
+  it('uses the same degraded gate for PNG exports', async () => {
+    const { ref } = makeContainer()
+    const confirmDegrade = vi.fn(async () => true)
+    const { unmount } = renderHook(() =>
+      useExportTrigger(ref, {
+        readOnly: false,
+        preflight: () => ({ degraded: true }),
+        confirmDegrade,
+      }),
+    )
+    dispatchExportTree({ format: 'png', treeName: 'Smith Family' })
+    await waitFor(() => expect(captureTreeMock).toHaveBeenCalled())
+    expect(confirmDegrade).toHaveBeenCalledTimes(1)
+    expect(captureTreeMock).toHaveBeenCalledWith(
+      expect.any(HTMLElement), 'png', 'Smith Family', expect.anything(), 3,
+    )
+    unmount()
+  })
+
+  it('keeps the first degraded confirmation resolver when a second event is dispatched', async () => {
+    let resolveConfirm!: (ok: boolean) => void
+    const confirmDegrade = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveConfirm = resolve
+        }),
+    )
+    const { ref } = makeContainer()
+    const { unmount } = renderHook(() =>
+      useExportTrigger(ref, {
+        readOnly: false,
+        preflight: () => ({ degraded: true }),
+        confirmDegrade,
+      }),
+    )
+
+    dispatchExportTree({ format: 'pdf', treeName: 'First' })
+    await waitFor(() => expect(confirmDegrade).toHaveBeenCalledTimes(1))
+    dispatchExportTree({ format: 'png', treeName: 'Second' })
+    await new Promise((r) => setTimeout(r, 20))
+    expect(confirmDegrade).toHaveBeenCalledTimes(1)
+
+    resolveConfirm(true)
+    await waitFor(() => expect(captureTreeMock).toHaveBeenCalledTimes(1))
+    expect(captureTreeMock).toHaveBeenCalledWith(
+      expect.any(HTMLElement), 'pdf', 'First', expect.anything(), 3,
+    )
+    unmount()
+  })
+
+  it('keeps the progress dialog closed while the degrade confirmation is open', async () => {
+    let resolveConfirm!: (ok: boolean) => void
+    const confirmDegrade = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveConfirm = resolve
+        }),
+    )
+    let resolveCapture!: () => void
+    captureTreeMock.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveCapture = resolve
+        }),
+    )
+    const { ref } = makeContainer()
+    const { result, unmount } = renderHook(() =>
+      useExportTrigger(ref, {
+        readOnly: false,
+        preflight: () => ({ degraded: true }),
+        confirmDegrade,
+      }),
+    )
+
+    dispatchExportTree({ format: 'pdf', treeName: 'Smith Family' })
+    await waitFor(() => expect(confirmDegrade).toHaveBeenCalled())
+    // #235 review fix 1 — the degrade dialog must be the ONLY thing on screen.
+    expect(result.current.exporting).toBe(false)
+
+    resolveConfirm(true)
+    await waitFor(() => expect(result.current.exporting).toBe(true))
+    resolveCapture()
+    await waitFor(() => expect(result.current.exporting).toBe(false))
     unmount()
   })
 })

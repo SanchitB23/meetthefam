@@ -14,11 +14,13 @@ import { Button } from '@/components/ui/button'
 
 type Props = {
   open: boolean
+  /** True when capture fell back to a reduced-quality export path. */
+  bestEffort?: boolean
   /** Called when the user clicks Cancel. Soft-cancel: skips the download. */
   onCancel?: () => void
 }
 
-export function ExportProgressDialog({ open, onCancel }: Props) {
+export function ExportProgressDialog({ open, bestEffort = false, onCancel }: Props) {
   // Controlled dialog: onOpenChange silently ignores close requests so
   // Escape / overlay-click can't dismiss it. The only dismissal path is
   // the Cancel button (which lets the raster finish in the background
@@ -27,9 +29,13 @@ export function ExportProgressDialog({ open, onCancel }: Props) {
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-xs" showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle className="font-serif text-xl">Preparing export…</DialogTitle>
+          <DialogTitle className="font-serif text-xl">
+            {bestEffort ? 'Preparing best-effort export…' : 'Preparing export…'}
+          </DialogTitle>
           <DialogDescription>
-            Capturing your family tree. This can take a few seconds.
+            {bestEffort
+              ? 'This tree may export at reduced quality.'
+              : 'Capturing your family tree. This can take a few seconds.'}
           </DialogDescription>
         </DialogHeader>
         {onCancel && (

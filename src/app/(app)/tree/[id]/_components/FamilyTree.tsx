@@ -188,6 +188,7 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
 
     // Measure native extent.
     const nativeExtent = cont ? measureNativeExtent(cont) : null
+    const usedMeasurementFallback = nativeExtent === null
 
     // Fall back to a reasonable large box if measurement fails so the chart at
     // least renders at a larger-than-viewport scale. 2400×1600 is a common
@@ -214,7 +215,9 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
       chart?.updateTree({ initial: true })
     }
 
-    return { pixelRatio: plan.pixelRatio, restore }
+    // #235 review fix — surface the measurement fallback so the hook can show
+    // best-effort progress copy instead of silently degrading.
+    return { pixelRatio: plan.pixelRatio, restore, degraded: usedMeasurementFallback }
   }, [containerRef])
 
   // #225 preflight: measure + plan WITHOUT touching the DOM. Measurement
@@ -238,6 +241,9 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
   const confirmDegrade = useCallback(
     () =>
       new Promise<boolean>((resolve) => {
+        // #235 review fix — defensively settle an orphaned prior confirm
+        // (e.g. a run cancelled while its dialog was open) so no promise leaks.
+        degradeResolverRef.current?.(false)
         degradeResolverRef.current = resolve
         setDegradeOpen(true)
       }),
@@ -256,7 +262,7 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
   // #217 — export trigger seam. Listens for the top-bar Export button's
   // `mtf-export-tree` event, drives the progress dialog, and (#218) runs
   // the real capture. Gated behind readOnly so the share-page instance is inert.
-  const { exporting, cancel: cancelExport } = useExportTrigger(containerRef, {
+  const { exporting, exportingBestEffort, cancel: cancelExport } = useExportTrigger(containerRef, {
     readOnly,
     prepareForCapture,
     preflight,
@@ -616,7 +622,9 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
         )}
         <ZoomControls onZoomIn={zoomIn} onZoomOut={zoomOut} onFit={zoomToFit} />
       </div>
-      {!readOnly && <ExportProgressDialog open={exporting} onCancel={cancelExport} />}
+      {!readOnly && (
+        <ExportProgressDialog open={exporting} bestEffort={exportingBestEffort} onCancel={cancelExport} />
+      )}
       {!readOnly && (
         <ExportDegradeDialog
           open={degradeOpen}
