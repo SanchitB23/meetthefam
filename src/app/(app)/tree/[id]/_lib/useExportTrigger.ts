@@ -1,4 +1,4 @@
-'use client'
+"use client";
 // src/app/(app)/tree/[id]/_lib/useExportTrigger.ts
 // Owns the FamilyTree side of the export seam (#217): listens for
 // `mtf-export-tree`, flips `exporting` state, round-trips `mtf-export-pending`
@@ -17,21 +17,25 @@
 //   - Cancel support: `cancel()` aborts the pending download (the raster may
 //     still run in the background, but the result is silently discarded).
 //   - `restore()` is ALWAYS called in `finally` (also on cancel + error).
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import {
-  emitExportPending,
-  onExportTree,
-} from './export-events'
-import { withOverflowVisible } from './with-overflow-visible'
-import { captureTree, type CaptureSignal } from './capture-tree'
-import { isMobileLike } from './isMobileLike'
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
+import { toast } from "sonner";
+import { emitExportPending, onExportTree } from "./export-events";
+import { withOverflowVisible } from "./with-overflow-visible";
+import { captureTree, type CaptureSignal } from "./capture-tree";
+import { isMobileLike } from "./isMobileLike";
 
 /** How long (ms) to wait after calling prepareForCapture/fitFn before taking
  *  the screenshot. Matches chart.setTransitionTime(800) + 100ms buffer. */
-const FIT_SETTLE_MS = 900
+const FIT_SETTLE_MS = 900;
 
 function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -41,19 +45,37 @@ function delay(ms: number): Promise<void> {
  */
 export type CapturePreparation = {
   /** pixelRatio computed by planExportRaster for this tree's native extent. */
-  pixelRatio: number
+  pixelRatio: number;
   /** Restores the container to its pre-capture state. Always call in finally. */
-  restore: () => void
-}
+  restore: () => void;
+  /** True when capture uses a fallback that may reduce output quality. */
+  degraded?: boolean;
+  /** Reason for the fallback, surfaced to progress-copy logic. */
+  degradeReason?: "measurement-failed";
+};
+
+export type DegradeReason = "oversize" | "measurement-failed" | "mobile";
 
 /** Result of the #225 preflight measurement (no DOM mutation). */
 export type ExportPreflight = {
   /** True when the export cannot keep cards at native size (or measuring failed). */
-  degraded: boolean
-}
+  degraded: boolean;
+  reason?: DegradeReason;
+};
+
+type ExportStatus =
+  | { phase: "idle" }
+  | { phase: "confirming"; runId: number }
+  | { phase: "preparing"; runId: number; bestEffort?: boolean }
+  | { phase: "capturing"; runId: number; bestEffort?: boolean };
+
+type ActiveRun = {
+  runId: number;
+  signal: CaptureSignal;
+};
 
 type Options = {
-  readOnly: boolean
+  readOnly: boolean;
   /**
    * Native-scale capture (#218). Called before capture; should:
    *   (a) save the current container size,
@@ -64,108 +86,132 @@ type Options = {
    * When provided, this REPLACES `fitFn`. After the settle delay and capture,
    * `restore()` is always called in a `finally` block.
    */
-  prepareForCapture?: () => CapturePreparation
+  prepareForCapture?: () => CapturePreparation;
   /**
    * Fallback: called just before capture to fit the whole tree into the
    * current viewport frame. Used when `prepareForCapture` is not provided.
    * @deprecated Use `prepareForCapture` for native-scale export (#218).
    */
-  fitFn?: () => void
+  fitFn?: () => void;
   /**
    * #225 preflight: measure + plan WITHOUT resizing the container. Runs before
    * any pending state so the degrade dialog isn't stacked behind the progress
    * dialog. When it reports degraded — or the device is mobile-like — the
    * export pauses on `confirmDegrade`.
    */
-  preflight?: () => ExportPreflight
+  preflight?: () => ExportPreflight;
   /**
    * Ask the user to confirm a degraded/mobile export. Resolve false to abort.
    * Must be provided together with `preflight` — if either is absent the
    * gate is skipped entirely. Callers must stabilize both with useCallback.
    */
-  confirmDegrade?: () => Promise<boolean>
-}
+  confirmDegrade?: () => Promise<boolean>;
+};
 
 export function useExportTrigger(
   containerRef: RefObject<HTMLElement | null>,
   { readOnly, prepareForCapture, fitFn, preflight, confirmDegrade }: Options,
-): { exporting: boolean; cancel: () => void } {
-  const [exporting, setExporting] = useState(false)
-  // signalRef holds the CaptureSignal for the current export run.
-  // A fresh { aborted: false } object is created per export; cancel() flips
-  // .aborted to true so captureTree can check it before / after the raster.
-  const signalRef = useRef<CaptureSignal>({ aborted: false })
+): { exporting: boolean; exportingBestEffort: boolean; cancel: () => void } {
+  const [status, setStatus] = useState<ExportStatus>({ phase: "idle" });
+  const activeRunRef = useRef<ActiveRun | null>(null);
+  const nextRunIdRef = useRef(0);
 
   // Stable cancel callback: flip the current signal and reset UI immediately.
   // The in-flight raster may still produce a blob, but captureTree checks the
   // flag before calling triggerDownload, so no download fires.
   const cancel = useCallback(() => {
-    signalRef.current.aborted = true
-    setExporting(false)
-    emitExportPending({ pending: false })
-  }, [])
+    const active = activeRunRef.current;
+    if (!active) return;
+    active.signal.aborted = true;
+    activeRunRef.current = null;
+    setStatus({ phase: "idle" });
+    emitExportPending({ pending: false });
+  }, []);
 
   useEffect(() => {
-    if (readOnly) return
+    if (readOnly) return;
     return onExportTree(async ({ format, treeName }) => {
-      const el = containerRef.current
-      if (!el) return
+      const el = containerRef.current;
+      if (!el) return;
 
-      // #225 degrade gate — before pending/exporting so the warn dialog is
-      // the only thing on screen and a decline leaves no UI residue.
-      if (preflight && confirmDegrade) {
-        const flight = preflight()
-        if (flight.degraded || isMobileLike()) {
-          const proceed = await confirmDegrade()
-          if (!proceed) return
-        }
-      }
+      // Accept exactly one run at a time. This guards the live family-chart DOM
+      // from overlapping resizes/rasters and prevents confirm resolver overwrite.
+      if (activeRunRef.current) return;
 
-      // Fresh signal for this export run.
-      const signal: CaptureSignal = { aborted: false }
-      signalRef.current = signal
-      setExporting(true)
-      emitExportPending({ pending: true })
+      const runId = ++nextRunIdRef.current;
+      const signal: CaptureSignal = { aborted: false };
+      activeRunRef.current = { runId, signal };
+      setStatus({ phase: "preparing", runId });
+      emitExportPending({ pending: true });
 
       // #218: track the preparation so restore() can be called in finally.
-      let preparation: CapturePreparation | null = null
+      let preparation: CapturePreparation | null = null;
 
       try {
+        // #225 degrade gate — after run acceptance so the header trigger is
+        // disabled while the confirm dialog is open.
+        if (preflight && confirmDegrade) {
+          const flight = preflight();
+          if (flight.degraded || isMobileLike()) {
+            setStatus({ phase: "confirming", runId });
+            const proceed = await confirmDegrade();
+            if (signal.aborted) return;
+            if (!proceed) {
+              signal.aborted = true;
+              return;
+            }
+          }
+        }
+
         if (prepareForCapture) {
           // Native-scale path: resize container, fit chart at ≈1×, get pixelRatio.
-          preparation = prepareForCapture()
-          await delay(FIT_SETTLE_MS)
+          setStatus({ phase: "preparing", runId });
+          preparation = prepareForCapture();
+          if (preparation.degraded) {
+            setStatus({ phase: "preparing", runId, bestEffort: true });
+          }
+          await delay(FIT_SETTLE_MS);
         } else if (fitFn) {
           // Legacy fallback: fit to the current viewport size.
-          fitFn()
-          await delay(FIT_SETTLE_MS)
+          setStatus({ phase: "preparing", runId });
+          fitFn();
+          await delay(FIT_SETTLE_MS);
         }
 
         // If cancelled during the fit/settle delay, bail before starting the raster.
-        if (signal.aborted) return
+        if (signal.aborted) return;
 
-        const pixelRatio = preparation?.pixelRatio ?? 3
+        const pixelRatio = preparation?.pixelRatio ?? 3;
+        const bestEffort = preparation?.degraded === true;
+        setStatus({ phase: "capturing", runId, bestEffort });
 
         await withOverflowVisible(el, () =>
           captureTree(el, format, treeName, signal, pixelRatio),
-        )
+        );
       } catch (err) {
-        // captureTree or prepareForCapture failed. Log and fall through to
-        // finally so restore() always runs and the UI is reset.
-        console.error('[export] Tree capture failed:', err)
+        if (!signal.aborted) {
+          // captureTree or prepareForCapture failed. Log and fall through to
+          // finally so restore() always runs and the UI is reset.
+          console.error("[export] Tree capture failed:", err);
+          toast.error(
+            "Export failed. Please try again, or use a desktop browser for large trees.",
+          );
+        }
       } finally {
         // Always restore the container, even on cancel or error.
         if (preparation) {
-          preparation.restore()
+          preparation.restore();
         }
-        // Only reset pending/exporting if the user didn't already cancel
-        // (cancel() resets them immediately so we don't double-reset).
-        if (!signal.aborted) {
-          emitExportPending({ pending: false })
-          setExporting(false)
+
+        // Only the active run can clear UI. If cancel() already cleared the run,
+        // this older async branch must not emit another pending reset.
+        if (activeRunRef.current?.runId === runId) {
+          activeRunRef.current = null;
+          emitExportPending({ pending: false });
+          setStatus({ phase: "idle" });
         }
       }
-    })
+    });
     // containerRef identity is stable (useRef); listed so exhaustive-deps
     // doesn't flag it. readOnly is the real re-run guard.
     // prepareForCapture, fitFn, preflight, and confirmDegrade are excluded
@@ -173,7 +219,12 @@ export function useExportTrigger(
     // is stable for the life of the chart; re-registering the event listener
     // on every render would be wasteful and incorrect.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [containerRef, readOnly])
+  }, [containerRef, readOnly]);
 
-  return { exporting, cancel }
+  const exporting = status.phase !== "idle";
+  const exportingBestEffort =
+    (status.phase === "preparing" || status.phase === "capturing") &&
+    status.bestEffort === true;
+
+  return { exporting, exportingBestEffort, cancel };
 }

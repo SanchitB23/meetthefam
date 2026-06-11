@@ -1,4 +1,4 @@
-'use client'
+"use client";
 // Progress dialog for tree export (#217/#218). Modal while a capture runs.
 // #218: adds Cancel (soft-cancel — the raster may finish in the background
 // but the result is discarded and no download fires).
@@ -9,16 +9,22 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 type Props = {
-  open: boolean
+  open: boolean;
+  /** True when capture fell back to a reduced-quality export path. */
+  bestEffort?: boolean;
   /** Called when the user clicks Cancel. Soft-cancel: skips the download. */
-  onCancel?: () => void
-}
+  onCancel?: () => void;
+};
 
-export function ExportProgressDialog({ open, onCancel }: Props) {
+export function ExportProgressDialog({
+  open,
+  bestEffort = false,
+  onCancel,
+}: Props) {
   // Controlled dialog: onOpenChange silently ignores close requests so
   // Escape / overlay-click can't dismiss it. The only dismissal path is
   // the Cancel button (which lets the raster finish in the background
@@ -27,23 +33,25 @@ export function ExportProgressDialog({ open, onCancel }: Props) {
     <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent className="sm:max-w-xs" showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle className="font-serif text-xl">Preparing export…</DialogTitle>
+          <DialogTitle className="font-serif text-xl">
+            {bestEffort
+              ? "Preparing best-effort export..."
+              : "Preparing export..."}
+          </DialogTitle>
           <DialogDescription>
-            Capturing your family tree. This can take a few seconds.
+            {bestEffort
+              ? "This tree may export at reduced quality."
+              : "Capturing your family tree. This can take a few seconds."}
           </DialogDescription>
         </DialogHeader>
         {onCancel && (
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onCancel}
-            >
+            <Button type="button" variant="outline" onClick={onCancel}>
               Cancel
             </Button>
           </DialogFooter>
         )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }
