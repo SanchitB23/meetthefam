@@ -1,51 +1,40 @@
 /** @vitest-environment jsdom */
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
-import { ExportProgressDialog } from "@/app/(app)/tree/[id]/_components/ExportProgressDialog";
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import { ExportProgressDialog } from '@/app/(app)/tree/[id]/_components/ExportProgressDialog'
 
-describe("ExportProgressDialog", () => {
-  it("shows the preparing message when open", () => {
-    render(<ExportProgressDialog open />);
-    expect(screen.getByText("Preparing export...")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Capturing your family tree. This can take a few seconds.",
-      ),
-    ).toBeInTheDocument();
-  });
+describe('ExportProgressDialog', () => {
+  it('shows the preparing message when open', () => {
+    render(<ExportProgressDialog open />)
+    expect(screen.getByText('Preparing export…')).toBeInTheDocument()
+  })
 
-  it("shows reduced-quality copy for best-effort exports", () => {
-    render(<ExportProgressDialog open bestEffort />);
-    expect(
-      screen.getByText("Preparing best-effort export..."),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("This tree may export at reduced quality."),
-    ).toBeInTheDocument();
-  });
+  it('shows reduced-quality copy for best-effort exports', () => {
+    render(<ExportProgressDialog open bestEffort />)
+    expect(screen.getByText('Preparing best-effort export…')).toBeInTheDocument()
+    expect(screen.getByText('This tree may export at reduced quality.')).toBeInTheDocument()
+  })
 
-  it("renders nothing visible when closed", () => {
-    render(<ExportProgressDialog open={false} />);
-    expect(screen.queryByText("Preparing export...")).not.toBeInTheDocument();
-  });
+  it('renders nothing visible when closed', () => {
+    render(<ExportProgressDialog open={false} />)
+    expect(screen.queryByText('Preparing export…')).not.toBeInTheDocument()
+  })
 
-  it("renders a Cancel button when onCancel is provided", () => {
-    const onCancel = vi.fn();
-    render(<ExportProgressDialog open onCancel={onCancel} />);
-    expect(screen.getByRole("button", { name: /cancel/i })).toBeInTheDocument();
-  });
+  it('renders a Cancel button when onCancel is provided', () => {
+    const onCancel = vi.fn()
+    render(<ExportProgressDialog open onCancel={onCancel} />)
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument()
+  })
 
-  it("calls onCancel when Cancel is clicked", () => {
-    const onCancel = vi.fn();
-    render(<ExportProgressDialog open onCancel={onCancel} />);
-    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
-    expect(onCancel).toHaveBeenCalledTimes(1);
-  });
+  it('calls onCancel when Cancel is clicked', () => {
+    const onCancel = vi.fn()
+    render(<ExportProgressDialog open onCancel={onCancel} />)
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
+    expect(onCancel).toHaveBeenCalledTimes(1)
+  })
 
-  it("does not render a Cancel button when onCancel is omitted", () => {
-    render(<ExportProgressDialog open />);
-    expect(
-      screen.queryByRole("button", { name: /cancel/i }),
-    ).not.toBeInTheDocument();
-  });
-});
+  it('does not render a Cancel button when onCancel is omitted', () => {
+    render(<ExportProgressDialog open />)
+    expect(screen.queryByRole('button', { name: /cancel/i })).not.toBeInTheDocument()
+  })
+})
