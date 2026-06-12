@@ -133,7 +133,10 @@ export async function TreeContent({
        father_id, mother_id, spouse_id, tone`,
     )
     .eq('tree_id', treeId)
+    // id tiebreak (#228): created_at defaults to now(), which is fixed per
+    // transaction — batch inserts tie, and order among ties is arbitrary.
     .order('created_at', { ascending: true })
+    .order('id', { ascending: true })
     .returns<PersonRow[]>()
 
   const people = peopleRows ?? []
