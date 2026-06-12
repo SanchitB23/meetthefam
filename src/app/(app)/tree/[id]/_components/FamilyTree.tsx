@@ -62,9 +62,13 @@ import { personNodeHtml } from '../_lib/person-node-html'
 import { usePressActions } from '../_lib/usePressActions'
 import type { PersonRow } from '../_lib/types'
 import { AddRelativeFab } from './AddRelativeFab'
+import { ExportProgressDialog } from './ExportProgressDialog'
 import { PersonActionMenu, type ActionAnchor } from './PersonActionMenu'
 import { PersonDetailSheet } from './PersonDetailSheet'
 import { ZoomControls } from './ZoomControls'
+import { useExportTrigger, type CapturePreparation, type ExportPreflight } from '../_lib/useExportTrigger'
+import { ExportDegradeDialog } from './ExportDegradeDialog'
+import { measureNativeExtent, planExportRaster } from '../_lib/export-raster-plan'
 // PersonHoverPlus and PersonForm removed in 8b polish FIX 1:
 // "+" is now an in-card button child of .mtf-node; form is owned by AddRelativeFab
 // via CustomEvent('mtf-add-relative') dispatched from setOnCardClick.
@@ -159,6 +163,111 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
     getServerHashSnapshot,
   )
   const currentFocusId = hashFocus ?? initialFocusId ?? null
+
+  // #218 — native-scale export: temporarily resize the container to the tree's
+  // native pixel extent so family-chart fits it at ≈1× scale, yielding a crisp
+  // raster instead of a blurry fit-to-screen capture.
+  //
+  // Steps:
+  //   1. Measure native extent via measureNativeExtent (SVG path bbox / zoom k).
+  //      Falls back to a safe default if measurement fails.
+  //   2. planExportRaster computes boxW×boxH and pixelRatio within browser caps.
+  //   3. Resize the .f3 container to boxW×boxH (inline style, overrides Tailwind
+  //      h-[calc(100vh-9rem)]). overflow is handled by withOverflowVisible in the
+  //      trigger — we don't need to set it here.
+  //   4. updateTree({ initial: true }) so family-chart fits into the big box.
+  //   5. Return { pixelRatio, restore } — restore puts the inline size back and
+  //      re-fits the chart to the viewport. Called in finally by useExportTrigger.
+  const prepareForCapture = useCallback((): CapturePreparation => {
+    const chart = chartRef.current
+    const cont = containerRef.current
+
+    // Save current inline dimensions (may be empty strings if Tailwind class is in charge).
+    const prevWidth = cont?.style.width ?? ''
+    const prevHeight = cont?.style.height ?? ''
+
+    // Measure native extent.
+    const nativeExtent = cont ? measureNativeExtent(cont) : null
+    const usedMeasurementFallback = nativeExtent === null
+
+    // Fall back to a reasonable large box if measurement fails so the chart at
+    // least renders at a larger-than-viewport scale. 2400×1600 is a common
+    // "full-screen" size that gives decent output with the default pixelRatio=3.
+    const { nativeW, nativeH } = nativeExtent ?? { nativeW: 2400, nativeH: 1600 }
+
+    const plan = planExportRaster({ nativeW, nativeH })
+
+    // Resize the container.
+    if (cont) {
+      cont.style.width = `${plan.boxW}px`
+      cont.style.height = `${plan.boxH}px`
+    }
+
+    // Fit the chart into the enlarged box.
+    chart?.updateTree({ initial: true })
+
+    const restore = () => {
+      if (cont) {
+        cont.style.width = prevWidth
+        cont.style.height = prevHeight
+      }
+      // Re-fit into the normal viewport after restoring container size.
+      chart?.updateTree({ initial: true })
+    }
+
+    // #235 review fix — surface the measurement fallback so the hook can show
+    // best-effort progress copy instead of silently degrading.
+    return { pixelRatio: plan.pixelRatio, restore, degraded: usedMeasurementFallback }
+  }, [containerRef])
+
+  // #225 preflight: measure + plan WITHOUT touching the DOM. Measurement
+  // failure counts as degraded (spec §7 case 2) — a tree we can't measure
+  // must not silently export into an undersized box.
+  const [degradeOpen, setDegradeOpen] = useState(false)
+  const degradeResolverRef = useRef<((ok: boolean) => void) | null>(null)
+
+  const preflight = useCallback((): ExportPreflight => {
+    const cont = containerRef.current
+    const nativeExtent = cont ? measureNativeExtent(cont) : null
+    if (!nativeExtent) return { degraded: true }
+    const plan = planExportRaster(nativeExtent)
+    if (process.env.NODE_ENV === 'development') {
+      // #225 §6 ceiling-validation instrumentation (dev-only by design).
+      console.info('[export:preflight]', { ...nativeExtent, ...plan })
+    }
+    return { degraded: plan.degraded }
+  }, [containerRef])
+
+  const confirmDegrade = useCallback(
+    () =>
+      new Promise<boolean>((resolve) => {
+        // #235 review fix — defensively settle an orphaned prior confirm
+        // (e.g. a run cancelled while its dialog was open) so no promise leaks.
+        degradeResolverRef.current?.(false)
+        degradeResolverRef.current = resolve
+        setDegradeOpen(true)
+      }),
+    [],
+  )
+
+  // Resolves the pending confirmDegrade promise EXACTLY once — the ref is
+  // nulled after first use, so duplicate dialog callbacks (button click +
+  // Escape/overlay onOpenChange) are harmless no-ops.
+  const resolveDegrade = useCallback((ok: boolean) => {
+    setDegradeOpen(false)
+    degradeResolverRef.current?.(ok)
+    degradeResolverRef.current = null
+  }, [])
+
+  // #217 — export trigger seam. Listens for the top-bar Export button's
+  // `mtf-export-tree` event, drives the progress dialog, and (#218) runs
+  // the real capture. Gated behind readOnly so the share-page instance is inert.
+  const { exporting, exportingBestEffort, cancel: cancelExport } = useExportTrigger(containerRef, {
+    readOnly,
+    prepareForCapture,
+    preflight,
+    confirmDegrade,
+  })
 
   const { shouldSuppressNextClickRef } = usePressActions(containerRef, {
     onLongPress: readOnly
@@ -513,6 +622,16 @@ function FamilyTreeImpl({ treeId, people, initialFocusId, readOnly = false }: Pr
         )}
         <ZoomControls onZoomIn={zoomIn} onZoomOut={zoomOut} onFit={zoomToFit} />
       </div>
+      {!readOnly && (
+        <ExportProgressDialog open={exporting} bestEffort={exportingBestEffort} onCancel={cancelExport} />
+      )}
+      {!readOnly && (
+        <ExportDegradeDialog
+          open={degradeOpen}
+          onContinue={() => resolveDegrade(true)}
+          onCancel={() => resolveDegrade(false)}
+        />
+      )}
       <PersonDetailSheet
         person={detailPerson}
         peopleById={peopleById}

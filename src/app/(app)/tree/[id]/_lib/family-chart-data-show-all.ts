@@ -61,8 +61,10 @@ export const SUPER_ROOT_ID = '__super_root__'
  * inject the synthetic super-root + any floating-partner spouse
  * synthesis needed for everyone to render under `main_id = SUPER_ROOT_ID`.
  *
- * 0/1 patriarch-matriarch case (e.g. an empty or single-trunk tree) is
- * a no-op — the standard single-root walk already covers everyone.
+ * Empty (0-root) tree is a no-op. A SINGLE primary root (one founding
+ * couple — the common case) still gets a super-root injected (#224): the
+ * old "single-trunk needs no super-root, the data[0] walk covers
+ * everyone" assumption was false (see Pass 3's note).
  */
 export function transformToFamilyChartShapeShowAll(rows: PersonRow[]): FamilyChartDatum[] {
   // Deep-ish clone of every datum's `rels` so we can mutate parents /
@@ -186,11 +188,21 @@ export function transformToFamilyChartShapeShowAll(rows: PersonRow[]): FamilyCha
     for (const sid of d.rels.spouses) skippedAsSecondaryPartner.add(sid)
   }
 
-  // 0 or 1 primary root: single-trunk tree (or empty). No super-root
-  // injection needed; the standard walk from `main_id = data[0]` (which
-  // FamilyTree.tsx already overrides to SUPER_ROOT_ID then falls back
-  // to the lone root) covers everyone reachable.
-  if (primaryRoots.length <= 1) return base
+  // No primary roots ⇒ empty tree: nothing to anchor, return as-is.
+  //
+  // #224 — a SINGLE primary root (one founding couple) MUST still get a
+  // super-root. FamilyTree.tsx pins `main_id = SUPER_ROOT_ID` for the
+  // chart's lifetime; if we skip injection here, that id is absent from
+  // the data and family-chart (calculateTree) falls back to
+  // `data_stash[0]`. The `people` query has no ORDER BY, so data[0] is an
+  // arbitrary row — when it happens to be a leaf, the ancestry+progeny
+  // walk from it covers only a fraction of the tree and the canvas
+  // collapses to ~2 nodes. The failure is therefore data-order-dependent
+  // and erratic (some single-trunk trees render, others collapse). Always
+  // injecting the super-root keeps `main_id` valid and the render
+  // deterministic. A lone super-root child triggers no duplicate cascade —
+  // Pass 2 / 2.5 already exclude cross-level in-laws.
+  if (primaryRoots.length < 1) return base
 
   // Pass 3 — rewire each PRIMARY root's parents to [SUPER_ROOT_ID].
   // Secondary partners stay with `rels.parents = []` so they're reached

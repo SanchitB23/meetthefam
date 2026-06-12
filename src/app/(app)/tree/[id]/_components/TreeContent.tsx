@@ -3,6 +3,7 @@ import { ArrowLeft, Settings } from 'lucide-react'
 import { FamilyTree } from './FamilyTree'
 import type { PersonRow } from '../_lib/types'
 import { AddRelativeFab } from './AddRelativeFab'
+import { ExportTreeButton } from './ExportTreeButton'
 import { TreeSettingsSheet, type MemberRow, type PendingInviteRow } from './TreeSettingsSheet'
 import { LinkProgress } from '@/components/ui/LinkProgress'
 
@@ -132,7 +133,10 @@ export async function TreeContent({
        father_id, mother_id, spouse_id, tone`,
     )
     .eq('tree_id', treeId)
+    // id tiebreak (#228): created_at defaults to now(), which is fixed per
+    // transaction — batch inserts tie, and order among ties is arbitrary.
     .order('created_at', { ascending: true })
+    .order('id', { ascending: true })
     .returns<PersonRow[]>()
 
   const people = peopleRows ?? []
@@ -160,6 +164,7 @@ export async function TreeContent({
         <h1 className="font-serif text-3xl text-foreground leading-tight flex-1 min-w-0 truncate">
           {tree.name}
         </h1>
+        {people.length > 0 && <ExportTreeButton treeName={tree.name} />}
         <TreeSettingsSheet
           key={tree.id}
           treeId={tree.id}
