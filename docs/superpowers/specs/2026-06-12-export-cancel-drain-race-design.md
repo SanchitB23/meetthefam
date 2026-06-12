@@ -105,10 +105,13 @@ container size.
 
 In `src/__tests__/lib/useExportTrigger.test.ts`:
 
-- **Update two assertions**: "cancel resets pending" becomes "pending stays
+- **Update one test**: "cancel resets pending" becomes "pending stays
   `true` after cancel and flips `false` once the in-flight capture resolves."
-  The tests already hold the capture open via a manual `resolveCapture()`, so
-  this is an assertion reorder, not new machinery.
+  The test already holds the capture open via a manual `resolveCapture()`, so
+  this is an assertion reorder, not new machinery. (The
+  "cancel during the settle delay" test needs **no** changes — its observable
+  `pending` sequence is `[true, false]` under both old and new behavior; the
+  `false` just moves from `cancel()` to `finally`.)
 - **New regression test for the race**: start run A → cancel → dispatch a
   second export while A's capture is unresolved → assert run B is **not**
   accepted (`captureTree` called once) and A's `restore()` fires exactly
