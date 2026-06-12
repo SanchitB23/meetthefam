@@ -16,6 +16,8 @@
 //     is not provided but `fitFn` is, the old behaviour is preserved.
 //   - Cancel support: `cancel()` aborts the pending download (the raster may
 //     still run in the background, but the result is silently discarded).
+//     The run KEEPS the single-run lock until its raster drains — cancel
+//     discards the result, it does not end the run (#229 review).
 //   - `restore()` is ALWAYS called in `finally` (also on cancel + error).
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { toast } from 'sonner'
@@ -110,22 +112,25 @@ export function useExportTrigger(
   { readOnly, prepareForCapture, fitFn, preflight, confirmDegrade }: Options,
 ): { exporting: boolean; exportingBestEffort: boolean; cancel: () => void } {
   const [status, setStatus] = useState<ExportStatus>({ phase: 'idle' })
-  // activeRunRef holds the accepted run's id + CaptureSignal. cancel() flips
-  // the signal and clears the ref; the run's `finally` only resets UI when it
-  // still owns the ref, so an older async branch can never close a newer run.
+  // activeRunRef holds the accepted run's id + CaptureSignal. The lock is
+  // held from acceptance until the run's `finally` — INCLUDING after cancel
+  // (#229 review): the raster can't be aborted and the pending restore()
+  // belongs to this run, so releasing early would let a new run's container
+  // mutations interleave with this one's. `finally` is the single point that
+  // clears the ref, restores the container, and resets pending.
   const activeRunRef = useRef<ActiveRun | null>(null)
   const nextRunIdRef = useRef(0)
 
-  // Stable cancel callback: flip the current signal and reset UI immediately.
-  // The in-flight raster may still produce a blob, but captureTree checks the
-  // flag before calling triggerDownload, so no download fires.
+  // Stable cancel callback: flip the current signal and close the progress
+  // dialog. The in-flight raster may still produce a blob, but captureTree
+  // checks the flag before calling triggerDownload, so no download fires.
+  // Pending stays true (header button disabled) until the raster drains and
+  // the run's `finally` releases the lock.
   const cancel = useCallback(() => {
     const active = activeRunRef.current
     if (!active) return
     active.signal.aborted = true
-    activeRunRef.current = null
     setStatus({ phase: 'idle' })
-    emitExportPending({ pending: false })
   }, [])
 
   useEffect(() => {
@@ -208,8 +213,10 @@ export function useExportTrigger(
         if (preparation) {
           preparation.restore()
         }
-        // Only the active run may clear UI. If cancel() already cleared the
-        // run, this older async branch must not emit another pending reset.
+        // Single release point for the run lock (#229 review): cancel() does
+        // NOT clear activeRunRef, so this branch is reached with ownership on
+        // every exit path — success, error, cancel drain, degrade-decline.
+        // The runId check stays as a defensive guard only.
         if (activeRunRef.current?.runId === runId) {
           activeRunRef.current = null
           emitExportPending({ pending: false })

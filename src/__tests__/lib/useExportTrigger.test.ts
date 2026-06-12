@@ -223,8 +223,9 @@ describe('useExportTrigger', () => {
     off()
   })
 
-  it('cancel resets pending and exporting; signal passed to captureTree reflects aborted state', async () => {
-    // Make captureTree record the signal object it receives.
+  it('cancel closes the dialog immediately but holds pending until the raster drains', async () => {
+    // Make captureTree record the signal object it receives and stay open
+    // until we resolve it manually (simulates the un-abortable raster).
     const receivedSignals: Array<{ aborted: boolean } | undefined> = []
     let resolveCapture!: () => void
     captureTreeMock.mockImplementation(async (_el, _fmt, _name, signal) => {
@@ -250,17 +251,22 @@ describe('useExportTrigger', () => {
     // Cancel while capture is running.
     result.current.cancel()
 
-    // The signal object shared with captureTree should now report aborted.
+    // The signal object shared with captureTree should now report aborted,
+    // and the progress dialog closes immediately…
     await waitFor(() => {
       const sig = receivedSignals[0]
       expect(sig?.aborted).toBe(true)
     })
+    await waitFor(() => expect(result.current.exporting).toBe(false))
 
-    // pending reset to false by cancel().
-    expect(pending).toContain(false)
-    expect(pending[pending.length - 1]).toBe(false)
+    // …but the run still holds the lock: pending stays true (button disabled)
+    // until the in-flight raster drains.
+    expect(pending).toEqual([true])
 
+    // Drain the raster — NOW the run's finally releases pending.
     resolveCapture()
+    await waitFor(() => expect(pending[pending.length - 1]).toBe(false))
+
     unmount()
     off()
   })
@@ -285,6 +291,55 @@ describe('useExportTrigger', () => {
     expect(pending[pending.length - 1]).toBe(false)
     expect(toastError).not.toHaveBeenCalled()
 
+    unmount()
+    off()
+  })
+
+  it('drops an export dispatched after cancel while the cancelled raster is still draining', async () => {
+    // Regression for the #229-review race: cancel() used to release the
+    // single-run lock immediately, letting a new run start while the old
+    // raster was still draining — the old run's restore() then stomped the
+    // new run's enlarged container mid-capture.
+    let resolveCapture!: () => void
+    captureTreeMock.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveCapture = resolve
+        }),
+    )
+    const restore = vi.fn()
+    const prepareForCapture = vi.fn(() => ({ pixelRatio: 3, restore }))
+    const { ref } = makeContainer()
+    const pending: boolean[] = []
+    const off = onExportPending((d: ExportPendingDetail) => pending.push(d.pending))
+    const { result, unmount } = renderHook(() =>
+      useExportTrigger(ref, { readOnly: false, prepareForCapture }),
+    )
+
+    // Run A: start and reach the (held-open) capture.
+    dispatchExportTree({ format: 'png', treeName: 'First' })
+    await waitFor(() => expect(captureTreeMock).toHaveBeenCalledTimes(1))
+
+    // Cancel A, then immediately try to start run B while A is draining.
+    result.current.cancel()
+    dispatchExportTree({ format: 'png', treeName: 'Second' })
+    await new Promise((r) => setTimeout(r, 20))
+
+    // B must be dropped: no second capture, no second preparation.
+    expect(captureTreeMock).toHaveBeenCalledTimes(1)
+    expect(prepareForCapture).toHaveBeenCalledTimes(1)
+    expect(restore).not.toHaveBeenCalled() // A still draining — not restored yet
+
+    // Drain A: its finally restores exactly once and releases the lock.
+    resolveCapture()
+    await waitFor(() => expect(restore).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(pending[pending.length - 1]).toBe(false))
+
+    // Lock released — a third export is accepted again.
+    dispatchExportTree({ format: 'png', treeName: 'Third' })
+    await waitFor(() => expect(captureTreeMock).toHaveBeenCalledTimes(2))
+
+    resolveCapture()
     unmount()
     off()
   })
