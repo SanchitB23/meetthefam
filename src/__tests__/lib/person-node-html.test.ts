@@ -103,6 +103,9 @@ describe('personNodeHtml', () => {
     expect(html).toContain('<img')
     expect(html).toContain('https://example.com/p.jpg')
     expect(html).toContain('object-fit:cover')
+    // crossorigin lets the export canvas (#218) rasterise the avatar without
+    // tainting — the Supabase photos bucket serves ACAO:* (see #216 spec).
+    expect(html).toContain('crossorigin="anonymous"')
   })
 
   test('initials branch tints by the person\'s tone token', () => {
@@ -118,6 +121,8 @@ describe('personNodeHtml', () => {
     // initials. Without these wrapper styles the avatar reads as a flat
     // tinted box.
     const initialsHtml = personNodeHtml(treeNode(datum({ photo_url: null })))
+    // No-photo path emits no <img> — crossorigin lives only on the photo path.
+    expect(initialsHtml).not.toContain('<img')
     expect(initialsHtml).toContain('border-radius:50%')
     expect(initialsHtml).toContain('display:inline-flex')
     expect(initialsHtml).toContain('align-items:center')

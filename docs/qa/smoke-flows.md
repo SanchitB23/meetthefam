@@ -347,6 +347,136 @@ End-to-end visual walk against the QA Vercel preview after 8c-1 through 8c-7 lan
 
 ---
 
+### Phase 9 — export flows
+
+All Phase 9 flows assume a local dev server (`pnpm dev`) running at `http://localhost:3000` and the local Supabase stack (`pnpm exec supabase start`). The agent must be signed in as the tree owner. Large-tree flows require the `Export Stress 200` fixture seeded via `pnpm seed:export-stress` (see `scripts/export-stress/seed-export-stress.ts`).
+
+> **Heads-up for the tester:** large-tree flows (`export-pdf-large-tiled`, `export-pdf-degrade-cancel`) are **NOT reliable in headless mode** — family-chart collapses trees with many nodes when there is no real viewport. Run these flows **headed** (pass `--headed` to Playwright, or tick the Playwright UI mode).
+
+#### `export-png-small` *(env: local | qa)*
+
+Tests: the Phase 8 / #218 ship gate — the header Export dropdown is present and "Download as PNG" produces a downloaded `.png` file.
+
+1. Sign in and open any tree that contains ≥1 person.
+2. In the top bar, locate the download / export icon button. Click it. Assert: a dropdown appears with exactly two items: **"Download as PNG"** and **"Download as PDF (print)"**.
+3. Click **"Download as PNG"**.
+4. Assert: a progress / status dialog appears with text matching "Preparing export" (or equivalent progress copy).
+5. Assert: a `.png` file is downloaded (Playwright `download` event fires; filename ends in `.png`). The dialog closes after the download completes.
+6. Assert: no console errors during the export.
+7. **Cleanup:** no tree state changed; no cleanup required.
+
+**Pass:** all 7 steps complete; download event fires; `.png` file is non-empty; no console errors.
+
+**Skip rules:**
+- Running on `local` without `supabase start` → SKIP with reason "needs-local-supabase".
+
+---
+
+#### `export-pdf-small` *(env: local | qa)*
+
+Tests: the #225 ship gate (small-tree path) — "Download as PDF (print)" on a small tree produces a 1-page A4 PDF with a footer, no degrade dialog.
+
+1. Sign in and open a tree that contains ≤20 people (small enough to fit a single A4 page at print scale).
+2. In the top bar, click the download icon → dropdown opens with **"Download as PNG"** and **"Download as PDF (print)"**.
+3. Click **"Download as PDF (print)"**.
+4. Assert: a progress dialog appears with text "Preparing export…" (or equivalent). No degrade/warning dialog appears before the progress dialog.
+5. Assert: a `.pdf` file is downloaded (Playwright `download` event; filename ends in `.pdf`).
+6. Open / inspect the downloaded PDF:
+   - Assert: the document is **1 page** (single-page A4 path).
+   - Assert: the footer on page 1 reads `Generated from meetthefam · <date>` (date matches the current calendar date in ISO or locale format).
+7. Assert: no console errors during the export.
+8. **Cleanup:** no tree state changed; no cleanup required.
+
+**Pass:** all 8 steps complete; download fires; PDF is exactly 1 page; footer text is present; no degrade dialog; no console errors.
+
+**Skip rules:**
+- Running on `local` without `supabase start` → SKIP with reason "needs-local-supabase".
+
+---
+
+#### `export-pdf-large-tiled` *(env: local)*
+
+Tests: the #225 ship gate (large-tree tiled path) — "Download as PDF (print)" on the `Export Stress 200` fixture shows the degrade dialog, then on Continue produces a multi-page tiled A4 PDF with registration ticks + grid labels.
+
+**Prerequisites:** seed the stress fixtures before running:
+
+```
+pnpm seed:export-stress
+```
+
+This creates trees named `Export Stress 25`, `Export Stress 50`, …, `Export Stress 200` and `Export Stress 60 single-trunk` under `export-stress@example.com`. Sign in as that account (or use `SUPABASE_SERVICE_ROLE_KEY` to impersonate it) before step 1.
+
+> **Run headed** — this flow is NOT reliable headless (family-chart collapses large trees without a real viewport).
+
+1. Open the **`Export Stress 200`** tree (≥200 people, multi-root). Wait for the family-chart canvas to fully render.
+2. In the top bar, click the download icon → dropdown appears with **"Download as PNG"** and **"Download as PDF (print)"**.
+3. Click **"Download as PDF (print)"**.
+4. Assert: the **degrade dialog** appears (not the progress dialog). The dialog heading includes text matching "Large tree export" and the body copy includes "This tree is large" (or similar preflight warning language). Two action buttons are present: **Cancel** and **Continue**.
+5. Click **Continue**.
+6. Assert: the progress dialog appears with text "Preparing export…".
+7. Assert: a `.pdf` file is downloaded (Playwright `download` event; filename ends in `.pdf`).
+8. Inspect the downloaded PDF:
+   - Assert: the document has **more than 1 page** (tiled output).
+   - Assert: each page carries **corner registration ticks** (thin cross / tick marks in the page corners).
+   - Assert: each page footer includes the tree name, current date, a `page i of N` label, and a grid position label matching the pattern `r{row}c{col}` (e.g. `r1c1`, `r1c2`, `r2c1`).
+   - Assert: the footer also includes the overall tiling layout label matching `C×R` (e.g. `3×2` for 3 columns by 2 rows).
+9. Assert: no console errors during the export.
+10. **Cleanup:** no tree state changed (the stress fixture trees remain; do not delete — they are reused across runs).
+
+**Pass:** all 10 steps complete; degrade dialog appeared at step 4; PDF has >1 page; registration ticks visible; footer pattern matches on every page; no console errors.
+
+**Skip rules:**
+- Running on `local` without `supabase start` → SKIP with reason "needs-local-supabase".
+- `Export Stress 200` fixture not seeded → SKIP with reason "needs-export-stress-fixture".
+- Running headless → SKIP with reason "large-tree-needs-headed-browser".
+
+---
+
+#### `export-pdf-degrade-cancel` *(env: local)*
+
+Tests: the degrade-dialog Cancel path — clicking Cancel on the large-tree preflight dialog does nothing (no progress dialog, no download, no spinner).
+
+**Prerequisites:** same as `export-pdf-large-tiled` — stress fixture seeded, signed in as `export-stress@example.com`, run **headed**.
+
+1. Open the **`Export Stress 200`** tree. Wait for the canvas to fully render.
+2. Click the download icon → click **"Download as PDF (print)"**.
+3. Assert: the degrade dialog appears (same assertions as step 4 of `export-pdf-large-tiled`).
+4. Click **Cancel**.
+5. Assert: the degrade dialog closes immediately.
+6. Assert: no progress dialog appears.
+7. Assert: no `download` event fires (Playwright `page.waitForEvent('download', { timeout: 2000 })` times out without firing).
+8. Assert: no console errors.
+9. **Cleanup:** none required.
+
+**Pass:** all 9 steps complete; Cancel closes the dialog with zero side-effects; no download triggered; no spinner shown; no console errors.
+
+**Skip rules:**
+- Running on `local` without `supabase start` → SKIP with reason "needs-local-supabase".
+- `Export Stress 200` fixture not seeded → SKIP with reason "needs-export-stress-fixture".
+- Running headless → SKIP with reason "large-tree-needs-headed-browser".
+
+---
+
+#### `export-pdf-mobile-degrade` *(env: local | qa)*
+
+Tests: mobile-viewport coarse-pointer emulation — the degrade dialog fires even for a small tree when the device is mobile-class (touch / coarse pointer).
+
+1. Resize the Playwright viewport to **390×844** (iPhone 14 size). Enable coarse-pointer emulation (`page.emulateMedia({ media: 'screen' })` + `--pointer-type=coarse` or equivalent Playwright device descriptor for iPhone 14).
+2. Sign in and open a small tree (≤20 people, same one used in `export-pdf-small`).
+3. In the top bar, tap the download icon → dropdown appears with **"Download as PNG"** and **"Download as PDF (print)"**.
+4. Tap **"Download as PDF (print)"**.
+5. Assert: the **degrade dialog** appears even though the tree is small. The dialog body includes text indicating that PDF export is optimised for desktop / larger screens (or equivalent mobile-degrade copy).
+6. Tap **Cancel**. Assert: dialog closes, no download fires.
+7. **Cleanup:** resize viewport back to 1280×800.
+
+**Pass:** all 7 steps complete; degrade dialog fires on a small tree when viewport is mobile-class; Cancel clears without side-effects; no console errors.
+
+**Skip rules:**
+- Running on `local` without `supabase start` → SKIP with reason "needs-local-supabase".
+- Playwright device emulation not supported in the current runner → SKIP with reason "needs-coarse-pointer-emulation".
+
+---
+
 ## Adding a new flow
 
 When closing out a phase:
