@@ -427,6 +427,9 @@ export function PersonForm({
       // doesn't leak a pending Blob into the next session.
       setPhotoError(null)
       setLocalPhotoUrl(undefined)
+      // #236 — drop any file left mid-crop so reopening doesn't remount
+      // the crop dialog without a fresh pick.
+      setCropFile(null)
       // setPendingBlob(null) handles the URL.revokeObjectURL bookkeeping.
       setPendingBlob(null)
     }
