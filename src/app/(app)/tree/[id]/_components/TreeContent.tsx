@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { ArrowLeft, Settings } from 'lucide-react'
-import { FamilyTree } from './FamilyTree'
+import { FamilyTreeClient } from './FamilyTreeClient'
 import type { PersonRow } from '../_lib/types'
 import { AddRelativeFab } from './AddRelativeFab'
 import { ExportTreeButton } from './ExportTreeButton'
@@ -194,7 +194,7 @@ export async function TreeContent({
           />
         </div>
       ) : (
-        <FamilyTree
+        <FamilyTreeClient
           treeId={tree.id}
           people={people}
           initialFocusId={initialFocusId}
