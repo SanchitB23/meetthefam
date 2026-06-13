@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    // lucide-react ships per-icon entry points; this lets Next 16's compiler
+    // tree-shake it reliably across the app (icons are imported app-wide).
+    // Zero behaviour change. Perf #249.
+    optimizePackageImports: ["lucide-react"],
+  },
   // Phase 5 photo-upload: people avatars live in the public Supabase
   // `photos` bucket. The Avatar component is plain <img> for v0.1
   // (locked decision 4 — coordinated swap to next/image is Phase 8
