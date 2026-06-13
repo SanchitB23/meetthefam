@@ -246,12 +246,12 @@ describe('personNodeHtml — duplicate marker (8b-3)', () => {
     expect(html).toContain('border-style:dashed')
   })
 
-  test('duplicate emits the ↑ badge at the expected corner (top:-6px; left:-6px)', () => {
+  test('duplicate emits the ↑ badge at the expected corner (top:-8px; left:-8px)', () => {
     const html = personNodeHtml(duplicateNode())
     expect(html).toContain('mtf-node__duplicate-badge')
     expect(html).toContain('↑')
-    expect(html).toContain('top:-6px')
-    expect(html).toContain('left:-6px')
+    expect(html).toContain('top:-8px')
+    expect(html).toContain('left:-8px')
     // Also verifies the "Already shown above" tooltip text is present.
     expect(html).toContain('Already shown above')
   })
@@ -288,9 +288,9 @@ describe('personNodeHtml — duplicate marker (8b-3)', () => {
     expect(html).toContain('mtf-node__add-btn')
     expect(html).toContain('data-action-plus')
     expect(html).toContain('aria-label="Add relative to Jane Smith"')
-    // Button is absolutely positioned at bottom:-10px; right:-10px inside the card.
-    expect(html).toContain('bottom:-10px')
-    expect(html).toContain('right:-10px')
+    // Button is absolutely positioned at bottom:-12px; right:-12px inside the card.
+    expect(html).toContain('bottom:-12px')
+    expect(html).toContain('right:-12px')
   })
 
   test('duplicate card INCLUDES the mtf-node__add-btn ("+") — symmetric with the ellipsis fix above', () => {
@@ -319,10 +319,10 @@ describe('personNodeHtml — duplicate marker (8b-3)', () => {
     // Both classes present on the card wrapper
     expect(html).toContain('mtf-node--deceased')
     // Corners do not overlap: † is at top:0;right:0 (avatar wrapper),
-    // ↑ is at top:-6px;left:-6px (card wrapper). Both appear in the HTML.
+    // ↑ is at top:-8px;left:-8px (card wrapper). Both appear in the HTML.
     expect(html).toContain('top:0')
     expect(html).toContain('right:0')
-    expect(html).toContain('top:-6px')
-    expect(html).toContain('left:-6px')
+    expect(html).toContain('top:-8px')
+    expect(html).toContain('left:-8px')
   })
 })
