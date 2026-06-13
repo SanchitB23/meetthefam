@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import Cropper from 'react-easy-crop'
+import Cropper, { type Area } from 'react-easy-crop'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -45,9 +45,10 @@ type Props = {
 export function PhotoCropDialog({ file, onConfirm, onCancel }: Props) {
   const desktop = useIsDesktop()
 
-  // Object-URL derived from `file` — no intermediate state to avoid
-  // triggering react-hooks/set-state-in-effect. URL is memoized so it
-  // only changes when `file` identity changes (parent mounts a new File).
+  // useMemo (not useState+useEffect) — react-hooks/set-state-in-effect forbids
+  // calling setState synchronously inside an effect, so the idiomatic single-effect
+  // form triggers a lint error. useMemo + a cleanup-only effect is the compliant
+  // alternative that still correctly revokes the URL on file change / unmount.
   const imageUrl = useMemo(() => URL.createObjectURL(file), [file])
 
   // Revoke the object URL when the component unmounts or `file` changes.
@@ -62,7 +63,7 @@ export function PhotoCropDialog({ file, onConfirm, onCancel }: Props) {
   const [error, setError] = useState<string | null>(null)
 
   const onCropComplete = useCallback(
-    (_area: unknown, croppedAreaPixels: CropRect) => {
+    (_area: Area, croppedAreaPixels: CropRect) => {
       setAreaPixels(croppedAreaPixels)
     },
     [],
@@ -164,12 +165,15 @@ export function PhotoCropDialog({ file, onConfirm, onCancel }: Props) {
     </Dialog>
   ) : (
     <Sheet open onOpenChange={handleOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-xl">
+      <SheetContent
+        side="bottom"
+        className="max-h-[90vh] flex flex-col rounded-t-xl"
+      >
         <SheetHeader>
           <SheetTitle className="font-serif text-xl">{title}</SheetTitle>
           <SheetDescription>{description}</SheetDescription>
         </SheetHeader>
-        {body}
+        <div className="flex-1 overflow-y-auto">{body}</div>
       </SheetContent>
     </Sheet>
   )

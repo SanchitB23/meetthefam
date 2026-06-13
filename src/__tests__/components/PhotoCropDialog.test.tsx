@@ -14,14 +14,20 @@ const FIXED_AREA = { x: 10, y: 20, width: 100, height: 100 }
 vi.mock('react-easy-crop', async () => {
   const { useEffect } = await import('react')
   return {
-    default: function CropperStub({ onCropComplete }: {
+    default: function CropperStub({ onCropComplete, mediaProps }: {
       onCropComplete: (a: unknown, b: typeof FIXED_AREA) => void
+      mediaProps?: { onError?: () => void }
     }) {
       // Fire once on mount like the real library does after media load.
       useEffect(() => {
         onCropComplete({ x: 0, y: 0, width: 100, height: 100 }, FIXED_AREA)
       }, [onCropComplete])
-      return <div data-testid="cropper-stub" />
+      return (
+        <div data-testid="cropper-stub">
+          {/* eslint-disable-next-line @next/next/no-img-element -- test stub, no optimization needed */}
+          <img alt="" data-testid="cropper-img" onError={mediaProps?.onError} />
+        </div>
+      )
     },
   }
 })
@@ -99,5 +105,12 @@ describe('PhotoCropDialog', () => {
     )
     unmount()
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock')
+  })
+
+  it('calls onCancel with decode-error when the image fails to load', () => {
+    const onCancel = vi.fn()
+    render(<PhotoCropDialog file={makeFile()} onConfirm={vi.fn()} onCancel={onCancel} />)
+    fireEvent.error(screen.getByTestId('cropper-img'))
+    expect(onCancel).toHaveBeenCalledWith('decode-error')
   })
 })
