@@ -304,10 +304,10 @@ export function personNodeHtml(
         title="Tap to jump to the next instance of this person"
         style="
           position:absolute;
-          top:-6px;
-          left:-6px;
-          width:22px;
-          height:22px;
+          top:-8px;
+          left:-8px;
+          width:28px;
+          height:28px;
           border-radius:50%;
           background:var(--card);
           color:var(--accent);
@@ -352,10 +352,10 @@ export function personNodeHtml(
       aria-label="Add relative to ${name}"
       style="
         position:absolute;
-        bottom:-10px;
-        right:-10px;
-        width:28px;
-        height:28px;
+        bottom:-12px;
+        right:-12px;
+        width:36px;
+        height:36px;
         border-radius:50%;
         background:var(--accent);
         color:#fff;
