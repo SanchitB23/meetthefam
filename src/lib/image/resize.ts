@@ -140,8 +140,11 @@ async function drawAndEncode(
     if (!ctx) {
       throw new ImageDecodeError('Could not get a 2D canvas context.')
     }
-    if (src) ctx.drawImage(bitmap, src.x, src.y, src.width, src.height, 0, 0, width, height)
-    else ctx.drawImage(bitmap, 0, 0, width, height)
+    if (src) {
+      ctx.drawImage(bitmap, src.x, src.y, src.width, src.height, 0, 0, width, height)
+    } else {
+      ctx.drawImage(bitmap, 0, 0, width, height)
+    }
     return canvas.convertToBlob({ type: 'image/jpeg', quality: JPEG_QUALITY })
   }
 
@@ -153,8 +156,11 @@ async function drawAndEncode(
   if (!ctx) {
     throw new ImageDecodeError('Could not get a 2D canvas context.')
   }
-  if (src) ctx.drawImage(bitmap, src.x, src.y, src.width, src.height, 0, 0, width, height)
-  else ctx.drawImage(bitmap, 0, 0, width, height)
+  if (src) {
+    ctx.drawImage(bitmap, src.x, src.y, src.width, src.height, 0, 0, width, height)
+  } else {
+    ctx.drawImage(bitmap, 0, 0, width, height)
+  }
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
