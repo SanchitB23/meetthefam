@@ -38,6 +38,62 @@ export type ResizeResult = {
   height: number
 }
 
+/** Pixel rect from react-easy-crop's croppedAreaPixels. */
+export type CropRect = {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/**
+ * Snap a crop rect to integers and clamp it inside the source bitmap.
+ * react-easy-crop emits fractional values and can overshoot the image
+ * edge by a sub-pixel; drawImage tolerates that, but clamping keeps the
+ * output dimensions honest. Always returns at least a 1x1 rect.
+ */
+export function clampCropRect(
+  crop: CropRect,
+  srcW: number,
+  srcH: number,
+): CropRect {
+  const x = Math.min(Math.max(Math.round(crop.x), 0), srcW - 1)
+  const y = Math.min(Math.max(Math.round(crop.y), 0), srcH - 1)
+  const width = Math.max(1, Math.min(Math.round(crop.width), srcW - x))
+  const height = Math.max(1, Math.min(Math.round(crop.height), srcH - y))
+  return { x, y, width, height }
+}
+
+/**
+ * Crop an image File to `crop` (source-image pixel coordinates, already
+ * EXIF-oriented) and re-encode as JPEG, downscaling so the longest side
+ * is at most 1024 px. Same error contract as resizeToJpeg.
+ */
+export async function cropAndResizeToJpeg(
+  file: File,
+  crop: CropRect,
+): Promise<ResizeResult> {
+  let bitmap: ImageBitmap
+  try {
+    bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' })
+  } catch (err) {
+    throw new ImageDecodeError(
+      'Could not decode the image. Please choose a JPEG or PNG photo.',
+      { cause: err },
+    )
+  }
+
+  const rect = clampCropRect(crop, bitmap.width, bitmap.height)
+  const scale = Math.min(1, MAX_DIMENSION / Math.max(rect.width, rect.height))
+  const dstW = Math.max(1, Math.round(rect.width * scale))
+  const dstH = Math.max(1, Math.round(rect.height * scale))
+
+  const blob = await drawAndEncode(bitmap, dstW, dstH, rect)
+  bitmap.close()
+
+  return { blob, width: dstW, height: dstH }
+}
+
 /**
  * Resize an image File to a JPEG Blob no larger than 1024 px on the
  * longest side, preserving aspect ratio. Always returns image/jpeg.
@@ -76,6 +132,7 @@ async function drawAndEncode(
   bitmap: ImageBitmap,
   width: number,
   height: number,
+  src?: CropRect,
 ): Promise<Blob> {
   if (typeof OffscreenCanvas !== 'undefined') {
     const canvas = new OffscreenCanvas(width, height)
@@ -83,7 +140,8 @@ async function drawAndEncode(
     if (!ctx) {
       throw new ImageDecodeError('Could not get a 2D canvas context.')
     }
-    ctx.drawImage(bitmap, 0, 0, width, height)
+    if (src) ctx.drawImage(bitmap, src.x, src.y, src.width, src.height, 0, 0, width, height)
+    else ctx.drawImage(bitmap, 0, 0, width, height)
     return canvas.convertToBlob({ type: 'image/jpeg', quality: JPEG_QUALITY })
   }
 
@@ -95,7 +153,8 @@ async function drawAndEncode(
   if (!ctx) {
     throw new ImageDecodeError('Could not get a 2D canvas context.')
   }
-  ctx.drawImage(bitmap, 0, 0, width, height)
+  if (src) ctx.drawImage(bitmap, src.x, src.y, src.width, src.height, 0, 0, width, height)
+  else ctx.drawImage(bitmap, 0, 0, width, height)
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(
