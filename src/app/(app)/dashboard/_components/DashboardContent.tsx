@@ -1,8 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getBaseUrl } from '@/lib/baseUrl'
-import { Leaf } from '@/components/icons/Leaf'
 import { TreeCard, type TreeRow } from './TreeCard'
-import { CreateTreeModal } from './CreateTreeModal'
 import { TreeCardMenu } from './TreeCardMenu'
 
 type Membership = {
@@ -42,37 +40,25 @@ export async function DashboardContent({ userId }: { userId: string }) {
     (m): m is Membership & { trees: TreeRow } => m.trees !== null,
   )
 
-  return (
-    <main className="px-4 py-8 max-w-4xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="font-serif text-3xl text-foreground flex items-center gap-2">
-          <Leaf size={22} className="text-primary" />
-          Your Trees
-        </h1>
-        <CreateTreeModal />
-      </div>
-
-      {trees.length === 0 ? (
-        <div className="text-center py-16 text-foreground/50">
-          <p className="font-serif text-xl mb-2">No trees yet</p>
-          <p className="text-sm">
-            Create your first family tree to get started.
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {trees.map((m) => (
-            <TreeCard
-              key={m.trees.id}
-              tree={m.trees}
-              role={m.role}
-              actions={
-                m.role === 'owner' ? <TreeCardMenu tree={m.trees} baseUrl={baseUrl} /> : null
-              }
-            />
-          ))}
-        </div>
-      )}
-    </main>
+  // Header ("Your Trees" + New-tree modal) now lives in the page shell above
+  // the Suspense boundary; this component renders only the data-dependent grid.
+  return trees.length === 0 ? (
+    <div className="text-center py-16 text-foreground/50">
+      <p className="font-serif text-xl mb-2">No trees yet</p>
+      <p className="text-sm">Create your first family tree to get started.</p>
+    </div>
+  ) : (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {trees.map((m) => (
+        <TreeCard
+          key={m.trees.id}
+          tree={m.trees}
+          role={m.role}
+          actions={
+            m.role === 'owner' ? <TreeCardMenu tree={m.trees} baseUrl={baseUrl} /> : null
+          }
+        />
+      ))}
+    </div>
   )
 }

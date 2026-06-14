@@ -37,16 +37,26 @@ export default async function TreePage(props: PageProps<'/tree/[id]'>) {
   const baseUrl = await getBaseUrl()
 
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
 
-  const { data: tree } = await supabase
-    .from('trees')
-    .select('id, name, description, share_token')
-    .eq('id', id)
-    .maybeSingle<TreeRow>()
+  // getUser() (auth validation) and the trees read are independent — the
+  // trees RLS is enforced by the session cookie, not user.id — so run them
+  // concurrently. tree_members below still needs user.id, so it follows.
+  // 3 serial round-trips -> 2. Gate order/behaviour unchanged. Perf #249.
+  const [
+    {
+      data: { user },
+    },
+    { data: tree },
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from('trees')
+      .select('id, name, description, share_token')
+      .eq('id', id)
+      .maybeSingle<TreeRow>(),
+  ])
+
+  if (!user) redirect('/login')
 
   if (!tree) notFound()
 

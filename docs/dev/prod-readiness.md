@@ -180,7 +180,7 @@ All 3 polling at 180 s (3 min) from US / EU / AS / AU regions. Email alerts only
 |---|---|---|---|---|
 | 1 | 4469154 | Web app | `https://mtf.sanchitb23.in` | GET → 200 (plus SSL + domain expiration alerts at 14 days). |
 | 2 | 4469155 | Auth (Supabase) | `https://ycnsgkotrbjifsjkqmvn.supabase.co/auth/v1/health` | GET with `apikey: <prod anon>` → 200. *(Endpoint requires the apikey header on hosted Supabase projects — Kong gates it even though the GoTrue docs imply it's public.)* |
-| 3 | 4469156 | Database (Supabase REST) | `https://ycnsgkotrbjifsjkqmvn.supabase.co/rest/v1/trees?select=id&limit=0` | GET with `apikey: <prod anon>` → 200 `[]`. Confirms Kong + PostgREST + anon-key validity end-to-end. **Note:** uses `trees` because it's the only table migrated to prod pre-v1.0 — once the full schema lands at v1.0, this can be re-pointed at any allowed table. |
+| 3 | 4469156 | Database (Supabase REST) | `https://ycnsgkotrbjifsjkqmvn.supabase.co/rest/v1/trees?select=id&limit=0` | GET with `apikey: <prod anon>` → 200 `[]`. Confirms Kong + PostgREST + anon-key validity end-to-end. **Note:** uses `trees` as a lightweight probe; the full schema (trees, people, tree_members, tree_invites, profiles) is live on prod with RLS enabled as of v1.0 — this can be re-pointed at any of those tables if preferred. |
 
 **Storage monitor deliberately skipped** — would require maintaining a `health-check.jpg` artifact in the `photos` bucket forever; auth + REST monitors already prove storage's transitive dependency chain (same Kong gateway). Revisit post-v1.0 if real users hit storage-specific outages.
 

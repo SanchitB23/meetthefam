@@ -18,7 +18,7 @@ export function Prose({ children }: { children: ReactNode }) {
         [&_p]:text-muted-foreground [&_p]:leading-relaxed [&_p]:mb-4
         [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-4 [&_ul]:space-y-1 [&_ul]:text-muted-foreground
         [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-4 [&_ol]:space-y-1 [&_ol]:text-muted-foreground
-        [&_a]:text-accent [&_a]:underline hover:[&_a]:text-foreground
+        [&_a]:text-accent-strong [&_a]:underline hover:[&_a]:text-foreground
         [&_strong]:text-foreground [&_strong]:font-semibold
       "
     >
