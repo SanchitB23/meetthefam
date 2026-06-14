@@ -44,10 +44,14 @@ Run each step yourself; **pause for the user** at the gates noted below.
 5. `git fetch origin main` → `gh release create vX.Y.Z --target main --notes-file …`
    (drop `--prerelease` from v1.0.0 onward). This is the moment the tag exists.
 6. **Redeploy prod AFTER the tag** (else `<VersionFooter>` renders the *previous*
-   version — the merge build raced ahead of the tag). Preferred: `git checkout main &&
-   git pull --ff-only`, then `mcp__vercel__deploy_to_vercel`. Verify:
-   `curl -s https://meetthefam.vercel.app/ | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+'`
-   → must print `vX.Y.Z`, not `vPREV-dev.<sha>`.
+   version — the merge build raced ahead of the tag). Preferred (CLI, cached build,
+   ~30s): `PROD_URL=$(npx vercel ls --prod meetthefam | awk '/Ready/{print $3; exit}')`
+   (the deployment URL is the 3rd whitespace-separated field of the table row), then
+   `npx vercel redeploy "$PROD_URL"`. Do **not** use `mcp__vercel__deploy_to_vercel` —
+   it only returns deployment *instructions*, it does not deploy (caught on the v1.2.0
+   ship 2026-06-13). Verify (prod's alias is the custom domain, not
+   meetthefam.vercel.app): `curl -s https://mtf.sanchitb23.in/ | grep -oE
+   'v[0-9]+\.[0-9]+\.[0-9]+'` → must print `vX.Y.Z`, not `vPREV-dev.<sha>`.
 7. **Migration parity QA↔prod.** Give the Supabase↔GitHub integration 2–3 min, then
    `mcp__supabase__list_migrations` on **prod `ycnsgkotrbjifsjkqmvn`** and **QA
    `ljjvwtpifmoshfknlbaj`**; cross-check by **name** (timestamps differ — clock drift

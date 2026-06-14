@@ -69,24 +69,24 @@ gh release create vX.Y.Z \
 #    and emitted "<prev>-dev.<sha>" for APP_VERSION. Redeploy re-runs
 #    the build with the new tag visible. Without this step prod renders
 #    the stale version until the next commit to main. (Caught on v0.4.0
-#    ship 2026-05-18.) Three paths — pick ONE:
+#    ship 2026-05-18.) Two paths — pick ONE:
 #
-#    a) Vercel MCP (preferred from a Claude Code session):
-#       Switch to main checkout first so deploy_to_vercel picks up the
-#       merge commit + the new tag via GitHub-API fallback.
-#         git checkout main && git pull --ff-only
-#       Then call: mcp__vercel__deploy_to_vercel
-#       (no parameters — uses .vercel/project.json for project linkage)
-#
-#    b) CLI (uses cached build files, ~30s — no rebuild):
+#    a) CLI (preferred — uses cached build files, ~30s, no rebuild):
+#       # The deployment URL is the 3rd whitespace-separated field of the
+#       # `vercel ls` table row — hence $3.
 #       PROD_URL=$(npx vercel ls --prod meetthefam | awk '/Ready/{print $3; exit}')
 #       npx vercel redeploy "$PROD_URL"
 #
-#    c) Dashboard: open the latest Production deployment for
+#    b) Dashboard: open the latest Production deployment for
 #       sanchit-bhatnagars-projects/meetthefam and click "Redeploy".
 #
-#    Verify after any path:
-#       curl -s https://meetthefam.vercel.app/ | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+'
+#    Do NOT use the Vercel MCP tool mcp__vercel__deploy_to_vercel as a
+#    redeploy path — it only returns deployment *instructions*; it does
+#    not actually deploy anything. (Caught on the v1.2.0 ship 2026-06-13.)
+#
+#    Verify after any path (prod's alias is the custom domain, not
+#    meetthefam.vercel.app):
+#       curl -s https://mtf.sanchitb23.in/ | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+'
 #       # should print v<X.Y.Z>, NOT v<PREV>-dev.<sha>
 
 # 7. Verify migration parity between QA and prod (Amendment 5, 2026-06-01).
