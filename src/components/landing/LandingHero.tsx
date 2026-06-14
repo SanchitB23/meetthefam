@@ -8,7 +8,7 @@ export function LandingHero() {
         <Logo size={48} />
       </div>
       {/* Italic Cormorant kicker — within the whitelist per ADR 0008. */}
-      <p className="font-serif italic text-accent text-lg mb-4">
+      <p className="font-serif italic text-accent-strong text-lg mb-4">
         meet the people who already know each other
       </p>
       <h1 className="font-serif text-5xl text-foreground leading-tight mb-6">

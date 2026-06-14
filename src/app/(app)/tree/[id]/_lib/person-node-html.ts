@@ -310,7 +310,7 @@ export function personNodeHtml(
           height:22px;
           border-radius:50%;
           background:var(--card);
-          color:var(--accent);
+          color:var(--accent-strong);
           display:inline-flex;
           align-items:center;
           justify-content:center;

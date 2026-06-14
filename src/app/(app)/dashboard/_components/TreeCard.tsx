@@ -41,7 +41,7 @@ export function TreeCard({ tree, role, actions }: Props) {
             <span
               role="img"
               aria-label="Recently created"
-              className="text-accent shrink-0"
+              className="text-accent-strong shrink-0"
             >
               <Sparkle size={14} />
             </span>
