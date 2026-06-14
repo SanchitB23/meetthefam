@@ -11,11 +11,12 @@ export default function ContactPage() {
     <Prose>
       <h1>Contact</h1>
       <p>
-        <strong>Last updated: 30 May 2026</strong>
+        <strong>Last updated: 14 June 2026</strong>
       </p>
       <p>
-        meetthefam is a personal project built and run by one person. The best
-        way to reach us is by email.
+        meetthefam is a personal project built and run by Sanchit Bhatnagar,
+        who is also the point of contact for any question, complaint, or
+        grievance. The best way to reach us is by email.
       </p>
       <p>
         For support, questions, privacy or data-subject requests, and copyright
