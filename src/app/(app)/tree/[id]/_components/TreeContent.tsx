@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { ArrowLeft, Settings } from 'lucide-react'
-import { FamilyTree } from './FamilyTree'
+import { FamilyTreeClient } from './FamilyTreeClient'
 import type { PersonRow } from '../_lib/types'
 import { AddRelativeFab } from './AddRelativeFab'
 import { ExportTreeButton } from './ExportTreeButton'
@@ -41,27 +41,64 @@ export async function TreeContent({
 }: Props) {
   const supabase = await createClient()
 
-  // Fetch all members for this tree, then their profiles.
-  // Two queries instead of a PostgREST embed because `tree_members.user_id`
-  // references `auth.users(id)`, NOT `profiles(id)` — PostgREST can't resolve
-  // the embed and silently returns null for the joined object (or errors out),
-  // producing an empty Members section. Same trap as the invite-page lookup.
-  const { data: memberRows } = await supabase
-    .from('tree_members')
-    .select('user_id, role, joined_at')
-    .eq('tree_id', treeId)
-    .order('joined_at', { ascending: true })
-
   type RawMemberRow = {
     user_id: string
     role: 'owner' | 'editor'
     joined_at: string
   }
+  type RawInviteRow = {
+    id: string
+    email: string
+    token: string
+    created_at: string
+    expires_at: string
+  }
 
-  const rawMembers = (memberRows as RawMemberRow[] | null) ?? []
+  // The members, people, and (owner-only) invites reads are independent, so run
+  // them concurrently instead of as a serial waterfall — the tree title (LCP)
+  // waits on TreeContent resolving, so collapsing the waterfall paints it
+  // sooner. `profiles` depends on the member ids, so it runs in a second wave.
+  //
+  // Members + profiles are two queries (not a PostgREST embed) because
+  // `tree_members.user_id` references `auth.users(id)`, NOT `profiles(id)` — the
+  // embed silently returns null. `expires_at > now()`: Supabase JS v2 has no
+  // `.gt(..., 'now()')`, so we pass `new Date().toISOString()`. Perf #249.
+  const [memberRes, peopleRes, inviteRes] = await Promise.all([
+    supabase
+      .from('tree_members')
+      .select('user_id, role, joined_at')
+      .eq('tree_id', treeId)
+      .order('joined_at', { ascending: true }),
+    supabase
+      .from('people')
+      .select(
+        `id, tree_id, full_name, nickname, gender, photo_url, bio,
+         birth_year, birth_date, location, occupation, deceased, death_year,
+         father_id, mother_id, spouse_id, tone`,
+      )
+      .eq('tree_id', treeId)
+      // id tiebreak (#228): created_at defaults to now(), fixed per transaction
+      // — batch inserts tie, and order among ties is arbitrary.
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
+      .returns<PersonRow[]>(),
+    currentUserRole === 'owner'
+      ? supabase
+          .from('tree_invites')
+          .select('id, email, token, created_at, expires_at')
+          .eq('tree_id', treeId)
+          .is('accepted_at', null)
+          .is('revoked_at', null)
+          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] as RawInviteRow[] }),
+  ])
 
-  // Bulk-fetch profiles for the visible members. RLS on `profiles` allows
-  // anyone to read display_name + avatar_url, so the caller's session works.
+  const rawMembers = (memberRes.data as RawMemberRow[] | null) ?? []
+  const people = peopleRes.data ?? []
+
+  // Bulk-fetch profiles for the visible members (second wave — needs the ids).
+  // RLS on `profiles` allows anyone to read display_name + avatar_url.
   const memberUserIds = rawMembers.map((m) => m.user_id)
   const profilesByUserId = new Map<
     string,
@@ -93,53 +130,15 @@ export async function TreeContent({
     }
   })
 
-  // Fetch pending invites (owner only).
-  // `expires_at > now()` filtering: Supabase JS v2 does not have a built-in
-  // `.gt('expires_at', 'now()')` — we use `.gt('expires_at', new Date().toISOString())`.
-  let pendingInvites: PendingInviteRow[] = []
-
-  if (currentUserRole === 'owner') {
-    const { data: inviteRows } = await supabase
-      .from('tree_invites')
-      .select('id, email, token, created_at, expires_at')
-      .eq('tree_id', treeId)
-      .is('accepted_at', null)
-      .is('revoked_at', null)
-      .gt('expires_at', new Date().toISOString())
-      .order('created_at', { ascending: false })
-
-    type RawInviteRow = {
-      id: string
-      email: string
-      token: string
-      created_at: string
-      expires_at: string
-    }
-
-    pendingInvites = (inviteRows as RawInviteRow[] | null ?? []).map((inv) => ({
-      id: inv.id,
-      email: inv.email,
-      token: inv.token,
-      created_at: inv.created_at,
-      expires_at: inv.expires_at,
-    }))
-  }
-
-  const { data: peopleRows } = await supabase
-    .from('people')
-    .select(
-      `id, tree_id, full_name, nickname, gender, photo_url, bio,
-       birth_year, birth_date, location, occupation, deceased, death_year,
-       father_id, mother_id, spouse_id, tone`,
-    )
-    .eq('tree_id', treeId)
-    // id tiebreak (#228): created_at defaults to now(), which is fixed per
-    // transaction — batch inserts tie, and order among ties is arbitrary.
-    .order('created_at', { ascending: true })
-    .order('id', { ascending: true })
-    .returns<PersonRow[]>()
-
-  const people = peopleRows ?? []
+  const pendingInvites: PendingInviteRow[] = (
+    (inviteRes.data as RawInviteRow[] | null) ?? []
+  ).map((inv) => ({
+    id: inv.id,
+    email: inv.email,
+    token: inv.token,
+    created_at: inv.created_at,
+    expires_at: inv.expires_at,
+  }))
 
   const settingsTrigger = (
     <button
@@ -194,7 +193,7 @@ export async function TreeContent({
           />
         </div>
       ) : (
-        <FamilyTree
+        <FamilyTreeClient
           treeId={tree.id}
           people={people}
           initialFocusId={initialFocusId}
