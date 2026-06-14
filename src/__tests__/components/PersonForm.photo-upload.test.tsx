@@ -18,7 +18,7 @@
  * via the onOpenChange spy: it must NOT be called with false during/after upload.
  */
 
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { PersonRow } from '@/app/(app)/tree/[id]/_lib/types'
 
@@ -46,12 +46,42 @@ vi.mock('@/components/ui/use-is-desktop', () => ({
   useIsDesktop: () => true,
 }))
 
-// Stub the image resize utility — we don't want real canvas ops in tests.
+// Stub the image resize utility — PersonForm no longer calls resizeToJpeg
+// directly (cropping moved into PhotoCropDialog), but we keep both stubs
+// so modules that import either symbol don't blow up.
 vi.mock('@/lib/image/resize', () => ({
-  resizeToJpeg: vi.fn(async (file: File) => ({
-    blob: new Blob([await file.arrayBuffer()], { type: 'image/jpeg' }),
-  })),
+  cropAndResizeToJpeg: vi.fn(),
+  resizeToJpeg: vi.fn(),
   ImageDecodeError: class ImageDecodeError extends Error {},
+}))
+
+// Stub next/dynamic so the lazily-loaded PhotoCropDialog resolves
+// synchronously to a controllable stub.
+// NOTE: react-hooks/rules-of-hooks requires the returned component to be a
+// NAMED function, not an anonymous arrow.
+vi.mock('next/dynamic', () => ({
+  default: () =>
+    function PhotoCropDialogStub({
+      onConfirm,
+      onCancel,
+    }: {
+      onConfirm: (blob: Blob) => void
+      onCancel: (reason?: string) => void
+    }) {
+      return (
+        <div data-testid="crop-dialog-stub">
+          <button
+            type="button"
+            onClick={() => onConfirm(new Blob(['cropped'], { type: 'image/jpeg' }))}
+          >
+            Use photo
+          </button>
+          <button type="button" onClick={() => onCancel()}>
+            Cancel crop
+          </button>
+        </div>
+      )
+    },
 }))
 
 // ---- Subject under test  ---------------------------------------------------
@@ -132,6 +162,10 @@ describe('PersonForm — photo upload in edit mode (#185)', () => {
       })
     })
 
+    // Confirm the crop — the upload fires after this step.
+    const cropDialog = await screen.findByTestId('crop-dialog-stub')
+    fireEvent.click(within(cropDialog).getByRole('button', { name: /use photo/i, hidden: true }))
+
     // Wait for the upload to complete and the notification to appear.
     await waitFor(() => {
       expect(screen.getByRole('status')).toBeTruthy()
@@ -165,6 +199,10 @@ describe('PersonForm — photo upload in edit mode (#185)', () => {
         target: { files: [makeJpegFile()] },
       })
     })
+
+    // Confirm the crop — the upload fires after this step.
+    const cropDialog = await screen.findByTestId('crop-dialog-stub')
+    fireEvent.click(within(cropDialog).getByRole('button', { name: /use photo/i, hidden: true }))
 
     // Upload resolves — notification should be visible.
     await waitFor(() => {
@@ -205,6 +243,10 @@ describe('PersonForm — photo upload in edit mode (#185)', () => {
       })
     })
 
+    // Confirm the crop — the upload fires after this step.
+    const cropDialog = await screen.findByTestId('crop-dialog-stub')
+    fireEvent.click(within(cropDialog).getByRole('button', { name: /use photo/i, hidden: true }))
+
     await waitFor(() => {
       expect(screen.queryByText('Photo uploaded')).toBeTruthy()
     })
@@ -234,5 +276,74 @@ describe('PersonForm — photo upload in edit mode (#185)', () => {
     // Full name field must retain its value (form not reset mid-session).
     const nameInput = document.querySelector<HTMLInputElement>('#pf-full-name')
     expect(nameInput?.value).toBe('Ada Lovelace')
+  })
+
+  it('opens the crop dialog after picking a file (no immediate upload)', async () => {
+    mockUploadPersonPhoto.mockResolvedValue({
+      ok: true,
+      photoUrl: 'https://example.com/avatar.jpg',
+    })
+
+    render(
+      <PersonForm
+        open={true}
+        onOpenChange={onOpenChange}
+        treeId={TREE_ID}
+        mode="edit"
+        person={PERSON_ROW}
+      />,
+    )
+
+    const fileInput = document.querySelector<HTMLInputElement>(
+      'input[type="file"][aria-hidden="true"]',
+    )
+    expect(fileInput).not.toBeNull()
+
+    await act(async () => {
+      fireEvent.change(fileInput!, {
+        target: { files: [makeJpegFile()] },
+      })
+    })
+
+    // Crop dialog should appear immediately after picking.
+    expect(await screen.findByTestId('crop-dialog-stub')).toBeInTheDocument()
+    // Upload must NOT have fired yet — only happens after crop confirm.
+    expect(mockUploadPersonPhoto).not.toHaveBeenCalled()
+  })
+
+  it('cancelling the crop discards the pick and uploads nothing', async () => {
+    mockUploadPersonPhoto.mockResolvedValue({
+      ok: true,
+      photoUrl: 'https://example.com/avatar.jpg',
+    })
+
+    render(
+      <PersonForm
+        open={true}
+        onOpenChange={onOpenChange}
+        treeId={TREE_ID}
+        mode="edit"
+        person={PERSON_ROW}
+      />,
+    )
+
+    const fileInput = document.querySelector<HTMLInputElement>(
+      'input[type="file"][aria-hidden="true"]',
+    )
+    expect(fileInput).not.toBeNull()
+
+    await act(async () => {
+      fireEvent.change(fileInput!, {
+        target: { files: [makeJpegFile()] },
+      })
+    })
+
+    const cropDialog = await screen.findByTestId('crop-dialog-stub')
+    fireEvent.click(within(cropDialog).getByRole('button', { name: /cancel crop/i, hidden: true }))
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('crop-dialog-stub')).not.toBeInTheDocument(),
+    )
+    expect(mockUploadPersonPhoto).not.toHaveBeenCalled()
   })
 })

@@ -47,7 +47,13 @@ import { DeletePersonDialog } from './DeletePersonDialog'
 import { PersonPicker } from './PersonPicker'
 import type { PersonRow } from '../_lib/types'
 import { Avatar, type Tone } from '@/components/ui/avatar'
-import { ImageDecodeError, resizeToJpeg } from '@/lib/image/resize'
+import dynamic from 'next/dynamic'
+
+// #236 — react-easy-crop only loads when a photo is actually picked.
+const PhotoCropDialog = dynamic(
+  () => import('./PhotoCropDialog').then((m) => m.PhotoCropDialog),
+  { ssr: false },
+)
 
 // Form-state strategy decision (Phase 3 sub-task 2): **react-hook-form**.
 //
@@ -334,6 +340,9 @@ export function PersonForm({
     undefined,
   )
   const [photoError, setPhotoError] = useState<string | null>(null)
+  // #236 — the freshly-picked file awaiting crop confirmation. Non-null
+  // while the PhotoCropDialog is up; cleared on confirm/cancel.
+  const [cropFile, setCropFile] = useState<File | null>(null)
 
   // Stash a new Blob, revoking the previous object URL (if any). Pass null
   // to clear. Centralises the URL.revokeObjectURL bookkeeping so onPick /
@@ -418,6 +427,9 @@ export function PersonForm({
       // doesn't leak a pending Blob into the next session.
       setPhotoError(null)
       setLocalPhotoUrl(undefined)
+      // #236 — drop any file left mid-crop so reopening doesn't remount
+      // the crop dialog without a fresh pick.
+      setCropFile(null)
       // setPendingBlob(null) handles the URL.revokeObjectURL bookkeeping.
       setPendingBlob(null)
     }
@@ -487,40 +499,32 @@ export function PersonForm({
 
   // ---- Photo picker handlers ----
   //
-  // onPick handles both modes:
-  //   - Edit: resize → uploadPersonPhoto immediately. On success, switch
-  //     the preview to the returned server URL and drop the local Blob.
-  //   - Create: resize → stash the Blob in pendingPhotoRef. The submit
-  //     handler flushes it after createPerson returns the new personId.
+  // #236 — onPickPhoto now just stages the file for cropping. Decode
+  // validation has moved into PhotoCropDialog (its <img> onError). The
+  // resize + upload steps run after the user confirms the crop.
   //
   // Resetting fileInputRef.current.value to '' lets the user pick the same
   // file twice in a row (the native input dedupes by file path otherwise).
-  const onPickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onPickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
     setPhotoError(null)
+    setCropFile(file)
+    // Reset so the same file can be picked twice in a row.
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
-    let resized
-    try {
-      resized = await resizeToJpeg(file)
-    } catch (err) {
-      if (err instanceof ImageDecodeError) {
-        setPhotoError('Please choose a JPEG or PNG photo.')
-      } else {
-        setPhotoError("Couldn't process the photo. Try a different one.")
-      }
-      if (fileInputRef.current) fileInputRef.current.value = ''
-      return
-    }
-
+  // #236 — receives the finished cropped JPEG from PhotoCropDialog.
+  const onCropConfirm = (blob: Blob) => {
+    setCropFile(null)
     if (isEdit && person) {
       // Show the local preview immediately so the user sees feedback
       // while the upload is in-flight; we'll swap to the server URL on
       // success (or revert on failure).
-      setPendingBlob(resized.blob)
+      setPendingBlob(blob)
       startTransition(async () => {
         const fd = new FormData()
-        fd.append('file', resized.blob, 'avatar.jpg')
+        fd.append('file', blob, 'avatar.jpg')
         const result = await uploadPersonPhoto(treeId, person.id, fd)
         if (result.ok) {
           // Server has the file + photo_url is updated. Drop the local
@@ -539,10 +543,15 @@ export function PersonForm({
       })
     } else {
       // Create mode: hold the Blob in memory until createPerson lands.
-      setPendingBlob(resized.blob)
+      setPendingBlob(blob)
     }
+  }
 
-    if (fileInputRef.current) fileInputRef.current.value = ''
+  const onCropCancel = (reason?: 'decode-error') => {
+    setCropFile(null)
+    if (reason === 'decode-error') {
+      setPhotoError('Please choose a JPEG or PNG photo.')
+    }
   }
 
   // Edit-mode "Remove photo" — clears the row's photo_url and deletes the
@@ -1307,6 +1316,13 @@ export function PersonForm({
             setDeleteOpen(false)
             onOpenChange(false)
           }}
+        />
+      )}
+      {cropFile && (
+        <PhotoCropDialog
+          file={cropFile}
+          onConfirm={onCropConfirm}
+          onCancel={onCropCancel}
         />
       )}
       {showLinkingBlock && peopleForPicker && (
