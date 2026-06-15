@@ -52,14 +52,14 @@
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^9",
+    "eslint": "^10",
     "eslint-config-next": "16.2.6",
     "jsdom": "^29.1.1",
     "sharp": "^0.34.5",
     "supabase": "^2.98.2",
     "tailwindcss": "^4",
     "tsx": "^4.22.3",
-    "typescript": "^5",
+    "typescript": "^6",
     "vitest": "^4.1.6"
   },
   "pnpm": {
