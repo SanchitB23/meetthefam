@@ -19,7 +19,7 @@
     "seed:export-stress": "tsx scripts/export-stress/seed-export-stress.ts"
   },
   "dependencies": {
-    "@base-ui/react": "^1.4.1",
+    "@base-ui/react": "^1.5.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
     "@vercel/analytics": "^2.0.1",
@@ -31,7 +31,7 @@
     "family-chart": "^0.9.0",
     "html-to-image": "^1.11.13",
     "jspdf": "^4.2.1",
-    "lucide-react": "^1.14.0",
+    "lucide-react": "^1.18.0",
     "next": "16.2.6",
     "react": "19.2.6",
     "react-dom": "19.2.6",
